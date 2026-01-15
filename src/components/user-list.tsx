@@ -1,7 +1,9 @@
 
 'use client';
 
-import { useCollection } from '@/firebase';
+import { useMemo } from 'react';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -18,8 +20,13 @@ type UserProfile = {
 }
 
 export default function UserList() {
+    const firestore = useFirestore();
+
+    // Memoize the collection reference to prevent re-renders
+    const usersCollection = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+
     // In a real app with many users, you'd want to implement pagination here.
-    const { data: users, loading } = useCollection<UserProfile>('users');
+    const { data: users, loading } = useCollection<UserProfile>(usersCollection);
 
     return (
         <Card>
@@ -43,7 +50,7 @@ export default function UserList() {
                                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                                 </TableCell>
                             </TableRow>
-                        ) : users.length > 0 ? (
+                        ) : users && users.length > 0 ? (
                             users.map((user) => (
                                 <TableRow key={user.id}>
                                     <TableCell>
