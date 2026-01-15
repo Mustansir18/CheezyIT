@@ -44,6 +44,7 @@ export default function CreateBranchUserForm() {
     const password = formData.get('password') as string;
     const selectedRole = formData.get('role') as string;
     const branchName = formData.get('branchName') as string | null;
+    const phoneNumber = formData.get('phoneNumber') as string | null;
 
     if (!displayName || !email || !password || !selectedRole) {
         setError('Please fill out all required fields.');
@@ -71,6 +72,9 @@ export default function CreateBranchUserForm() {
       };
       if (selectedRole === 'branch') {
         userData.branchName = branchName;
+      }
+      if (phoneNumber) {
+        userData.phoneNumber = phoneNumber;
       }
 
       const userDocRef = doc(firestore, 'users', newUser.uid);
@@ -112,6 +116,10 @@ export default function CreateBranchUserForm() {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" placeholder="john.doe@example.com" required />
+      </div>
+       <div className="space-y-2">
+        <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
+        <Input id="phoneNumber" name="phoneNumber" type="tel" placeholder="e.g. +14155552671" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>

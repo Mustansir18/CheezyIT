@@ -76,20 +76,24 @@
           "description": "Email address of the user.",
           "format": "email"
         },
-        "fullName": {
+        "displayName": {
           "type": "string",
-          "description": "Full name of the user."
+          "description": "Display name of the user."
         },
         "role": {
           "type": "string",
           "description": "Role of the user (e.g., User, Admin).",
           "format": "string"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number of the user."
         }
       },
       "required": [
         "id",
         "email",
-        "fullName",
+        "displayName",
         "role"
       ]
     }
