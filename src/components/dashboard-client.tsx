@@ -1,8 +1,10 @@
+
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import { summarizeTicketsAction } from '@/lib/actions';
+import { useMockTickets, getStats } from '@/lib/data';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,8 +23,9 @@ type Stats = {
 };
 
 interface DashboardClientProps {
-  tickets: Ticket[];
-  stats: Stats;
+  // We will fetch tickets inside this component now
+  tickets: never[];
+  stats: never;
 }
 
 const statusIcons: Record<TicketStatus, React.ReactNode> = {
@@ -37,10 +40,13 @@ const priorityIcons: Record<Ticket['priority'], React.ReactNode> = {
   High: <TriangleAlert className="mr-2 h-4 w-4 text-destructive" />,
 };
 
-export default function DashboardClient({ tickets, stats }: DashboardClientProps) {
+export default function DashboardClient({}: DashboardClientProps) {
+  const { tickets, loading: ticketsLoading } = useMockTickets();
   const [summary, setSummary] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  const stats = useMemo(() => getStats(tickets), [tickets]);
 
   const handleSummarize = () => {
     startTransition(async () => {
@@ -75,7 +81,7 @@ export default function DashboardClient({ tickets, stats }: DashboardClientProps
             <Circle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pending}</div>
+            {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.pending}</div>}
             <p className="text-xs text-muted-foreground">
               Tickets awaiting response
             </p>
@@ -87,7 +93,7 @@ export default function DashboardClient({ tickets, stats }: DashboardClientProps
             <CircleDot className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.inProgress}</div>
+            {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.inProgress}</div>}
              <p className="text-xs text-muted-foreground">
               Tickets actively being worked on
             </p>
@@ -99,7 +105,7 @@ export default function DashboardClient({ tickets, stats }: DashboardClientProps
             <CircleCheck className="h-4 w-4 text-chart-2" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.resolved}</div>
+             {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.resolved}</div>}
             <p className="text-xs text-muted-foreground">
               Completed and closed tickets
             </p>
@@ -114,7 +120,7 @@ export default function DashboardClient({ tickets, stats }: DashboardClientProps
                <Lightbulb className="h-5 w-5 text-accent" />
                <CardTitle>Smart Summary</CardTitle>
             </div>
-            <Button onClick={handleSummarize} disabled={isPending}>
+            <Button onClick={handleSummarize} disabled={isPending || ticketsLoading}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Generate Summary
             </Button>
@@ -159,7 +165,13 @@ export default function DashboardClient({ tickets, stats }: DashboardClientProps
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTickets[tab].length > 0 ? (
+                    {ticketsLoading ? (
+                      <TableRow>
+                          <TableCell colSpan={4} className="h-24 text-center">
+                            <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                          </TableCell>
+                      </TableRow>
+                    ) : filteredTickets[tab].length > 0 ? (
                       filteredTickets[tab].map((ticket) => (
                       <TableRow key={ticket.id}>
                         <TableCell>

@@ -1,3 +1,6 @@
+
+import { useState, useEffect } from 'react';
+
 export type TicketStatus = 'Pending' | 'In Progress' | 'Resolved';
 
 export type Ticket = {
@@ -9,13 +12,7 @@ export type Ticket = {
   createdAt: string;
 };
 
-export type MockUser = {
-  name: string;
-  email: string;
-  initials: string;
-};
-
-const tickets: Ticket[] = [
+const initialTickets: Ticket[] = [
   {
     id: 'TKT-001',
     title: 'Cannot connect to company VPN',
@@ -66,29 +63,37 @@ const tickets: Ticket[] = [
   },
 ];
 
-const mockUser: MockUser = {
-  name: 'Jane Doe',
-  email: 'jane.doe@example.com',
-  initials: 'JD',
-};
-
-// Simulate an async API call
+// Simulate an async API call to get tickets, we'll replace this with Firestore later.
 export const getTickets = async (): Promise<Ticket[]> => {
-  return new Promise(resolve => setTimeout(() => resolve(tickets), 500));
+    // In a real app, you'd use a hook like useCollection here.
+    // For now, we return mock data.
+    return new Promise(resolve => setTimeout(() => resolve(initialTickets), 500));
 };
 
-export const getMockUser = async (): Promise<MockUser> => {
-    return new Promise(resolve => setTimeout(() => resolve(mockUser), 200));
+export const useMockTickets = () => {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTickets = async () => {
+      const result = await getTickets();
+      setTickets(result);
+      setLoading(false);
+    };
+    fetchTickets();
+  }, []);
+
+  return { tickets, loading };
 }
 
-export const getStats = async (allTickets: Ticket[]) => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({
+
+export const getStats = (allTickets: Ticket[]) => {
+    if (!allTickets) {
+        return { pending: 0, inProgress: 0, resolved: 0 };
+    }
+    return {
         pending: allTickets.filter(t => t.status === 'Pending').length,
         inProgress: allTickets.filter(t => t.status === 'In Progress').length,
         resolved: allTickets.filter(t => t.status === 'Resolved').length,
-      });
-    }, 300);
-  });
+    };
 };
