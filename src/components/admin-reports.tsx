@@ -1,14 +1,20 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { DateRange } from 'react-day-picker';
+import { addDays, format } from 'date-fns';
+import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { useMockTickets } from '@/lib/data';
 import type { Ticket } from '@/lib/data';
-import { Loader2 } from 'lucide-react';
 
 const COLORS = {
   Pending: 'hsl(var(--chart-3))',
@@ -21,12 +27,30 @@ const COLORS = {
 
 export default function AdminReports() {
   const { tickets, loading } = useMockTickets();
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: addDays(new Date(), -29),
+    to: new Date(),
+  });
+
+  const filteredTickets = useMemo(() => {
+    if (!date?.from) return tickets;
+    return tickets.filter(ticket => {
+        const ticketDate = new Date(ticket.createdAt);
+        // If there's no 'to' date, just check if it's after the 'from' date.
+        if (!date.to) return ticketDate >= date.from;
+        // Include the 'to' date in the range.
+        const toDate = new Date(date.to);
+        toDate.setHours(23, 59, 59, 999); // Set to end of day
+        return ticketDate >= date.from && ticketDate <= toDate;
+    });
+  }, [tickets, date]);
+
 
   const { statusData, priorityData, chartConfig } = useMemo(() => {
     const statusCounts = { Pending: 0, 'In Progress': 0, Resolved: 0 };
     const priorityCounts = { Low: 0, Medium: 0, High: 0 };
 
-    for (const ticket of tickets) {
+    for (const ticket of filteredTickets) {
       statusCounts[ticket.status]++;
       priorityCounts[ticket.priority]++;
     }
@@ -45,7 +69,7 @@ export default function AdminReports() {
     };
 
     return { statusData, priorityData, chartConfig };
-  }, [tickets]);
+  }, [filteredTickets]);
 
   if (loading) {
     return (
@@ -58,8 +82,48 @@ export default function AdminReports() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ticket Analytics</CardTitle>
-        <CardDescription>An overview of all support tickets in the system.</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <CardTitle>Ticket Analytics</CardTitle>
+            <CardDescription>An overview of all support tickets in the system.</CardDescription>
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                  "w-[300px] justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "LLL dd, y")} -{" "}
+                      {format(date.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(date.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 sm:grid-cols-2">
@@ -104,11 +168,11 @@ export default function AdminReports() {
                             return (
                                 <ul className="flex flex-wrap gap-4 justify-center mt-4">
                                 {payload?.map((entry: any) => {
-                                  const { color, value: name, payload: { value } } = entry;
+                                  const { color, value: name, payload: { value: count } } = entry.payload;
                                   return (
                                      <li key={`item-${name}`} className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                                        <span className="text-sm text-muted-foreground">{name} ({value})</span>
+                                        <span className="text-sm text-muted-foreground">{name} ({count})</span>
                                     </li>
                                   )
                                 })}
