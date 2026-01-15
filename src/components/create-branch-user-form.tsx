@@ -45,7 +45,6 @@ export default function CreateBranchUserForm() {
     const selectedRole = formData.get('role') as string;
     const branchName = formData.get('branchName') as string | null;
 
-    // Basic validation
     if (!displayName || !email || !password || !selectedRole) {
         setError('Please fill out all required fields.');
         setIsSubmitting(false);
@@ -57,17 +56,14 @@ export default function CreateBranchUserForm() {
         return;
     }
 
-    // Create a temporary Firebase app instance for user creation
     const tempAppName = `temp-user-creation-${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
     try {
-      // 1. Create user in Firebase Auth using the temporary instance
       const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
       const newUser = userCredential.user;
 
-      // 2. Create user profile in Firestore
       const userData: any = {
         displayName,
         email,
@@ -77,7 +73,6 @@ export default function CreateBranchUserForm() {
         userData.branchName = branchName;
       }
 
-      // Use setDoc to create a document with the user's UID as the ID
       const userDocRef = doc(firestore, 'users', newUser.uid);
       await setDoc(userDocRef, userData);
       
@@ -89,7 +84,7 @@ export default function CreateBranchUserForm() {
       setRole('user');
 
     } catch (e: any) {
-      console.error(e);
+      console.error('Error creating user:', e);
       let friendlyMessage = 'An unexpected error occurred.';
       if (e.code === 'auth/email-already-in-use') {
         friendlyMessage = 'This email address is already in use by another account.';
@@ -103,7 +98,6 @@ export default function CreateBranchUserForm() {
       });
       setError(friendlyMessage);
     } finally {
-      // 3. Clean up and delete the temporary Firebase app
       await deleteApp(tempApp);
       setIsSubmitting(false);
     }

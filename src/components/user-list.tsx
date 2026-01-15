@@ -9,23 +9,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+
 
 type UserProfile = {
     id: string;
     displayName: string;
     email: string;
-    role: 'admin' | 'branch' | 'user';
+    role: 'admin' | 'branch' | 'user' | 'it-support';
     branchName?: string;
     photoURL?: string;
 }
 
+const roleBadgeVariant: Record<UserProfile['role'], 'destructive' | 'secondary' | 'outline' | 'default'> = {
+    admin: 'destructive',
+    'it-support': 'secondary',
+    branch: 'outline',
+    user: 'outline'
+};
+
+
 export default function UserList() {
     const firestore = useFirestore();
 
-    // Memoize the collection reference to prevent re-renders
     const usersCollection = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
 
-    // In a real app with many users, you'd want to implement pagination here.
     const { data: users, loading } = useCollection<UserProfile>(usersCollection);
 
     return (
@@ -66,7 +74,9 @@ export default function UserList() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>{user.role}</Badge>
+                                        <Badge variant={roleBadgeVariant[user.role] || 'secondary'} className={cn(user.role === 'it-support' && 'border-primary/50 text-primary')}>
+                                            {user.role}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>{user.branchName || 'N/A'}</TableCell>
                                 </TableRow>
