@@ -1,9 +1,10 @@
 
 'use client';
 import Link from 'next/link';
-import { HardDrive, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 import { getTickets, getStats, type Ticket } from '@/lib/data';
 import DashboardClient from '@/components/dashboard-client';
@@ -41,7 +42,7 @@ export default function DashboardPage() {
           href="/dashboard"
           className="flex items-center gap-2 font-semibold font-headline"
         >
-          <HardDrive className="h-6 w-6 text-primary" />
+          <Image src="/logo.png" alt="IssueTrackr Logo" width={32} height={32} />
           <span>IssueTrackr</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">

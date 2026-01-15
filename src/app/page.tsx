@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { HardDrive, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 
 export default function LoginPage() {
@@ -71,7 +72,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-            <HardDrive className="h-10 w-10 text-primary" />
+            <Image src="/logo.png" alt="IssueTrackr Logo" width={64} height={64} />
           </div>
           <CardTitle className="text-3xl font-headline">{isLoginView ? 'Welcome Back' : 'Create an Account'}</CardTitle>
           <CardDescription>
