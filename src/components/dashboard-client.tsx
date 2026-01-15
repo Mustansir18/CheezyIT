@@ -5,6 +5,8 @@ import { useState, useTransition, useMemo, useEffect } from 'react';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import { summarizeTicketsAction } from '@/lib/actions';
 import { useMockTickets, getStats } from '@/lib/data';
+import { DateRange } from 'react-day-picker';
+import { addDays, format } from 'date-fns';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,9 +14,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lightbulb, Loader2, Circle, CircleDot, CircleCheck, ArrowDown, Minus, TriangleAlert } from 'lucide-react';
+import { Lightbulb, Loader2, Circle, CircleDot, CircleCheck, ArrowDown, Minus, TriangleAlert, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+
 
 type Stats = {
   pending: number;
@@ -45,12 +50,27 @@ export default function DashboardClient({}: DashboardClientProps) {
   const [summary, setSummary] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: addDays(new Date(), -29),
+    to: new Date(),
+  });
 
-  const stats = useMemo(() => getStats(tickets), [tickets]);
+  const filteredByDateTickets = useMemo(() => {
+    if (!date?.from) return tickets;
+    return tickets.filter(ticket => {
+        const ticketDate = new Date(ticket.createdAt);
+        if (!date.to) return ticketDate >= date.from;
+        const toDate = new Date(date.to);
+        toDate.setHours(23, 59, 59, 999);
+        return ticketDate >= date.from && ticketDate <= toDate;
+    });
+  }, [tickets, date]);
+
+  const stats = useMemo(() => getStats(filteredByDateTickets), [filteredByDateTickets]);
 
   const handleSummarize = () => {
     startTransition(async () => {
-      const openTickets = tickets.filter(t => t.status !== 'Resolved');
+      const openTickets = filteredByDateTickets.filter(t => t.status !== 'Resolved');
       const result = await summarizeTicketsAction(openTickets.map(({id: ticketId, ...rest}) => ({...rest, ticketId})));
       if (result.error) {
         toast({
@@ -66,11 +86,11 @@ export default function DashboardClient({}: DashboardClientProps) {
 
   const filteredTickets = useMemo(() => {
     return {
-      all: tickets,
-      pending: tickets.filter(t => t.status === 'Pending'),
-      resolved: tickets.filter(t => t.status === 'Resolved'),
+      all: filteredByDateTickets,
+      pending: filteredByDateTickets.filter(t => t.status === 'Pending'),
+      resolved: filteredByDateTickets.filter(t => t.status === 'Resolved'),
     };
-  }, [tickets]);
+  }, [filteredByDateTickets]);
 
   return (
     <>
@@ -140,18 +160,56 @@ export default function DashboardClient({}: DashboardClientProps) {
       </Card>
       
       <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="resolved">Resolved</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-between items-center mb-4">
+            <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="resolved">Resolved</TabsTrigger>
+            </TabsList>
+            <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                    "w-[300px] justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                )}
+                >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                    date.to ? (
+                    <>
+                        {format(date.from, "LLL dd, y")} -{" "}
+                        {format(date.to, "LLL dd, y")}
+                    </>
+                    ) : (
+                    format(date.from, "LLL dd, y")
+                    )
+                ) : (
+                    <span>Pick a date range</span>
+                )}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+                />
+            </PopoverContent>
+            </Popover>
+        </div>
         {(['all', 'pending', 'resolved'] as const).map(tab => (
            <TabsContent key={tab} value={tab}>
             <Card>
               <CardHeader>
                 <CardTitle className="capitalize">{tab} Tickets</CardTitle>
                 <CardDescription>
-                  A list of your {tab} support tickets.
+                  A list of your {tab} support tickets within the selected date range.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -192,12 +250,12 @@ export default function DashboardClient({}: DashboardClientProps) {
                           {priorityIcons[ticket.priority]}
                           {ticket.priority}
                         </TableCell>
-                        <TableCell>{ticket.createdAt}</TableCell>
+                        <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))) : (
                       <TableRow>
                         <TableCell colSpan={4} className="h-24 text-center">
-                          No tickets found.
+                          No tickets found in this date range.
                         </TableCell>
                       </TableRow>
                     )}
