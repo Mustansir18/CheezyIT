@@ -39,7 +39,7 @@ service cloud.firestore {
      * This is a pragmatic approach when custom claims are not manageable.
      */
     function isAdmin() {
-      return isSignedIn() && request.auth.email == 'mustansir133@gmail.com';
+      return isSignedIn() && request.auth.token.email == 'mustansir133@gmail.com';
     }
 
     /**
