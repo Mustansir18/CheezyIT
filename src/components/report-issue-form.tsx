@@ -1,9 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useEffect, useState, useRef, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -44,24 +42,18 @@ const ticketSchema = z.object({
 
 type FormData = z.infer<typeof ticketSchema>;
 
-const initialState = {
-  type: '',
-  message: '',
-};
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
   return (
-    <Button type="submit" disabled={pending}>
-      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+    <Button type="submit" disabled={isSubmitting}>
+      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
       Create Ticket
     </Button>
   );
 }
 
 export default function ReportIssueForm({ children }: { children: React.ReactNode }) {
-  const [state, formAction] = useActionState(createTicketAction, initialState);
   const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
 
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -69,6 +61,8 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(ticketSchema),
@@ -77,6 +71,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       description: '',
       anydesk: '',
       photo: '',
+      issueType: undefined,
       customIssueType: '',
     },
   });
@@ -92,22 +87,34 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       videoRef.current.srcObject = null;
     }
   }
+  
+  const onSubmit = (data: FormData) => {
+    const formData = new window.FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value) {
+        formData.append(key, value);
+      }
+    });
 
-  useEffect(() => {
-    if (state?.type === 'success') {
-      toast({
-        title: 'Success!',
-        description: state.message,
-      });
-      resetFormState();
-    } else if (state?.type === 'error') {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: state.message,
-      });
-    }
-  }, [state, toast]);
+    startTransition(async () => {
+      const result = await createTicketAction(null, formData);
+       if (result.type === 'success') {
+        toast({
+          title: 'Success!',
+          description: result.message,
+        });
+        resetFormState();
+        closeButtonRef.current?.click();
+      } else if (result.type === 'error') {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: result.message,
+        });
+      }
+    });
+  }
+
 
   const handleTabChange = (value: string) => {
     if (value === 'camera' && hasCameraPermission === null) {
@@ -192,7 +199,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form action={formAction} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
              <FormField
               control={form.control}
               name="photo"
@@ -328,9 +335,9 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
 
             <DialogFooter>
                <DialogClose asChild>
-                <Button variant="outline" onClick={resetFormState}>Cancel</Button>
+                <Button ref={closeButtonRef} variant="outline" onClick={resetFormState}>Cancel</Button>
                </DialogClose>
-               <SubmitButton />
+               <SubmitButton isSubmitting={isPending} />
             </DialogFooter>
           </form>
         </Form>
@@ -338,3 +345,5 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     </Dialog>
   );
 }
+
+    
