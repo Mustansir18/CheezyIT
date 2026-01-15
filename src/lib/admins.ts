@@ -2,7 +2,7 @@
 // You can add more emails to this array to grant admin access to other users.
 
 export const ADMIN_EMAILS = [
-  'msutansir133@gmail.com',
+  'mustansir133@gmail.com',
 ];
 
 export const isAdmin = (email: string | undefined | null): boolean => {
