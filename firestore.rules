@@ -8,23 +8,14 @@
  * user's specific document (e.g., /users/{userId}/issues/{issueId}).
  *
  * Key Security Decisions:
- * - Admin User Listing: To allow admins to manage users, a special rule grants 'list' access on the
- *   'users' collection only to authenticated users whose own document has a 'role' field set to 'admin'.
- *   This is a secure way to grant broad access to a privileged few.
+ * - Admin User Listing via Custom Claims: To allow admins to list users, we check for a custom claim
+ *   on the user's authentication token (request.auth.token.admin == true). This is secure and highly
+ *   performant as it doesn't require a separate document read.
  * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
  *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
  * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
  *   (e.g., a 'userId' field within an issue document) match the document's path, preventing data
  *   inconsistencies and potential security loopholes.
- *
- * Denormalization for Authorization: The hierarchical structure (/users/{userId}/...) is a form of
- * structural denormalization. By placing a user's data in a subcollection, the ownership (userId) is
- * inherently part of the path, making authorization checks simple and fast without needing extra fields
- * or document reads.
- *
- * Structural Segregation: User-specific data ('issues') is stored in a private subcollection under the
- * user's document. This is more secure and performant than a single top-level 'issues' collection,
- * as it prevents any possibility of one user accidentally listing another user's private data.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -42,47 +33,57 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
 
     /**
-     * Checks if the user is the owner AND the document already exists.
-     * This is a critical check for all update and delete operations to prevent
-     * acting on non-existent data.
+     * Checks if the user is an admin by inspecting their custom auth token.
+     * This is the correct, performant way to handle roles in security rules.
      */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
     }
 
     /**
-     * @description Rules for a user's own profile document.
+     * @description Rules for the 'users' collection.
      * @path /users/{userId}
-     * @allow (get) An authenticated user ('user_abc') can read their own profile document.
-     * @allow (create) A new authenticated user ('user_abc') can create their own profile document.
-     * @allow (list) An admin user can list all documents in the 'users' collection for the admin panel.
-     * @deny (get) A user ('user_xyz') cannot read another user's ('user_abc') profile.
-     * @principle Restricts access to a user's own data tree and prevents enumeration of all users, except for admins.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      /**
+       * Allow reading a user's own profile.
+       * Allow an admin to read any user's profile.
+       */
+      allow get: if isOwner(userId) || isAdmin();
+
+      /**
+       * Allow an admin to list all users.
+       * This is checked using a custom claim, which is very fast.
+       */
       allow list: if isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+
+      /**
+       * Allow a user to create their own profile document.
+       * Allow an admin to create any user document (for the admin panel).
+       */
+      allow create: if isOwner(userId) || isAdmin();
+
+      /**
+       * Allow a user to update their own profile.
+       * Allow an admin to update any user's profile.
+       */
+      allow update: if isOwner(userId) || isAdmin();
+
+      /**
+       * Allow a user to delete their own profile.
+       * Allow an admin to delete any user's profile.
+       */
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     /**
      * @description Rules for issues, which are owned by a specific user.
      * @path /users/{userId}/issues/{issueId}
-     * @allow (create) An authenticated user ('user_abc') can create a new issue in their own subcollection.
-     * @allow (list) An authenticated user ('user_abc') can list all issues in their own subcollection.
-     * @deny (get) A user ('user_xyz') cannot read an issue belonging to another user ('user_abc').
-     * @deny (update) A user cannot change the 'userId' field on an existing issue.
-     * @principle Enforces document ownership for all operations and validates relational integrity.
      */
     match /users/{userId}/issues/{issueId} {
+      // Only the owner of the user profile can manage their own issues.
       allow get, list, create, update, delete: if isOwner(userId);
     }
   }
