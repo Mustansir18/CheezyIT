@@ -1,12 +1,15 @@
 
 'use client';
 
-import { useEffect, useState, useRef, useTransition } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { useUser, useFirestore, useStorage } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -16,7 +19,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { createTicketAction } from '@/lib/actions';
 import { Loader2, Camera, Upload, X } from 'lucide-react';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
@@ -53,8 +55,10 @@ function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
 
 export default function ReportIssueForm({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const storage = useStorage();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [showCustomIssueType, setShowCustomIssueType] = useState(false);
@@ -88,31 +92,48 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     }
   }
   
-  const onSubmit = (data: FormData) => {
-    const formData = new window.FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value) {
-        formData.append(key, value);
-      }
-    });
+  const onSubmit = async (data: FormData) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to create a ticket.' });
+        return;
+    }
 
-    startTransition(async () => {
-      const result = await createTicketAction(null, formData);
-       if (result.type === 'success') {
-        toast({
-          title: 'Success!',
-          description: result.message,
-        });
+    setIsSubmitting(true);
+    try {
+        let photoUrl: string | null = null;
+        if (data.photo) {
+            const sRef = storageRef(storage, `tickets/${user.uid}/${Date.now()}`);
+            const uploadTask = await uploadString(sRef, data.photo, 'data_url');
+            photoUrl = await getDownloadURL(uploadTask.ref);
+        }
+        
+        const ticketData = {
+            userId: user.uid,
+            title: data.title,
+            issueType: data.issueType,
+            customIssueType: data.customIssueType || '',
+            description: data.description,
+            anydesk: data.anydesk || '',
+            attachments: photoUrl ? [photoUrl] : [],
+            status: 'Pending',
+            priority: 'Medium', // Default priority
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        };
+
+        const ticketsCollectionRef = collection(firestore, 'users', user.uid, 'issues');
+        await addDoc(ticketsCollectionRef, ticketData);
+        
+        toast({ title: 'Success!', description: 'Ticket created successfully!' });
         resetFormState();
         closeButtonRef.current?.click();
-      } else if (result.type === 'error') {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: result.message,
-        });
-      }
-    });
+
+    } catch (error) {
+        console.error("Error creating ticket:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create ticket. Please try again.' });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
 
@@ -337,7 +358,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                <DialogClose asChild>
                 <Button ref={closeButtonRef} variant="outline" onClick={resetFormState}>Cancel</Button>
                </DialogClose>
-               <SubmitButton isSubmitting={isPending} />
+               <SubmitButton isSubmitting={isSubmitting} />
             </DialogFooter>
           </form>
         </Form>
@@ -345,5 +366,3 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     </Dialog>
   );
 }
-
-    

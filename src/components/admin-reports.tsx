@@ -6,6 +6,8 @@ import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveCon
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collectionGroup, query } from 'firebase/firestore';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,7 +15,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { useMockTickets } from '@/lib/data';
 import type { Ticket } from '@/lib/data';
 
 const COLORS = {
@@ -26,16 +27,21 @@ const COLORS = {
 };
 
 export default function AdminReports() {
-  const { tickets, loading } = useMockTickets();
+  const firestore = useFirestore();
+  const allIssuesQuery = useMemoFirebase(() => query(collectionGroup(firestore, 'issues')), [firestore]);
+  const { data: tickets, isLoading: loading } = useCollection<Ticket>(allIssuesQuery);
+  const allTickets = tickets || [];
+
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
     to: new Date(),
   });
 
   const filteredTickets = useMemo(() => {
-    if (!date?.from) return tickets;
-    return tickets.filter(ticket => {
-        const ticketDate = new Date(ticket.createdAt);
+    if (!date?.from) return allTickets;
+    return allTickets.filter(ticket => {
+        if (!ticket.createdAt) return false;
+        const ticketDate = ticket.createdAt.toDate();
         // If there's no 'to' date, just check if it's after the 'from' date.
         if (!date.to) return ticketDate >= date.from;
         // Include the 'to' date in the range.
@@ -43,16 +49,16 @@ export default function AdminReports() {
         toDate.setHours(23, 59, 59, 999); // Set to end of day
         return ticketDate >= date.from && ticketDate <= toDate;
     });
-  }, [tickets, date]);
+  }, [allTickets, date]);
 
 
   const { statusData, priorityData, chartConfig } = useMemo(() => {
-    const statusCounts = { Pending: 0, 'In Progress': 0, Resolved: 0 };
-    const priorityCounts = { Low: 0, Medium: 0, High: 0 };
+    const statusCounts: { [key: string]: number } = { Pending: 0, 'In Progress': 0, Resolved: 0 };
+    const priorityCounts: { [key: string]: number } = { Low: 0, Medium: 0, High: 0 };
 
     for (const ticket of filteredTickets) {
-      statusCounts[ticket.status]++;
-      priorityCounts[ticket.priority]++;
+      if (ticket.status) statusCounts[ticket.status]++;
+      if (ticket.priority) priorityCounts[ticket.priority]++;
     }
 
     const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value, fill: COLORS[name as keyof typeof COLORS] }));

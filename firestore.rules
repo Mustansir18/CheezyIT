@@ -1,3 +1,4 @@
+
 /**
  * Core Philosophy: This ruleset enforces a strict user-ownership model where all data is private by default.
  * Users can only access data that exists within their own user document tree. This ensures a high level of
@@ -82,8 +83,10 @@ service cloud.firestore {
      * @path /users/{userId}/issues/{issueId}
      */
     match /users/{userId}/issues/{issueId} {
-      // Only the owner of the user profile can manage their own issues.
-      allow get, list, create, update, delete: if isOwner(userId);
+      // Admins can read all tickets for analytics.
+      // Owners can perform all actions on their own tickets.
+      allow get, list: if isOwner(userId) || isAdmin();
+      allow create, update, delete: if isOwner(userId);
     }
   }
 }

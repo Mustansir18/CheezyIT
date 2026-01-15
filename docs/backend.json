@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Issue": {
@@ -18,9 +19,21 @@
           "type": "string",
           "description": "Title of the issue."
         },
+        "issueType": {
+          "type": "string",
+          "description": "The general category of the issue."
+        },
+        "customIssueType": {
+            "type": "string",
+            "description": "A user-defined issue type, if 'Other' is selected."
+        },
         "description": {
           "type": "string",
           "description": "Detailed description of the issue."
+        },
+        "anydesk": {
+            "type": "string",
+            "description": "AnyDesk address for remote support."
         },
         "status": {
           "type": "string",
@@ -54,6 +67,7 @@
         "id",
         "userId",
         "title",
+        "issueType",
         "description",
         "status",
         "priority",

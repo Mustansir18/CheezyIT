@@ -1,12 +1,15 @@
 
 'use client';
 
-import { useState, useTransition, useMemo, useEffect } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import { summarizeTicketsAction } from '@/lib/actions';
-import { useMockTickets, getStats } from '@/lib/data';
+import { getStats } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,7 +49,19 @@ const priorityIcons: Record<Ticket['priority'], React.ReactNode> = {
 };
 
 export default function DashboardClient({}: DashboardClientProps) {
-  const { tickets, loading: ticketsLoading } = useMockTickets();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const issuesQuery = useMemoFirebase(
+    () => 
+      user 
+        ? query(collection(firestore, 'users', user.uid, 'issues'), orderBy('createdAt', 'desc')) 
+        : null,
+    [firestore, user]
+  );
+  const { data: tickets, isLoading: ticketsLoading } = useCollection<Ticket>(issuesQuery);
+  const allTickets = tickets || [];
+
   const [summary, setSummary] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -56,22 +71,31 @@ export default function DashboardClient({}: DashboardClientProps) {
   });
 
   const filteredByDateTickets = useMemo(() => {
-    if (!date?.from) return tickets;
-    return tickets.filter(ticket => {
-        const ticketDate = new Date(ticket.createdAt);
+    if (!date?.from) return allTickets;
+    return allTickets.filter(ticket => {
+        if (!ticket.createdAt) return false;
+        const ticketDate = ticket.createdAt.toDate();
         if (!date.to) return ticketDate >= date.from;
         const toDate = new Date(date.to);
         toDate.setHours(23, 59, 59, 999);
         return ticketDate >= date.from && ticketDate <= toDate;
     });
-  }, [tickets, date]);
+  }, [allTickets, date]);
 
   const stats = useMemo(() => getStats(filteredByDateTickets), [filteredByDateTickets]);
 
   const handleSummarize = () => {
     startTransition(async () => {
       const openTickets = filteredByDateTickets.filter(t => t.status !== 'Resolved');
-      const result = await summarizeTicketsAction(openTickets.map(({id: ticketId, ...rest}) => ({...rest, ticketId})));
+      const ticketsForAI = openTickets.map(({id: ticketId, title, description, status, priority}) => ({
+          ticketId,
+          title,
+          description,
+          status,
+          priority
+      }));
+
+      const result = await summarizeTicketsAction(ticketsForAI);
       if (result.error) {
         toast({
           variant: 'destructive',
@@ -250,7 +274,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                           {priorityIcons[ticket.priority]}
                           {ticket.priority}
                         </TableCell>
-                        <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{ticket.createdAt ? ticket.createdAt.toDate().toLocaleDateString() : 'N/A'}</TableCell>
                       </TableRow>
                     ))) : (
                       <TableRow>
