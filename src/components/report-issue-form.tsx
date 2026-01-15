@@ -21,16 +21,25 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createTicketAction } from '@/lib/actions';
 import { Loader2, Camera, Upload, X } from 'lucide-react';
 
-const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access'] as const;
+const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
   issueType: z.enum(issueTypes, {
     required_error: "You need to select an issue type.",
   }),
+  customIssueType: z.string().optional(),
   description: z.string().min(1, 'Description is required.'),
   anydesk: z.string().optional(),
   photo: z.string().optional(),
+}).refine(data => {
+    if (data.issueType === 'Other') {
+        return !!data.customIssueType && data.customIssueType.length > 0;
+    }
+    return true;
+}, {
+    message: 'Please specify your issue type.',
+    path: ['customIssueType'],
 });
 
 type FormData = z.infer<typeof ticketSchema>;
@@ -56,6 +65,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
 
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [showCustomIssueType, setShowCustomIssueType] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +77,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       description: '',
       anydesk: '',
       photo: '',
+      customIssueType: '',
     },
   });
 
@@ -74,6 +85,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     form.reset();
     setPhotoDataUri(null);
     setHasCameraPermission(null);
+    setShowCustomIssueType(false);
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
@@ -160,6 +172,15 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       }
   };
 
+  const handleIssueTypeChange = (value: string) => {
+    const isOther = value === 'Other';
+    setShowCustomIssueType(isOther);
+    form.setValue('issueType', value as typeof issueTypes[number]);
+    if (!isOther) {
+      form.setValue('customIssueType', '');
+    }
+  }
+
   return (
     <Dialog onOpenChange={(open) => !open && resetFormState()}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -202,7 +223,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Issue Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={handleIssueTypeChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select an issue type" />
@@ -218,6 +239,21 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 </FormItem>
               )}
             />
+            {showCustomIssueType && (
+                 <FormField
+                    control={form.control}
+                    name="customIssueType"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Custom Issue Type</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Please specify the issue type" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+            )}
             <FormField
               control={form.control}
               name="description"
