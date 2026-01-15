@@ -1,22 +1,25 @@
-
 'use server';
 
 import { summarizeTickets, type SummarizeTicketsInput } from '@/ai/flows/summarize-tickets';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
+const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access'] as const;
+
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
+  issueType: z.enum(issueTypes),
   description: z.string().min(1, 'Description is required.'),
-  priority: z.enum(['Low', 'Medium', 'High']),
+  anydesk: z.string().optional(),
 });
 
 export async function createTicketAction(prevState: any, formData: FormData) {
   try {
     const validatedFields = ticketSchema.safeParse({
       title: formData.get('title'),
+      issueType: formData.get('issueType'),
       description: formData.get('description'),
-      priority: formData.get('priority'),
+      anydesk: formData.get('anydesk'),
     });
 
     if (!validatedFields.success) {
