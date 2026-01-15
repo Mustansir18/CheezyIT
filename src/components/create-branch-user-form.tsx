@@ -32,7 +32,7 @@ export default function CreateBranchUserForm() {
   const [state, formAction] = useActionState(createBranchUserAction, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const [role, setRole] = useState<'user' | 'branch' | 'admin'>('user');
+  const [role, setRole] = useState<'user' | 'branch' | 'admin' | 'it-support'>('user');
 
   useEffect(() => {
     if (state?.type === 'success') {
@@ -70,6 +70,7 @@ export default function CreateBranchUserForm() {
             <SelectContent>
                 <SelectItem value="user">Standard User</SelectItem>
                 <SelectItem value="branch">Branch User</SelectItem>
+                <SelectItem value="it-support">IT Support</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
             </SelectContent>
         </Select>

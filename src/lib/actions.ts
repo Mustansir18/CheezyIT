@@ -81,7 +81,7 @@ export async function summarizeTicketsAction(tickets: SummarizeTicketsInput['tic
 const userSchema = z.object({
   displayName: z.string().min(1, 'Display Name is required.'),
   email: z.string().email('Invalid email address.'),
-  role: z.enum(['user', 'branch', 'admin']),
+  role: z.enum(['user', 'branch', 'admin', 'it-support']),
   branchName: z.string().optional(),
 }).refine(data => {
     if (data.role === 'branch') {
