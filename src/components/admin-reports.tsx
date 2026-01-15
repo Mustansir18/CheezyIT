@@ -102,13 +102,16 @@ export default function AdminReports() {
                          </Bar>
                          <Legend content={({ payload }) => {
                             return (
-                                <ul className="flex gap-4 justify-center mt-4">
-                                {payload?.[0].payload.map((entry: any) => (
-                                     <li key={`item-${entry.name}`} className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                        <span className="text-sm text-muted-foreground">{entry.name} ({entry.value})</span>
+                                <ul className="flex flex-wrap gap-4 justify-center mt-4">
+                                {payload?.map((entry: any) => {
+                                  const { color, value: name, payload: { value } } = entry;
+                                  return (
+                                     <li key={`item-${name}`} className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                                        <span className="text-sm text-muted-foreground">{name} ({value})</span>
                                     </li>
-                                ))}
+                                  )
+                                })}
                                 </ul>
                             )
                         }} />
