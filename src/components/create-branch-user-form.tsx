@@ -128,7 +128,7 @@ export default function CreateBranchUserForm() {
           id="phoneNumber"
           name="phoneNumber"
           type="tel"
-          placeholder="11 digits"
+          placeholder="03000000000"
           pattern="\d{11}"
           title="Phone number must be 11 digits"
           maxLength={11}
