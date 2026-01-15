@@ -47,7 +47,7 @@ export default function DashboardPage() {
           <span>IT Support</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
-          {isAdmin(user?.uid) && (
+          {isAdmin(user?.email) && (
             <Button asChild variant="secondary">
               <Link href="/admin">Admin</Link>
             </Button>

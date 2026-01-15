@@ -19,7 +19,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!loading) {
-      if (!user || !isAdmin(user.uid)) {
+      if (!user || !isAdmin(user.email)) {
         router.push('/dashboard');
       }
     }
@@ -33,7 +33,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAdmin(user.uid)) {
+  if (!isAdmin(user.email)) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <p>You are not authorized to view this page.</p>
