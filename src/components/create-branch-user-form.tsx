@@ -56,6 +56,11 @@ export default function CreateBranchUserForm() {
         setIsSubmitting(false);
         return;
     }
+    if (phoneNumber && !/^\d{11}$/.test(phoneNumber)) {
+        setError('Phone number must be exactly 11 digits.');
+        setIsSubmitting(false);
+        return;
+    }
 
     const tempAppName = `temp-user-creation-${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
@@ -119,7 +124,15 @@ export default function CreateBranchUserForm() {
       </div>
        <div className="space-y-2">
         <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
-        <Input id="phoneNumber" name="phoneNumber" type="tel" placeholder="e.g. +14155552671" />
+        <Input
+          id="phoneNumber"
+          name="phoneNumber"
+          type="tel"
+          placeholder="11 digits"
+          pattern="\d{11}"
+          title="Phone number must be 11 digits"
+          maxLength={11}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
