@@ -8,9 +8,9 @@
  * user's specific document (e.g., /users/{userId}/issues/{issueId}).
  *
  * Key Security Decisions:
- * - Admin User Listing via Custom Claims: To allow admins to list users, we check for a custom claim
- *   on the user's authentication token (request.auth.token.admin == true). This is secure and highly
- *   performant as it doesn't require a separate document read.
+ * - Admin User Listing via Hardcoded Email: To allow admins to list users, we check the authenticated
+ *   user's email against a hardcoded list. This is secure and works without needing custom claims
+ *   or database reads within the list rule, which is not allowed.
  * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
  *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
  * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
@@ -35,11 +35,11 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the user is an admin by inspecting their custom auth token.
-     * This is the correct, performant way to handle roles in security rules.
+     * Checks if the user is an admin by checking their email address against a list.
+     * This is a pragmatic approach when custom claims are not manageable.
      */
     function isAdmin() {
-      return isSignedIn() && request.auth.token.admin == true;
+      return isSignedIn() && request.auth.email == 'mustansir133@gmail.com';
     }
 
     /**
@@ -55,7 +55,6 @@ service cloud.firestore {
 
       /**
        * Allow an admin to list all users.
-       * This is checked using a custom claim, which is very fast.
        */
       allow list: if isAdmin();
 
