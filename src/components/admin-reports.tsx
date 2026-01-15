@@ -1,0 +1,122 @@
+
+'use client';
+
+import { useMemo } from 'react';
+import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { useMockTickets } from '@/lib/data';
+import type { Ticket } from '@/lib/data';
+import { Loader2 } from 'lucide-react';
+
+const COLORS = {
+  Pending: 'hsl(var(--chart-3))',
+  'In Progress': 'hsl(var(--chart-4))',
+  Resolved: 'hsl(var(--chart-2))',
+  High: 'hsl(var(--destructive))',
+  Medium: 'hsl(var(--chart-3))',
+  Low: 'hsl(var(--muted-foreground))',
+};
+
+export default function AdminReports() {
+  const { tickets, loading } = useMockTickets();
+
+  const { statusData, priorityData, chartConfig } = useMemo(() => {
+    const statusCounts = { Pending: 0, 'In Progress': 0, Resolved: 0 };
+    const priorityCounts = { Low: 0, Medium: 0, High: 0 };
+
+    for (const ticket of tickets) {
+      statusCounts[ticket.status]++;
+      priorityCounts[ticket.priority]++;
+    }
+
+    const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value, fill: COLORS[name as keyof typeof COLORS] }));
+    const priorityData = Object.entries(priorityCounts).map(([name, value]) => ({ name, value, fill: COLORS[name as keyof typeof COLORS] }));
+
+    const chartConfig = {
+      value: { label: 'Tickets' },
+      Pending: { label: 'Pending', color: COLORS.Pending },
+      'In Progress': { label: 'In Progress', color: COLORS['In Progress'] },
+      Resolved: { label: 'Resolved', color: COLORS.Resolved },
+       High: { label: 'High', color: COLORS.High },
+       Medium: { label: 'Medium', color: COLORS.Medium },
+       Low: { label: 'Low', color: COLORS.Low },
+    };
+
+    return { statusData, priorityData, chartConfig };
+  }, [tickets]);
+
+  if (loading) {
+    return (
+      <Card className="h-[480px] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Ticket Analytics</CardTitle>
+        <CardDescription>An overview of all support tickets in the system.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-6 sm:grid-cols-2">
+            <div className="flex flex-col">
+                <h3 className="text-lg font-semibold mb-2 text-center">Tickets by Status</h3>
+                <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
+                    <PieChart>
+                        <Tooltip content={<ChartTooltipContent hideLabel />} />
+                        <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                        {statusData.map((entry) => (
+                            <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                        ))}
+                        </Pie>
+                        <Legend content={({ payload }) => {
+                            return (
+                                <ul className="flex gap-4 justify-center mt-4">
+                                {payload?.map((entry) => (
+                                    <li key={`item-${entry.value}`} className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                        <span className="text-sm text-muted-foreground">{entry.value}</span>
+                                    </li>
+                                ))}
+                                </ul>
+                            )
+                        }} />
+                    </PieChart>
+                </ChartContainer>
+            </div>
+             <div className="flex flex-col">
+                <h3 className="text-lg font-semibold mb-2 text-center">Tickets by Priority</h3>
+                <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
+                    <BarChart data={priorityData} layout="vertical" margin={{ left: 10 }}>
+                         <XAxis type="number" hide />
+                         <CartesianGrid horizontal={false} />
+                         <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent hideLabel />} />
+                         <Bar dataKey="value" radius={5}>
+                             {priorityData.map((entry) => (
+                                 <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                             ))}
+                         </Bar>
+                         <Legend content={({ payload }) => {
+                            return (
+                                <ul className="flex gap-4 justify-center mt-4">
+                                {payload?.[0].payload.map((entry: any) => (
+                                     <li key={`item-${entry.name}`} className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                        <span className="text-sm text-muted-foreground">{entry.name} ({entry.value})</span>
+                                    </li>
+                                ))}
+                                </ul>
+                            )
+                        }} />
+                    </BarChart>
+                </ChartContainer>
+            </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

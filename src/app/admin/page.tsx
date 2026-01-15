@@ -11,6 +11,7 @@ import { UserNav } from '@/components/user-nav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import CreateBranchUserForm from '@/components/create-branch-user-form';
 import UserList from '@/components/user-list';
+import AdminReports from '@/components/admin-reports';
 
 export default function AdminPage() {
   const { user, loading } = useUser();
@@ -59,6 +60,9 @@ export default function AdminPage() {
           <h1 className="text-3xl font-bold tracking-tight font-headline">
             Admin Dashboard
           </h1>
+        </div>
+        <div className="grid gap-4 md:grid-cols-1">
+            <AdminReports />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <div className="lg:col-span-4">
