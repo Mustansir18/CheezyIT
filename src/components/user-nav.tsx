@@ -81,9 +81,6 @@ export function UserNav() {
             Profile
           </DropdownMenuItem>
           <DropdownMenuItem>
-            Billing
-          </DropdownMenuItem>
-          <DropdownMenuItem>
             Settings
           </DropdownMenuItem>
         </DropdownMenuGroup>
