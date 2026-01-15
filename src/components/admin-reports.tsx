@@ -167,8 +167,10 @@ export default function AdminReports() {
                          <Legend content={({ payload }) => {
                             return (
                                 <ul className="flex flex-wrap gap-4 justify-center mt-4">
-                                {payload?.map((entry: any) => {
-                                  const { color, value: name, payload: { value: count } } = entry.payload;
+                                {payload?.map((entry, index) => {
+                                  const { value: name, color } = entry;
+                                  const { value: count } = (entry.payload as any) || {};
+
                                   return (
                                      <li key={`item-${name}`} className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
