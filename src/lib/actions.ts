@@ -82,7 +82,7 @@ const userSchema = z.object({
   displayName: z.string().min(1, 'Display Name is required.'),
   email: z.string().email('Invalid email address.'),
   role: z.enum(['user', 'branch', 'admin', 'it-support']),
-  branchName: z.string().optional(),
+  branchName: z.string().optional().nullable(),
 }).refine(data => {
     if (data.role === 'branch') {
         return !!data.branchName && data.branchName.length > 0;
@@ -120,12 +120,14 @@ async function createUserInDatabase(userData: z.infer<typeof userSchema>) {
 
 export async function createBranchUserAction(prevState: any, formData: FormData) {
   try {
-    const validatedFields = userSchema.safeParse({
+    const data = {
       displayName: formData.get('displayName'),
       email: formData.get('email'),
       role: formData.get('role'),
       branchName: formData.get('branchName'),
-    });
+    };
+    
+    const validatedFields = userSchema.safeParse(data);
 
     if (!validatedFields.success) {
       // Get the first error message to display to the user
