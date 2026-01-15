@@ -8,9 +8,9 @@
  * user's specific document (e.g., /users/{userId}/issues/{issueId}).
  *
  * Key Security Decisions:
- * - User Listing Disabled: To protect user privacy and prevent data scraping, querying the root 'users'
- *   collection is explicitly forbidden. Clients can only fetch individual user profiles they have the ID for,
- *   and only if they are that user.
+ * - Admin User Listing: To allow admins to manage users, a special rule grants 'list' access on the
+ *   'users' collection only to authenticated users whose own document has a 'role' field set to 'admin'.
+ *   This is a secure way to grant broad access to a privileged few.
  * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
  *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
  * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
@@ -42,6 +42,10 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
 
     /**
      * Checks if the user is the owner AND the document already exists.
@@ -57,13 +61,13 @@ service cloud.firestore {
      * @path /users/{userId}
      * @allow (get) An authenticated user ('user_abc') can read their own profile document.
      * @allow (create) A new authenticated user ('user_abc') can create their own profile document.
-     * @deny (list) A user cannot list all documents in the 'users' collection for security reasons.
+     * @allow (list) An admin user can list all documents in the 'users' collection for the admin panel.
      * @deny (get) A user ('user_xyz') cannot read another user's ('user_abc') profile.
-     * @principle Restricts access to a user's own data tree and prevents enumeration of all users.
+     * @principle Restricts access to a user's own data tree and prevents enumeration of all users, except for admins.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);

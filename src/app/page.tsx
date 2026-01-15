@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
@@ -43,9 +45,19 @@ export default function LoginPage() {
       } else {
         // Create new user
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const newUser = userCredential.user;
         // Update profile with display name
-        if (userCredential.user) {
-          await updateProfile(userCredential.user, { displayName });
+        if (newUser) {
+          await updateProfile(newUser, { displayName });
+          
+          // Create user document in Firestore
+          const userDocRef = doc(firestore, 'users', newUser.uid);
+          await setDoc(userDocRef, {
+            id: newUser.uid,
+            email: newUser.email,
+            displayName: displayName,
+            role: 'user', // Assign default 'user' role
+          });
         }
       }
       // Redirect is handled by the useEffect
