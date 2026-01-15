@@ -72,7 +72,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-            <Image src="/logo.png" alt="IssueTrackr Logo" width={64} height={64} />
+            <Image src="/logo.png" alt="IT Support Logo" width={64} height={64} />
           </div>
           <CardTitle className="text-3xl font-headline">{isLoginView ? 'Welcome Back' : 'Create an Account'}</CardTitle>
           <CardDescription>

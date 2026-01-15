@@ -5,8 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'IssueTrackr',
-  description: 'Track and resolve IT issues seamlessly.',
+  title: 'IT Support',
+  description: 'Your IT Support solution.',
 };
 
 export default function RootLayout({
