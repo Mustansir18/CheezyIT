@@ -1,51 +1,144 @@
-
 {
   "entities": {
-    "userProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's profile in the system.",
+    "Issue": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Issue",
       "type": "object",
+      "description": "Represents an IT issue reported by a user.",
       "properties": {
-        "uid": {
+        "id": {
           "type": "string",
-          "description": "The user's unique ID from Firebase Auth."
+          "description": "Unique identifier for the issue."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who reported the issue. (Relationship: User 1:N Issue)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the issue."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the issue."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the issue (e.g., Open, In Progress, Resolved).",
+          "format": "string"
+        },
+        "priority": {
+          "type": "string",
+          "description": "Priority level of the issue (e.g., High, Medium, Low).",
+          "format": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the issue was reported.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the issue was last updated.",
+          "format": "date-time"
+        },
+        "attachments": {
+          "type": "array",
+          "description": "Links to attachments related to the issue.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "description",
+        "status",
+        "priority",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the IssueTrackr application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
         },
         "email": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address."
+          "description": "Email address of the user.",
+          "format": "email"
         },
-        "displayName": {
+        "fullName": {
           "type": "string",
-          "description": "The user's display name."
-        },
-        "photoURL": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL of the user's profile picture."
+          "description": "Full name of the user."
         },
         "role": {
-            "type": "string",
-            "enum": ["admin", "branch", "user"],
-            "description": "The user's role in the system."
-        },
-        "branchName": {
-            "type": "string",
-            "description": "The name of the branch the user belongs to, if applicable."
+          "type": "string",
+          "description": "Role of the user (e.g., User, Admin).",
+          "format": "string"
         }
       },
-      "required": ["uid", "email", "role"]
+      "required": [
+        "id",
+        "email",
+        "fullName",
+        "role"
+      ]
     }
   },
   "auth": {
-    "providers": ["password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/userProfile"
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Listing of users is disabled to prevent unauthorized access. The 'userId' parameter represents the unique identifier for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
       },
-      "description": "Stores public information about a user."
-    }
+      {
+        "path": "/users/{userId}/issues/{issueId}",
+        "definition": {
+          "entityName": "Issue",
+          "schema": {
+            "$ref": "#/backend/entities/Issue"
+          },
+          "description": "Stores issues reported by a specific user. The 'userId' parameter represents the owner of the issue, ensuring path-based ownership. The `issueId` parameter represents the unique identifier for an issue within a user's issues.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user who owns the issue."
+            },
+            {
+              "name": "issueId",
+              "description": "Unique identifier for the issue."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and support secure list operations (QAPs). It leverages structural segregation and consistent access modeling for clarity and maintainability.\n\n*   **Users Collection:** Stores user profiles. Listing users is disabled to prevent unauthorized data access.\n*   **User-Owned Issues:** Issues are stored in a subcollection `/users/{userId}/issues/{issueId}`. This establishes clear ownership and simplifies security rules. This approach guarantees that listing issues is always scoped to a specific user.\n\nThis structure avoids `get()` calls in security rules by directly associating issues with their owners, ensuring Authorization Independence. QAPs are satisfied through path-based ownership, allowing secure and efficient data retrieval for each user."
   }
 }

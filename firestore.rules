@@ -1,0 +1,89 @@
+/**
+ * Core Philosophy: This ruleset enforces a strict user-ownership model where all data is private by default.
+ * Users can only access data that exists within their own user document tree. This ensures a high level of
+ * security and data isolation between users.
+ *
+ * Data Structure: The data is organized hierarchically. A top-level 'users' collection stores user profile
+ * documents. All other user-specific data, such as 'issues', is stored in subcollections under that
+ * user's specific document (e.g., /users/{userId}/issues/{issueId}).
+ *
+ * Key Security Decisions:
+ * - User Listing Disabled: To protect user privacy and prevent data scraping, querying the root 'users'
+ *   collection is explicitly forbidden. Clients can only fetch individual user profiles they have the ID for,
+ *   and only if they are that user.
+ * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
+ *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
+ * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
+ *   (e.g., a 'userId' field within an issue document) match the document's path, preventing data
+ *   inconsistencies and potential security loopholes.
+ *
+ * Denormalization for Authorization: The hierarchical structure (/users/{userId}/...) is a form of
+ * structural denormalization. By placing a user's data in a subcollection, the ownership (userId) is
+ * inherently part of the path, making authorization checks simple and fast without needing extra fields
+ * or document reads.
+ *
+ * Structural Segregation: User-specific data ('issues') is stored in a private subcollection under the
+ * user's document. This is more secure and performant than a single top-level 'issues' collection,
+ * as it prevents any possibility of one user accidentally listing another user's private data.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for readable and reusable logic
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user is the owner of the resource
+     * identified by the given userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if the user is the owner AND the document already exists.
+     * This is a critical check for all update and delete operations to prevent
+     * acting on non-existent data.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for a user's own profile document.
+     * @path /users/{userId}
+     * @allow (get) An authenticated user ('user_abc') can read their own profile document.
+     * @allow (create) A new authenticated user ('user_abc') can create their own profile document.
+     * @deny (list) A user cannot list all documents in the 'users' collection for security reasons.
+     * @deny (get) A user ('user_xyz') cannot read another user's ('user_abc') profile.
+     * @principle Restricts access to a user's own data tree and prevents enumeration of all users.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for issues, which are owned by a specific user.
+     * @path /users/{userId}/issues/{issueId}
+     * @allow (create) An authenticated user ('user_abc') can create a new issue in their own subcollection.
+     * @allow (list) An authenticated user ('user_abc') can list all issues in their own subcollection.
+     * @deny (get) A user ('user_xyz') cannot read an issue belonging to another user ('user_abc').
+     * @deny (update) A user cannot change the 'userId' field on an existing issue.
+     * @principle Enforces document ownership for all operations and validates relational integrity.
+     */
+    match /users/{userId}/issues/{issueId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
