@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { createBranchUserAction } from '@/lib/actions';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,46 +12,82 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const initialState = {
-  type: '',
-  message: '',
-};
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+    <Button type="submit" disabled={isSubmitting} className="w-full">
+      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
       Create User
     </Button>
   );
 }
 
 export default function CreateBranchUserForm() {
-  const [state, formAction] = useActionState(createBranchUserAction, initialState);
   const { toast } = useToast();
+  const firestore = useFirestore();
   const formRef = useRef<HTMLFormElement>(null);
-  const [role, setRole] = useState<'user' | 'branch' | 'admin' | 'it-support'>('user');
 
-  useEffect(() => {
-    if (state?.type === 'success') {
+  const [role, setRole] = useState<'user' | 'branch' | 'admin' | 'it-support'>('user');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    const formData = new FormData(event.currentTarget);
+    const displayName = formData.get('displayName') as string;
+    const email = formData.get('email') as string;
+    const selectedRole = formData.get('role') as string;
+    const branchName = formData.get('branchName') as string | null;
+
+    // Basic validation
+    if (!displayName || !email || !selectedRole) {
+        setError('Please fill out all required fields.');
+        setIsSubmitting(false);
+        return;
+    }
+    if (selectedRole === 'branch' && !branchName) {
+        setError('Branch Name is required for Branch Users.');
+        setIsSubmitting(false);
+        return;
+    }
+
+    try {
+      const userData: any = {
+        displayName,
+        email,
+        role: selectedRole,
+      };
+      if (selectedRole === 'branch') {
+        userData.branchName = branchName;
+      }
+
+      const usersCollection = collection(firestore, 'users');
+      await addDoc(usersCollection, userData);
+      
       toast({
         title: 'Success!',
-        description: state.message,
+        description: `User profile for ${displayName} created.`,
       });
       formRef.current?.reset();
       setRole('user');
-    } else if (state?.type === 'error') {
+
+    } catch (e: any) {
+      console.error(e);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: state.message,
+        description: 'Failed to create user profile in database.',
       });
+      setError('An unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [state, toast]);
+  };
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="displayName">Display Name</Label>
         <Input id="displayName" name="displayName" placeholder="John Doe" required />
@@ -78,10 +113,11 @@ export default function CreateBranchUserForm() {
       {role === 'branch' && (
         <div className="space-y-2">
             <Label htmlFor="branchName">Branch Name</Label>
-            <Input id="branchName" name="branchName" placeholder="Main Street Branch" required />
+            <Input id="branchName" name="branchName" placeholder="Main Street Branch" required={role === 'branch'} />
         </div>
       )}
-      <SubmitButton />
+      {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+      <SubmitButton isSubmitting={isSubmitting} />
     </form>
   );
 }
