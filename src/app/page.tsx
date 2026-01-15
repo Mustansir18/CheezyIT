@@ -6,9 +6,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useAuth, useFirestore, useUser } from '@/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { useAuth, useUser } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -16,14 +15,11 @@ import Image from 'next/image';
 
 
 export default function LoginPage() {
-  const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const auth = useAuth();
-  const firestore = useFirestore();
   const { user, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
@@ -39,27 +35,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      if (isLoginView) {
-        // Sign in user
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        // Create new user
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const newUser = userCredential.user;
-        // Update profile with display name
-        if (newUser) {
-          await updateProfile(newUser, { displayName });
-          
-          // Create user document in Firestore
-          const userDocRef = doc(firestore, 'users', newUser.uid);
-          await setDoc(userDocRef, {
-            id: newUser.uid,
-            email: newUser.email,
-            displayName: displayName,
-            role: 'user', // Assign default 'user' role
-          });
-        }
-      }
+      await signInWithEmailAndPassword(auth, email, password);
       // Redirect is handled by the useEffect
     } catch (err: any) {
       setError(err.message);
@@ -86,26 +62,13 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <Image src="/logo.png" alt="IT Support Logo" width={64} height={64} />
           </div>
-          <CardTitle className="text-3xl font-headline">{isLoginView ? 'Welcome Back' : 'Create an Account'}</CardTitle>
+          <CardTitle className="text-3xl font-headline">Welcome Back</CardTitle>
           <CardDescription>
-            {isLoginView ? 'Please sign in to continue' : 'Fill in the details to sign up'}
+            Please sign in to continue
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAuthAction} className="space-y-4">
-            {!isLoginView && (
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  type="text"
-                  placeholder="John Doe"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                />
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -128,16 +91,13 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full">
-              {isLoginView ? 'Sign In' : 'Sign Up'}
+              Sign In
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button variant="link" onClick={() => { setIsLoginView(!isLoginView); setError(null); }}>
-            {isLoginView ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
-          </Button>
-          <p className="text-xs text-center text-muted-foreground">
-            By signing up, you agree to our Terms of Service.
+           <p className="text-xs text-center text-muted-foreground">
+            Contact an administrator if you have trouble signing in.
           </p>
         </CardFooter>
       </Card>

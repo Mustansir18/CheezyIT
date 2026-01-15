@@ -97,12 +97,25 @@ const userSchema = z.object({
 // This is a placeholder. In a real app, you'd call Firebase Auth Admin SDK
 // to create a user and then create a user profile in Firestore.
 async function createUserInDatabase(userData: z.infer<typeof userSchema>) {
-    console.log('Creating user:', userData);
-    // 1. Call Firebase Auth to create a user (requires Admin SDK on a server)
-    //    const userRecord = await auth.createUser({ email, password });
-    // 2. Create a user profile document in Firestore
-    //    await firestore.collection('users').doc(userRecord.uid).set({ ... });
-    return { success: true, message: `User ${userData.displayName} created with role ${userData.role}.` };
+    console.log('Creating user in database (simulation):', userData);
+    // NOTE: This simulation does NOT create a user in Firebase Authentication.
+    // An admin would need to set an initial password through the Firebase Console
+    // or you would need a more complex user invitation flow.
+    
+    // 1. In a real app, you would use the Admin SDK to create the Auth user.
+    //    const userRecord = await getAuth().createUser({ email: userData.email, displayName: userData.displayName });
+    //    const uid = userRecord.uid;
+    
+    // 2. Then, you'd create the user profile document in Firestore.
+    //    await getFirestore().collection('users').doc(uid).set({
+    //       id: uid,
+    //       email: userData.email,
+    //       displayName: userData.displayName,
+    //       role: userData.role,
+    //       ...(userData.branchName && { branchName: userData.branchName }),
+    //    });
+
+    return { success: true, message: `User profile for ${userData.displayName} created in Firestore.` };
 }
 
 export async function createBranchUserAction(prevState: any, formData: FormData) {
