@@ -4,7 +4,10 @@
 import { useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,11 +41,12 @@ export default function CreateBranchUserForm() {
     const formData = new FormData(event.currentTarget);
     const displayName = formData.get('displayName') as string;
     const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
     const selectedRole = formData.get('role') as string;
     const branchName = formData.get('branchName') as string | null;
 
     // Basic validation
-    if (!displayName || !email || !selectedRole) {
+    if (!displayName || !email || !password || !selectedRole) {
         setError('Please fill out all required fields.');
         setIsSubmitting(false);
         return;
@@ -53,7 +57,17 @@ export default function CreateBranchUserForm() {
         return;
     }
 
+    // Create a temporary Firebase app instance for user creation
+    const tempAppName = `temp-user-creation-${Date.now()}`;
+    const tempApp = initializeApp(firebaseConfig, tempAppName);
+    const tempAuth = getAuth(tempApp);
+
     try {
+      // 1. Create user in Firebase Auth using the temporary instance
+      const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
+      const newUser = userCredential.user;
+
+      // 2. Create user profile in Firestore
       const userData: any = {
         displayName,
         email,
@@ -63,25 +77,34 @@ export default function CreateBranchUserForm() {
         userData.branchName = branchName;
       }
 
-      const usersCollection = collection(firestore, 'users');
-      await addDoc(usersCollection, userData);
+      // Use setDoc to create a document with the user's UID as the ID
+      const userDocRef = doc(firestore, 'users', newUser.uid);
+      await setDoc(userDocRef, userData);
       
       toast({
         title: 'Success!',
-        description: `User profile for ${displayName} created.`,
+        description: `User account for ${displayName} created.`,
       });
       formRef.current?.reset();
       setRole('user');
 
     } catch (e: any) {
       console.error(e);
+      let friendlyMessage = 'An unexpected error occurred.';
+      if (e.code === 'auth/email-already-in-use') {
+        friendlyMessage = 'This email address is already in use by another account.';
+      } else if (e.code === 'auth/weak-password') {
+        friendlyMessage = 'The password is too weak. It must be at least 6 characters long.';
+      }
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to create user profile in database.',
+        title: 'Error Creating User',
+        description: friendlyMessage,
       });
-      setError('An unexpected error occurred.');
+      setError(friendlyMessage);
     } finally {
+      // 3. Clean up and delete the temporary Firebase app
+      await deleteApp(tempApp);
       setIsSubmitting(false);
     }
   };
@@ -95,6 +118,10 @@ export default function CreateBranchUserForm() {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" placeholder="john.doe@example.com" required />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input id="password" name="password" type="password" placeholder="••••••••" required />
       </div>
        <div className="space-y-2">
         <Label htmlFor="role">Role</Label>
