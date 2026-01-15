@@ -37,10 +37,14 @@ export async function createTicketAction(prevState: any, formData: FormData) {
     });
 
     if (!validatedFields.success) {
+      const flatErrors = validatedFields.error.flatten().fieldErrors;
+      const errorMessage = Object.entries(flatErrors)
+        .map(([field, messages]) => `${field}: ${messages?.[0] ?? 'invalid'}`)
+        .join('; ');
       return {
         type: 'error',
-        errors: validatedFields.error.flatten().fieldErrors,
-        message: 'Missing Fields. Failed to Create Ticket.',
+        errors: flatErrors,
+        message: `Missing/Invalid Fields (${errorMessage}). Failed to Create Ticket.`,
       };
     }
     
