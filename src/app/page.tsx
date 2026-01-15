@@ -3,17 +3,27 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { HardDrive, Loader2 } from 'lucide-react';
-import Link from 'next/link';
 import { useAuth, useUser } from '@/firebase';
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { useEffect }from 'react';
+import { useEffect, useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function LoginPage() {
+  const [isLoginView, setIsLoginView] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
   const auth = useAuth();
   const { user, loading } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -21,12 +31,30 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
-  const handleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
+  const handleAuthAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
     try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Error signing in with Google', error);
+      if (isLoginView) {
+        // Sign in user
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        // Create new user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Update profile with display name
+        if (userCredential.user) {
+          await updateProfile(userCredential.user, { displayName });
+        }
+      }
+      // Redirect is handled by the useEffect
+    } catch (err: any) {
+      setError(err.message);
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: err.message,
+      });
     }
   };
 
@@ -45,19 +73,58 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <HardDrive className="h-10 w-10 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-headline">IssueTrackr</CardTitle>
+          <CardTitle className="text-3xl font-headline">{isLoginView ? 'Welcome Back' : 'Create an Account'}</CardTitle>
           <CardDescription>
-            Please sign in to continue
+            {isLoginView ? 'Please sign in to continue' : 'Fill in the details to sign up'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-           <Button className="w-full" onClick={handleSignIn}>
-              Sign In with Google
+          <form onSubmit={handleAuthAction} className="space-y-4">
+            {!isLoginView && (
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  placeholder="John Doe"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              {isLoginView ? 'Sign In' : 'Sign Up'}
             </Button>
+          </form>
         </CardContent>
-         <CardFooter className="flex flex-col gap-4">
+        <CardFooter className="flex flex-col gap-4">
+          <Button variant="link" onClick={() => { setIsLoginView(!isLoginView); setError(null); }}>
+            {isLoginView ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
+          </Button>
           <p className="text-xs text-center text-muted-foreground">
-            By signing in, you agree to our Terms of Service.
+            By signing up, you agree to our Terms of Service.
           </p>
         </CardFooter>
       </Card>
