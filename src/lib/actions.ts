@@ -9,7 +9,9 @@ const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
-  issueType: z.enum(issueTypes),
+  issueType: z.enum(issueTypes, {
+    required_error: "You need to select an issue type.",
+  }),
   customIssueType: z.string().optional(),
   description: z.string().min(1, 'Description is required.'),
   anydesk: z.string().optional(),
@@ -27,10 +29,11 @@ const ticketSchema = z.object({
 
 export async function createTicketAction(prevState: any, formData: FormData) {
   try {
+    const customIssueType = formData.get('customIssueType');
     const validatedFields = ticketSchema.safeParse({
       title: formData.get('title'),
       issueType: formData.get('issueType'),
-      customIssueType: formData.get('customIssueType'),
+      customIssueType: customIssueType === null ? undefined : customIssueType,
       description: formData.get('description'),
       anydesk: formData.get('anydesk'),
       photo: formData.get('photo'),
