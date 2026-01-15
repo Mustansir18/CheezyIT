@@ -288,7 +288,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
               <FormLabel>Attach Photo (Optional)</FormLabel>
                 {photoDataUri ? (
                     <div className="relative">
-                        <Image src={photoDataUri} alt="Issue preview" width={400} height={300} className="rounded-md w-full object-cover" />
+                        <Image src={photoDataUri} alt="Issue preview" width={400} height={300} className="rounded-md w-full h-64 object-cover" />
                         <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={clearPhoto}>
                             <X className="h-4 w-4" />
                         </Button>
