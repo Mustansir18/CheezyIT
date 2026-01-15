@@ -1,0 +1,79 @@
+
+'use client';
+
+import { useCollection } from '@/firebase';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+type UserProfile = {
+    id: string;
+    displayName: string;
+    email: string;
+    role: 'admin' | 'branch' | 'user';
+    branchName?: string;
+    photoURL?: string;
+}
+
+export default function UserList() {
+    // In a real app with many users, you'd want to implement pagination here.
+    const { data: users, loading } = useCollection<UserProfile>('users');
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>User Accounts</CardTitle>
+                <CardDescription>A list of all users in the system.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Branch</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={3} className="h-24 text-center">
+                                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                                </TableCell>
+                            </TableRow>
+                        ) : users.length > 0 ? (
+                            users.map((user) => (
+                                <TableRow key={user.id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={user.photoURL} />
+                                                <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <div className="font-medium">{user.displayName}</div>
+                                                <div className="text-sm text-muted-foreground">{user.email}</div>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>{user.role}</Badge>
+                                    </TableCell>
+                                    <TableCell>{user.branchName || 'N/A'}</TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="h-24 text-center">
+                                No users found.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+}

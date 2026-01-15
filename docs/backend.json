@@ -23,9 +23,18 @@
             "type": "string",
             "format": "uri",
             "description": "URL of the user's profile picture."
+        },
+        "role": {
+            "type": "string",
+            "enum": ["admin", "branch", "user"],
+            "description": "The user's role in the system."
+        },
+        "branchName": {
+            "type": "string",
+            "description": "The name of the branch the user belongs to, if applicable."
         }
       },
-      "required": ["uid", "email"]
+      "required": ["uid", "email", "role"]
     }
   },
   "auth": {
