@@ -71,8 +71,8 @@ export default function AdminPage() {
             <div className="lg:col-span-3">
               <Card>
                 <CardHeader>
-                    <CardTitle>Create Branch User</CardTitle>
-                    <CardDescription>Create a new user with the 'branch' role.</CardDescription>
+                    <CardTitle>Create User</CardTitle>
+                    <CardDescription>Create a new user and assign a role.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <CreateBranchUserForm />

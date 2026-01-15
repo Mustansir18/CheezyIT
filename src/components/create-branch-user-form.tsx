@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const initialState = {
   type: '',
@@ -31,6 +32,7 @@ export default function CreateBranchUserForm() {
   const [state, formAction] = useActionState(createBranchUserAction, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const [role, setRole] = useState<'user' | 'branch' | 'admin'>('user');
 
   useEffect(() => {
     if (state?.type === 'success') {
@@ -39,6 +41,7 @@ export default function CreateBranchUserForm() {
         description: state.message,
       });
       formRef.current?.reset();
+      setRole('user');
     } else if (state?.type === 'error') {
       toast({
         variant: 'destructive',
@@ -59,9 +62,24 @@ export default function CreateBranchUserForm() {
         <Input id="email" name="email" type="email" placeholder="john.doe@example.com" required />
       </div>
        <div className="space-y-2">
-        <Label htmlFor="branchName">Branch Name</Label>
-        <Input id="branchName" name="branchName" placeholder="Main Street Branch" required />
+        <Label htmlFor="role">Role</Label>
+        <Select name="role" required defaultValue="user" onValueChange={(value) => setRole(value as any)}>
+            <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="user">Standard User</SelectItem>
+                <SelectItem value="branch">Branch User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+            </SelectContent>
+        </Select>
       </div>
+      {role === 'branch' && (
+        <div className="space-y-2">
+            <Label htmlFor="branchName">Branch Name</Label>
+            <Input id="branchName" name="branchName" placeholder="Main Street Branch" required />
+        </div>
+      )}
       <SubmitButton />
     </form>
   );

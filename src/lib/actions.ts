@@ -1,3 +1,4 @@
+
 'use server';
 
 import { summarizeTickets, type SummarizeTicketsInput } from '@/ai/flows/summarize-tickets';
@@ -77,35 +78,48 @@ export async function summarizeTicketsAction(tickets: SummarizeTicketsInput['tic
   }
 }
 
-const branchUserSchema = z.object({
+const userSchema = z.object({
   displayName: z.string().min(1, 'Display Name is required.'),
   email: z.string().email('Invalid email address.'),
-  branchName: z.string().min(1, 'Branch Name is required.'),
+  role: z.enum(['user', 'branch', 'admin']),
+  branchName: z.string().optional(),
+}).refine(data => {
+    if (data.role === 'branch') {
+        return !!data.branchName && data.branchName.length > 0;
+    }
+    return true;
+}, {
+    message: 'Branch Name is required for Branch Users.',
+    path: ['branchName'],
 });
+
 
 // This is a placeholder. In a real app, you'd call Firebase Auth Admin SDK
 // to create a user and then create a user profile in Firestore.
-async function createBranchUserInDatabase(userData: z.infer<typeof branchUserSchema>) {
-    console.log('Creating branch user:', userData);
+async function createUserInDatabase(userData: z.infer<typeof userSchema>) {
+    console.log('Creating user:', userData);
     // 1. Call Firebase Auth to create a user (requires Admin SDK on a server)
     //    const userRecord = await auth.createUser({ email, password });
     // 2. Create a user profile document in Firestore
     //    await firestore.collection('users').doc(userRecord.uid).set({ ... });
-    return { success: true, message: `User ${userData.displayName} created.` };
+    return { success: true, message: `User ${userData.displayName} created with role ${userData.role}.` };
 }
 
 export async function createBranchUserAction(prevState: any, formData: FormData) {
   try {
-    const validatedFields = branchUserSchema.safeParse({
+    const validatedFields = userSchema.safeParse({
       displayName: formData.get('displayName'),
       email: formData.get('email'),
+      role: formData.get('role'),
       branchName: formData.get('branchName'),
     });
 
     if (!validatedFields.success) {
+      // Get the first error message to display to the user
+      const firstError = validatedFields.error.errors[0]?.message;
       return {
         type: 'error',
-        message: 'Invalid form data. Please check the fields.',
+        message: firstError || 'Invalid form data. Please check the fields.',
       };
     }
 
@@ -113,7 +127,7 @@ export async function createBranchUserAction(prevState: any, formData: FormData)
     // Creating users requires the Firebase Admin SDK, which must run in a
     // secure server environment, not in a Server Action directly exposed to the client.
     // I am logging to the console to simulate the user creation.
-    const result = await createBranchUserInDatabase(validatedFields.data);
+    const result = await createUserInDatabase(validatedFields.data);
 
     if (result.success) {
       revalidatePath('/admin');
