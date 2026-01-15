@@ -1,5 +1,3 @@
-'use server';
-
 // This file contains the list of user UIDs that have admin privileges.
 // You can add more UIDs to this array to grant admin access to other users.
 
