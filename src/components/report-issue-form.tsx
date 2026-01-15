@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,7 +41,7 @@ function SubmitButton() {
 }
 
 export default function ReportIssueForm({ children }: { children: React.ReactNode }) {
-  const [state, formAction] = useFormState(createTicketAction, initialState);
+  const [state, formAction] = useActionState(createTicketAction, initialState);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
