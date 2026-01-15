@@ -11,6 +11,7 @@ const ticketSchema = z.object({
   issueType: z.enum(issueTypes),
   description: z.string().min(1, 'Description is required.'),
   anydesk: z.string().optional(),
+  photo: z.string().optional(),
 });
 
 export async function createTicketAction(prevState: any, formData: FormData) {
@@ -20,6 +21,7 @@ export async function createTicketAction(prevState: any, formData: FormData) {
       issueType: formData.get('issueType'),
       description: formData.get('description'),
       anydesk: formData.get('anydesk'),
+      photo: formData.get('photo'),
     });
 
     if (!validatedFields.success) {
@@ -32,6 +34,10 @@ export async function createTicketAction(prevState: any, formData: FormData) {
     
     // In a real app, you would save the data to a database here.
     console.log('New ticket created:', validatedFields.data);
+    if (validatedFields.data.photo) {
+      console.log('Photo included, size:', validatedFields.data.photo.length);
+    }
+
 
     revalidatePath('/dashboard');
 
