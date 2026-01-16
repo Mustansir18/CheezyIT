@@ -2,6 +2,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
@@ -10,6 +11,11 @@ import ReportIssueForm from '@/components/report-issue-form';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user } = useUser();
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
     
     return (
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
@@ -27,9 +33,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Link href="/admin">Admin</Link>
                     </Button>
                 )}
-                <ReportIssueForm>
-                    <Button>Report an Issue</Button>
-                </ReportIssueForm>
+                {isClient ? (
+                  <ReportIssueForm>
+                      <Button>Report an Issue</Button>
+                  </ReportIssueForm>
+                ) : (
+                  <Button disabled>Report an Issue</Button>
+                )}
                 <UserNav />
                 </div>
             </header>
