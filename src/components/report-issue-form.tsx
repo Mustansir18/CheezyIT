@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect }from 'react';
@@ -117,8 +118,8 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
 
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Get the data URI in JPEG format with 80% quality
-        const compressedDataUri = canvas.toDataURL('image/jpeg', 0.8);
+        // Get the data URI in JPEG format with 70% quality
+        const compressedDataUri = canvas.toDataURL('image/jpeg', 0.7);
         
         setPhotoDataUri(compressedDataUri);
         form.setValue('photo', compressedDataUri);
@@ -400,3 +401,5 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     </Dialog>
   );
 }
+
+    
