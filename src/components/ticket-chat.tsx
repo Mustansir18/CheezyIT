@@ -251,7 +251,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     if (item.type === 'date-separator') {
                          return (
                             <div key={item.id} className="flex justify-center my-4">
-                                <span className="text-xs text-foreground/80 bg-muted px-3 py-1.5 rounded-full shadow-sm">{item.date}</span>
+                                <span className="text-xs text-foreground/80 bg-muted/80 px-3 py-1.5 rounded-full shadow-sm">{item.date}</span>
                             </div>
                         );
                     }
@@ -261,10 +261,10 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     return (
                         <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
                             <div className={cn(
-                                "relative flex w-fit max-w-[75%] flex-col rounded-md px-2 pt-1.5 pb-1 text-sm shadow",
+                                "relative flex w-fit max-w-[75%] flex-col rounded-md px-2 pt-1.5 pb-1 text-sm",
                                 isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"
                             )}>
-                                {!isSender && <p className="font-semibold text-xs mb-1 text-accent">{msg.displayName}</p>}
+                                {!isSender && <p className="font-semibold text-xs mb-1 text-sky-400">{msg.displayName}</p>}
                                 
                                 <p className="whitespace-pre-wrap break-words pr-[65px] pb-1">
                                     {msg.text}
