@@ -174,9 +174,13 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         resetFormState();
         closeButtonRef.current?.click();
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating ticket:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create ticket. Please try again.' });
+        let description = 'Failed to create ticket. Please try again.';
+        if (error.code === 'storage/unauthorized') {
+            description = "Permission denied: You don't have access to upload files.";
+        }
+        toast({ variant: 'destructive', title: 'Error', description });
     } finally {
         setIsSubmitting(false);
     }
@@ -402,4 +406,5 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   );
 }
 
+    
     

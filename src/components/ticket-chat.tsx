@@ -107,9 +107,13 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 createdAt: serverTimestamp(),
             });
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload image.' });
+            let description = 'Failed to upload image.';
+            if (error.code === 'storage/unauthorized') {
+                description = "Permission denied: You don't have access to upload images.";
+            }
+            toast({ variant: 'destructive', title: 'Error', description });
         } finally {
             setIsUploading(false);
             if(fileInputRef.current) fileInputRef.current.value = '';
@@ -164,9 +168,13 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 audioUrl: audioUrl,
                 createdAt: serverTimestamp(),
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload voice note.' });
+            let description = 'Failed to upload voice note.';
+            if (error.code === 'storage/unauthorized') {
+                description = "Permission denied: You don't have access to upload audio.";
+            }
+            toast({ variant: 'destructive', title: 'Error', description });
         } finally {
             setIsSending(false);
         }
@@ -277,3 +285,5 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         </Card>
     );
 }
+
+    
