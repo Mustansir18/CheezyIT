@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveCon
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
 import { collectionGroup, query } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -81,7 +81,7 @@ export default function AdminReports() {
     return { statusData, priorityData, chartConfig };
   }, [filteredTickets]);
   
-  const handleTicketClick = (ticket: Ticket) => {
+  const handleTicketClick = (ticket: WithId<Ticket>) => {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 

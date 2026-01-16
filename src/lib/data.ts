@@ -2,7 +2,6 @@
 export type TicketStatus = 'Pending' | 'In Progress' | 'Resolved';
 
 export type Ticket = {
-  id: string;
   userId: string;
   title: string;
   description: string;
@@ -15,7 +14,6 @@ export type Ticket = {
 };
 
 export type ChatMessage = {
-  id: string;
   userId: string;
   displayName: string;
   text?: string;
@@ -26,7 +24,7 @@ export type ChatMessage = {
 };
 
 
-export const getStats = (allTickets: Ticket[]) => {
+export const getStats = (allTickets: (Ticket & { id: string })[]) => {
     if (!allTickets) {
         return { pending: 0, inProgress: 0, resolved: 0 };
     }
