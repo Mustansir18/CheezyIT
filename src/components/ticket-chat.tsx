@@ -2,10 +2,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { useUser, useFirestore, useCollection, useStorage, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Mic, Send, StopCircle, CornerDownLeft } from 'lucide-react';
+import { Loader2, Mic, Send, StopCircle, CornerDownLeft, Paperclip } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/lib/data';
 import AudioPlayer from '@/components/audio-player';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 
 interface TicketChatProps {
     ticketId: string;
@@ -28,11 +31,13 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const [message, setMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
+
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
 
     const messagesQuery = useMemoFirebase(
@@ -82,6 +87,35 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
             setIsSending(false);
         }
     };
+
+     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !user) return;
+
+        setIsUploading(true);
+
+        try {
+            const sRef = storageRef(storage, `tickets/${userId}/${ticketId}/images_${Date.now()}_${file.name}`);
+            await uploadBytes(sRef, file);
+            const imageUrl = await getDownloadURL(sRef);
+
+            const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
+            await addDoc(messagesCollection, {
+                userId: user.uid,
+                displayName: user.displayName || 'User',
+                imageUrl: imageUrl,
+                createdAt: serverTimestamp(),
+            });
+
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload image.' });
+        } finally {
+            setIsUploading(false);
+            if(fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
 
     const handleStartRecording = async () => {
         try {
@@ -137,6 +171,8 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
             setIsSending(false);
         }
     };
+    
+    const isInputDisabled = isSending || isRecording || isUploading;
 
     return (
         <Card>
@@ -145,7 +181,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 <CardDescription>Discuss the issue with the support team.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted/50">
+                <div className="space-y-6 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted/50">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
@@ -153,30 +189,70 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                         </div>
                     )}
                     {messages?.map((msg) => (
-                        <div key={msg.id} className={cn("flex items-end gap-2", msg.userId === user?.uid ? "justify-end" : "justify-start")}>
+                        <div key={msg.id} className={cn("flex w-full items-start gap-3", msg.userId === user?.uid ? "justify-end" : "justify-start")}>
+                             {/* Avatar for receiver */}
+                            {msg.userId !== user?.uid && (
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback>{msg.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                </Avatar>
+                            )}
                             <div className={cn(
-                                "flex flex-col space-y-1 text-sm max-w-xs mx-2",
-                                msg.userId === user?.uid ? "order-1 items-end" : "order-2 items-start"
+                                "flex flex-col max-w-[70%]",
+                                msg.userId === user?.uid ? "items-end" : "items-start"
                             )}>
-                                 <div className={cn(
-                                     "px-4 py-2 rounded-lg inline-block",
-                                     msg.userId === user?.uid ? "bg-primary text-primary-foreground" : "bg-card border"
-                                 )}>
-                                    {msg.text && <p>{msg.text}</p>}
+                                <div className={cn(
+                                    "p-3 rounded-2xl",
+                                    msg.userId === user?.uid ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card border rounded-bl-none"
+                                )}>
+                                    {msg.text && <p className="whitespace-pre-wrap text-sm">{msg.text}</p>}
                                     {msg.audioUrl && <AudioPlayer src={msg.audioUrl} />}
+                                    {msg.imageUrl && (
+                                        <div className="relative aspect-video w-64 cursor-pointer rounded-md overflow-hidden" onClick={() => window.open(msg.imageUrl, '_blank')}>
+                                            <Image src={msg.imageUrl} alt="Attachment" layout="fill" className="object-cover" />
+                                        </div>
+                                    )}
                                 </div>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-foreground mt-1 px-1">
                                     {msg.displayName} - {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
+                            {/* Avatar for sender */}
+                            {msg.userId === user?.uid && (
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                            )}
                         </div>
                     ))}
                     <div ref={messagesEndRef} />
                 </div>
 
                 <div className="relative">
+                    <div className="absolute top-1/2 left-3 -translate-y-1/2 flex gap-1">
+                        {isRecording ? (
+                            <Button size="icon" variant="destructive" onClick={handleStopRecording} disabled={isSending}>
+                                <StopCircle className="h-5 w-5" />
+                            </Button>
+                        ) : (
+                            <>
+                                <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isInputDisabled}>
+                                    <Paperclip className="h-5 w-5" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={handleStartRecording} disabled={isInputDisabled}>
+                                    <Mic className="h-5 w-5" />
+                                </Button>
+                            </>
+                        )}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                    </div>
                     <Textarea
-                        placeholder={isRecording ? `Recording... (${Math.floor(recordingTime/60)}:${(recordingTime%60).toString().padStart(2,'0')})` : "Type your message..."}
+                        placeholder={isRecording ? `Recording... (${Math.floor(recordingTime/60)}:${(recordingTime%60).toString().padStart(2,'0')})` : "Type a message..."}
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         onKeyDown={(e) => {
@@ -185,28 +261,17 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                 handleSendMessage();
                             }
                         }}
-                        disabled={isSending || isRecording}
-                        className="pr-20"
+                        disabled={isInputDisabled}
+                        className="pl-24 pr-12 min-h-[52px] resize-none"
                     />
-                    <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
-                        {isRecording ? (
-                            <Button size="icon" variant="destructive" onClick={handleStopRecording} disabled={isSending}>
-                                <StopCircle className="h-5 w-5" />
-                                <span className="sr-only">Stop Recording</span>
+                    <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                        {isInputDisabled && !isRecording ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : !isRecording && (
+                            <Button size="icon" variant="ghost" onClick={handleSendMessage} disabled={!message.trim()}>
+                                <Send className="h-5 w-5" />
                             </Button>
-                        ) : (
-                            <>
-                                <Button size="icon" variant="ghost" onClick={handleSendMessage} disabled={isSending || !message.trim()}>
-                                    <Send className="h-5 w-5" />
-                                    <span className="sr-only">Send Message</span>
-                                </Button>
-                                <Button size="icon" variant="ghost" onClick={handleStartRecording} disabled={isSending}>
-                                    <Mic className="h-5 w-5" />
-                                    <span className="sr-only">Record Voice Note</span>
-                                </Button>
-                            </>
                         )}
-                        
                     </div>
                 </div>
                  <p className="text-xs text-muted-foreground mt-2">

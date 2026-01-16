@@ -134,6 +134,10 @@
           "type": "string",
           "description": "The URL to the audio file for a voice note. Optional if text is present."
         },
+        "imageUrl": {
+          "type": "string",
+          "description": "The URL to an image attachment. Optional."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the message was sent.",
