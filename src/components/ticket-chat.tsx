@@ -172,7 +172,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
     return (
         <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0'>
-            <header className="flex items-center justify-between gap-3 border-b bg-background p-3">
+            <header className="flex items-center justify-between gap-3 border-b bg-card p-3">
                 <div className="flex items-center gap-3">
                     <Button asChild variant="ghost" size="icon" className="flex-shrink-0">
                         <Link href={backLink}>
@@ -231,7 +231,11 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     )}
                 </div>
             </header>
-            <CardContent ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+            <CardContent 
+                ref={messagesContainerRef} 
+                className="flex-1 overflow-y-auto p-4 space-y-2"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.05\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 40L40 0H20L0 20M40 40V20L20 40\'%3E%3C/path%3E%3C/g%3E%3C/svg%3E")' }}
+            >
                 {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                 {!isLoading && messagesWithDateSeparators.length === 0 && (
                     <div className="flex justify-center items-center h-full">
@@ -242,7 +246,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     if (item.type === 'date-separator') {
                          return (
                             <div key={item.id} className="flex justify-center my-4">
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">{item.date}</span>
+                                <span className="text-xs text-muted-foreground bg-black/30 px-3 py-1.5 rounded-full">{item.date}</span>
                             </div>
                         );
                     }
@@ -251,7 +255,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
                     return (
                         <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
-                            <div className={cn("flex w-fit max-w-[75%] flex-col rounded-lg px-3 py-2 text-sm shadow-sm", isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
+                            <div className={cn("flex w-fit max-w-[75%] flex-col rounded-xl px-3 py-2 text-sm shadow-sm", isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
                                 {!isSender && <p className="font-semibold text-xs mb-1 text-accent">{msg.displayName}</p>}
                                 <p className="whitespace-pre-wrap break-words">
                                     {msg.text}
@@ -268,7 +272,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                 })}
             </CardContent>
 
-             <div className="border-t bg-background p-3">
+             <div className="border-t bg-card p-3">
                 <div className="relative">
                     <Textarea
                         placeholder="Type a message..."
@@ -280,7 +284,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 handleSendMessage();
                             }
                         }}
-                        className="min-h-[48px] w-full resize-none rounded-2xl border border-input bg-background py-3 pl-4 pr-16"
+                        className="min-h-[48px] w-full resize-none rounded-2xl border-none bg-input py-3 pl-4 pr-16"
                     />
                     <Button 
                         type="submit" 
