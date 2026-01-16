@@ -61,7 +61,7 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost">
+        <Button variant="secondary">
           {user.displayName || user.email}
         </Button>
       </DropdownMenuTrigger>
