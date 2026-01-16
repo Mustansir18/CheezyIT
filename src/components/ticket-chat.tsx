@@ -154,8 +154,8 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
     return (
         <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0'>
-            <CardHeader className="flex-shrink-0 bg-zinc-800 text-white">
-                <div className="flex items-center gap-2 p-2">
+            <CardHeader className="flex-shrink-0 bg-zinc-800 text-white px-2 py-1">
+                <div className="flex items-center gap-2">
                      <Button asChild variant="destructive" size="icon" className="h-7 w-7 flex-shrink-0">
                         <Link href={backLink}>
                             <ArrowLeft className="h-4 w-4" />
