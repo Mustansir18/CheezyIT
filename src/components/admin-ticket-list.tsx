@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -29,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type UserProfile = {
   role: string;
+  regions?: string[];
 }
 
 type UserWithDisplayName = {
@@ -141,6 +143,14 @@ export default function AdminTicketList() {
   const filteredTickets = useMemo(() => {
     let tickets = allTickets;
 
+    // Filter by region for non-root admins/support
+    if (!isUserRoot && (isUserAdminRole || isUserSupport)) {
+        const userRegions = userProfile?.regions || [];
+        if (!userRegions.includes('all')) {
+            tickets = tickets.filter(ticket => ticket.region && userRegions.includes(ticket.region));
+        }
+    }
+    
     if (date?.from) {
         tickets = tickets.filter(ticket => {
             if (!ticket.createdAt) return false;
@@ -169,7 +179,7 @@ export default function AdminTicketList() {
     }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter]);
+  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
@@ -357,9 +367,9 @@ export default function AdminTicketList() {
                             </DropdownMenu>
                         </TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Region</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Completed</TableHead>
-                        <TableHead>Resolution Time</TableHead>
                         <TableHead>Resolved By</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -393,9 +403,9 @@ export default function AdminTicketList() {
                              {ticket.status}
                            </Badge>
                         </TableCell>
+                        <TableCell>{ticket.region}</TableCell>
                         <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
                         <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
-                        <TableCell>{getResolutionTime(ticket.createdAt, ticket.completedAt)}</TableCell>
                         <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
                       </TableRow>
                     ))) : (

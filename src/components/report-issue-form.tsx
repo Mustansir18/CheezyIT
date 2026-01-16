@@ -6,8 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -38,6 +38,9 @@ const ticketSchema = z.object({
 });
 
 type FormData = z.infer<typeof ticketSchema>;
+type UserProfile = {
+    region?: string;
+}
 
 function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
   return (
@@ -55,6 +58,8 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   const form = useForm<FormData>({
     resolver: zodResolver(ticketSchema),
@@ -84,6 +89,10 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to create a ticket.' });
         return;
     }
+    if (!userProfile?.region) {
+        toast({ variant: 'destructive', title: 'Region Not Set', description: 'Your account is not assigned to a region. Please contact an administrator.' });
+        return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -98,8 +107,9 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             status: 'Pending',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-            unreadByAdmin: false,
+            unreadByAdmin: true,
             unreadByUser: false,
+            region: userProfile.region,
         };
 
         const ticketsCollectionRef = collection(firestore, 'users', user.uid, 'issues');

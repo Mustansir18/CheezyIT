@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Pie, PieChart, Cell, Legend } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, Legend } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltipContent, ChartTooltip } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Ticket } from '@/lib/data';
@@ -28,6 +29,7 @@ const COLORS = {
 
 type UserProfile = {
   role: string;
+  regions?: string[];
 }
 
 type User = {
@@ -159,7 +161,17 @@ export default function AdminAnalytics() {
   }, [allUsers]);
 
   const filteredTickets = useMemo(() => {
-    return allTickets.filter(ticket => {
+    let tickets = allTickets;
+
+    // Filter by region for non-root admins/support
+    if (!isUserRoot && (isUserAdminRole || isUserSupport)) {
+        const userRegions = userProfile?.regions || [];
+        if (!userRegions.includes('all')) {
+            tickets = tickets.filter(ticket => ticket.region && userRegions.includes(ticket.region));
+        }
+    }
+
+    return tickets.filter(ticket => {
         if (!date?.from) return true;
         if (!ticket.createdAt) return false;
         const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
@@ -168,8 +180,7 @@ export default function AdminAnalytics() {
         toDate.setHours(23, 59, 59, 999);
         return ticketDate >= date.from && ticketDate <= toDate;
     });
-  }, [allTickets, date]);
-
+  }, [allTickets, date, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
 
   const { statusData, chartConfig } = useMemo(() => {
     const statusCounts: { [key: string]: number } = { Pending: 0, 'In Progress': 0, Resolved: 0 };
@@ -197,6 +208,20 @@ export default function AdminAnalytics() {
   }, [filteredTickets, userRolesMap]);
 
   const averageResolutionTime = useMemo(() => calculateAverageResolutionTime(resolvedSupportTickets), [resolvedSupportTickets]);
+
+  const regionData = useMemo(() => {
+    const regionCounts = filteredTickets.reduce((acc, ticket) => {
+        if (ticket.region) {
+            acc[ticket.region] = (acc[ticket.region] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(regionCounts)
+        .map(([region, tickets]) => ({ region, tickets }))
+        .sort((a, b) => b.tickets - a.tickets);
+  }, [filteredTickets]);
+
 
   if (loading) {
     return (
@@ -262,10 +287,11 @@ export default function AdminAnalytics() {
         </Card>
       
         <Tabs defaultValue="overview">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="user_tickets">User Tickets</TabsTrigger>
                 <TabsTrigger value="support_performance">Support Performance</TabsTrigger>
+                <TabsTrigger value="region_report">Region Report</TabsTrigger>
             </TabsList>
             <TabsContent value="overview">
                 <Card>
@@ -300,6 +326,7 @@ export default function AdminAnalytics() {
                                 <TableRow>
                                     <TableHead>Ticket Title</TableHead>
                                     <TableHead>Created By</TableHead>
+                                    <TableHead>Region</TableHead>
                                     <TableHead>Date Created</TableHead>
                                     <TableHead>Status</TableHead>
                                 </TableRow>
@@ -309,12 +336,13 @@ export default function AdminAnalytics() {
                                     <TableRow key={ticket.id}>
                                         <TableCell>{ticket.title}</TableCell>
                                         <TableCell>{usersMap[ticket.userId] || 'Unknown User'}</TableCell>
+                                        <TableCell>{ticket.region}</TableCell>
                                         <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : 'N/A'}</TableCell>
                                         <TableCell>{ticket.status}</TableCell>
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">No tickets found for this period.</TableCell>
+                                        <TableCell colSpan={5} className="h-24 text-center">No tickets found for this period.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -366,6 +394,44 @@ export default function AdminAnalytics() {
                         </CardContent>
                     </Card>
                 </div>
+            </TabsContent>
+            <TabsContent value="region_report">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Tickets by Region</CardTitle>
+                        <CardDescription>Total number of tickets created per region in the selected period.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {regionData.length > 0 ? (
+                            <ChartContainer config={{ tickets: { label: "Tickets", color: "hsl(var(--chart-1))" } }} className="h-[400px] w-full">
+                                <BarChart accessibilityLayer data={regionData} layout="vertical" margin={{ left: 10 }}>
+                                    <YAxis 
+                                        dataKey="region" 
+                                        type="category" 
+                                        tickLine={false} 
+                                        axisLine={false} 
+                                        tickMargin={10}
+                                        className="text-sm"
+                                    />
+                                    <XAxis dataKey="tickets" type="number" hide />
+                                    <ChartTooltip
+                                        cursor={false}
+                                        content={<ChartTooltipContent hideLabel />}
+                                    />
+                                    <Bar dataKey="tickets" layout="vertical" radius={5}>
+                                        {regionData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ChartContainer>
+                        ) : (
+                            <div className="flex h-48 items-center justify-center text-muted-foreground">
+                                No tickets with region data found for this period.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </TabsContent>
         </Tabs>
     </div>

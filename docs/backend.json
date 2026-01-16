@@ -67,6 +67,10 @@
         "unreadByUser": {
             "type": "boolean",
             "description": "True if there are unread messages for the ticket owner."
+        },
+        "region": {
+            "type": "string",
+            "description": "The region this ticket originated from, inherited from the user who created it."
         }
       },
       "required": [
@@ -76,7 +80,8 @@
         "description",
         "status",
         "createdAt",
-        "updatedAt"
+        "updatedAt",
+        "region"
       ]
     },
     "User": {
@@ -103,6 +108,17 @@
           "type": "string",
           "description": "Phone number of the user.",
           "pattern": "^\\d{11}$"
+        },
+        "region": {
+            "type": "string",
+            "description": "The geographical region of a standard user."
+        },
+        "regions": {
+            "type": "array",
+            "description": "For Admin/Support roles, a list of assigned regions. Can include 'all'.",
+            "items": {
+                "type": "string"
+            }
         }
       },
       "required": [

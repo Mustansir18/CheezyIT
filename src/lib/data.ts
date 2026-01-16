@@ -16,6 +16,7 @@ export type Ticket = {
   anydesk?: string;
   unreadByAdmin?: boolean;
   unreadByUser?: boolean;
+  region: string;
 };
 
 export type ChatMessage = {

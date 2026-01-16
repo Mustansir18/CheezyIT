@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -16,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -26,13 +27,18 @@ type User = {
   email: string;
   role: 'User' | 'it-support' | 'Admin';
   phoneNumber?: string;
+  region?: string;
+  regions?: string[];
 };
+
+const regionOptions = ['North', 'South', 'East', 'West', 'Central'];
 
 const newUserSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.'),
   role: z.enum(['User', 'it-support', 'Admin']),
+  region: z.string().min(1, 'Region is required.'),
 });
 
 type NewUserFormData = z.infer<typeof newUserSchema>;
@@ -52,10 +58,12 @@ export default function UserManagement() {
       email: '',
       password: '',
       role: 'User',
+      region: '',
     },
   });
 
-  const { formState: { isSubmitting } } = form;
+  const { formState: { isSubmitting }, watch } = form;
+  const selectedRole = watch('role');
 
   const onSubmit = async (data: NewUserFormData) => {
     const tempAppName = `user-creation-${Date.now()}`;
@@ -68,12 +76,20 @@ export default function UserManagement() {
 
       await updateProfile(newUser, { displayName: data.displayName });
 
-      await setDoc(doc(firestore, 'users', newUser.uid), {
+      const userData: Partial<User> = {
         displayName: data.displayName,
         email: data.email,
         role: data.role,
         phoneNumber: '',
-      });
+      };
+
+      if (data.role === 'User') {
+        userData.region = data.region;
+      } else {
+        userData.regions = data.region.split(',').map(r => r.trim()).filter(r => r);
+      }
+
+      await setDoc(doc(firestore, 'users', newUser.uid), userData);
 
       toast({
         title: 'Success!',
@@ -172,6 +188,35 @@ export default function UserManagement() {
                                     </FormItem>
                                 )}
                             />
+                            <FormField
+                                control={form.control}
+                                name="region"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Region</FormLabel>
+                                    {selectedRole === 'User' ? (
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a region" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {regionOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <FormControl>
+                                            <Input placeholder="North, South, all" {...field} />
+                                        </FormControl>
+                                    )}
+                                    <FormDescription>
+                                        {selectedRole === 'User' ? 'Assign the user to a single region.' : "For Admin/Support, provide a comma-separated list of regions, or 'all'."}
+                                    </FormDescription>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                              <DialogFooter>
                                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                                 <Button type="submit" disabled={isSubmitting}>
@@ -192,7 +237,7 @@ export default function UserManagement() {
               <TableHead>Display Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Phone Number</TableHead>
+              <TableHead>Region(s)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -210,7 +255,7 @@ export default function UserManagement() {
                   <TableCell>
                     <Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge>
                   </TableCell>
-                  <TableCell>{user.phoneNumber || 'N/A'}</TableCell>
+                  <TableCell>{user.region || user.regions?.join(', ') || 'N/A'}</TableCell>
                 </TableRow>
               ))
             ) : (
