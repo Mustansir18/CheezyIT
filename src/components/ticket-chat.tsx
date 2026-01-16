@@ -155,7 +155,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     return (
         <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0'>
             <CardHeader className="flex-shrink-0 bg-zinc-800 text-white">
-                <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-4">
+                <div className="flex items-center gap-2 p-2">
                      <Button asChild variant="destructive" size="icon" className="h-7 w-7 flex-shrink-0">
                         <Link href={backLink}>
                             <ArrowLeft className="h-4 w-4" />
@@ -163,8 +163,8 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                         </Link>
                     </Button>
                     <div className="flex-1 overflow-hidden">
-                        <CardTitle className="truncate text-base sm:text-lg">{ticket.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-2 mt-1 truncate text-gray-400">
+                        <CardTitle className="truncate text-sm font-semibold">{ticket.title}</CardTitle>
+                        <CardDescription className="flex items-center gap-1 truncate text-gray-400 text-xs">
                             {profileLoading ? (
                                 'Loading...'
                             ) : ticketOwnerProfile ? (
@@ -179,10 +179,10 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-6 w-6 text-gray-400 hover:bg-zinc-700 hover:text-white"
+                                                            className="h-5 w-5 text-gray-400 hover:bg-zinc-700 hover:text-white"
                                                             onClick={() => handleCopy(ticketOwnerProfile.phoneNumber)}
                                                         >
-                                                            <Copy className="h-4 w-4" />
+                                                            <Copy className="h-3 w-3" />
                                                             <span className="sr-only">Copy phone number</span>
                                                         </Button>
                                                     </TooltipTrigger>
@@ -200,7 +200,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                      <div className="ml-auto flex items-center gap-2">
                         {canManageTicket ? (
                             <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                                <SelectTrigger className="w-auto text-xs px-2 sm:px-3 sm:text-sm sm:w-[160px] bg-chart-2 text-primary-foreground border-transparent hover:bg-chart-2/90">
+                                <SelectTrigger className="w-auto text-xs px-2 h-7 bg-green-600 text-white border-transparent hover:bg-green-700 focus:ring-0">
                                     <SelectValue placeholder="Change status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -210,14 +210,14 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 </SelectContent>
                             </Select>
                         ) : (
-                            <Badge variant="default" className="text-xs sm:text-sm bg-chart-2 text-primary-foreground border-transparent hover:bg-chart-2/80">
+                            <Badge variant="default" className="text-xs h-6 bg-green-600 text-white border-transparent hover:bg-green-700">
                                 {ticket.status}
                             </Badge>
                         )}
                         {isOwner && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 hover:bg-zinc-700">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 hover:bg-zinc-700">
                                         <MoreVertical className="h-4 w-4" />
                                         <span className="sr-only">More options</span>
                                     </Button>
@@ -245,17 +245,17 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                         const isSender = msg.userId === user?.uid;
                         return (
                              <div key={msg.id} className={cn(
-                                "flex w-full",
+                                "flex w-full my-1",
                                 isSender ? "justify-end" : "justify-start"
                             )}>
                                 <div className={cn(
-                                    "relative max-w-[75%] rounded-lg px-3 py-2 mt-2",
-                                    isSender ? "bg-[#005C4B] text-white" : "bg-zinc-700 text-white"
+                                    "relative max-w-[75%] rounded-lg px-3 py-2",
+                                    isSender ? "bg-green-800 text-white" : "bg-zinc-700 text-white"
                                 )}>
-                                    <p className="whitespace-pre-wrap break-words pr-20 text-base leading-relaxed">
+                                    <p className="whitespace-pre-wrap break-words pr-20 text-sm leading-relaxed">
                                         {msg.text}
                                     </p>
-                                    <div className="absolute bottom-2 right-3 flex items-center gap-1 text-[11px] text-gray-400">
+                                    <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] text-gray-400">
                                         {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         {isSender && (
                                             <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "text-gray-500")} />
