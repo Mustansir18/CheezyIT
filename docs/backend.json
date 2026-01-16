@@ -57,6 +57,14 @@
           "description": "Timestamp indicating when the issue was resolved.",
           "format": "date-time"
         },
+        "resolvedBy": {
+            "type": "string",
+            "description": "The UID of the admin or IT support user who resolved the ticket."
+        },
+        "resolvedByDisplayName": {
+            "type": "string",
+            "description": "The display name of the user who resolved the ticket."
+        },
         "unreadByAdmin": {
             "type": "boolean",
             "description": "True if there are unread messages for an admin or IT support."

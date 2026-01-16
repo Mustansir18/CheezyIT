@@ -10,6 +10,8 @@ export type Ticket = {
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   completedAt?: any; // Firestore Timestamp
+  resolvedBy?: string;
+  resolvedByDisplayName?: string;
   issueType: string;
   customIssueType?: string;
   anydesk?: string;

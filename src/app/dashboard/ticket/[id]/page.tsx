@@ -69,12 +69,14 @@ export default function TicketDetailPage() {
     const backLink = canManageTicket && ownerId ? '/admin' : '/dashboard';
 
     const handleStatusChange = async (newStatus: TicketStatus) => {
-        if (!ticketRef) return;
+        if (!ticketRef || !user) return;
         try {
             const updateData: {
                 status: TicketStatus;
                 updatedAt: any;
                 completedAt?: any;
+                resolvedBy?: string;
+                resolvedByDisplayName?: string;
             } = {
                 status: newStatus,
                 updatedAt: serverTimestamp(),
@@ -82,6 +84,8 @@ export default function TicketDetailPage() {
 
             if (newStatus === 'Resolved') {
                 updateData.completedAt = serverTimestamp();
+                updateData.resolvedBy = user.uid;
+                updateData.resolvedByDisplayName = user.displayName || 'N/A';
             }
             
             await updateDoc(ticketRef, updateData);

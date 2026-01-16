@@ -22,6 +22,8 @@ import type { Ticket } from '@/lib/data';
 import { isAdmin } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 const COLORS = {
@@ -69,6 +71,11 @@ export default function AdminReports() {
   const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
   const [allUsers, setAllUsers] = useState<WithId<UserWithDisplayName>[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  
+  const [ticketIdFilter, setTicketIdFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -148,21 +155,6 @@ export default function AdminReports() {
     to: new Date(),
   });
 
-  const filteredTickets = useMemo(() => {
-    if (!date?.from) return allTickets;
-    return allTickets.filter(ticket => {
-        if (!ticket.createdAt) return false;
-        // @ts-ignore
-        const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
-        // If there's no 'to' date, just check if it's after the 'from' date.
-        if (!date.to) return ticketDate >= date.from;
-        // Include the 'to' date in the range.
-        const toDate = new Date(date.to);
-        toDate.setHours(23, 59, 59, 999); // Set to end of day
-        return ticketDate >= date.from && ticketDate <= toDate;
-    });
-  }, [allTickets, date]);
-
   const usersMap = useMemo(() => {
     return allUsers.reduce((acc, user) => {
         acc[user.id] = user.displayName;
@@ -170,12 +162,58 @@ export default function AdminReports() {
     }, {} as Record<string, string>);
   }, [allUsers]);
 
+  const filteredTickets = useMemo(() => {
+    let tickets = allTickets;
+
+    // Date filter
+    if (date?.from) {
+        tickets = tickets.filter(ticket => {
+            if (!ticket.createdAt) return false;
+            const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
+            if (!date.to) return ticketDate >= date.from;
+            const toDate = new Date(date.to);
+            toDate.setHours(23, 59, 59, 999);
+            return ticketDate >= date.from && ticketDate <= toDate;
+        });
+    }
+
+    // Ticket ID filter
+    if (ticketIdFilter) {
+        tickets = tickets.filter(ticket => ticket.id.toLowerCase().includes(ticketIdFilter.toLowerCase()));
+    }
+
+    // User name filter
+    if (userFilter) {
+        tickets = tickets.filter(ticket =>
+            (usersMap[ticket.userId] || '').toLowerCase().includes(userFilter.toLowerCase())
+        );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+        tickets = tickets.filter(ticket => ticket.status === statusFilter);
+    }
+
+    return tickets;
+  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, usersMap]);
+
 
   const { statusData, priorityData, chartConfig } = useMemo(() => {
     const statusCounts: { [key: string]: number } = { Pending: 0, 'In Progress': 0, Resolved: 0 };
     const priorityCounts: { [key: string]: number } = { Low: 0, Medium: 0, High: 0 };
 
-    for (const ticket of filteredTickets) {
+    // Use the already filtered-by-date tickets for chart data
+    const chartTickets = allTickets.filter(ticket => {
+        if (!date?.from) return true;
+        if (!ticket.createdAt) return false;
+        const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
+        if (!date.to) return ticketDate >= date.from;
+        const toDate = new Date(date.to);
+        toDate.setHours(23, 59, 59, 999);
+        return ticketDate >= date.from && ticketDate <= toDate;
+    });
+
+    for (const ticket of chartTickets) {
       if (ticket.status) statusCounts[ticket.status]++;
       if (ticket.priority) priorityCounts[ticket.priority]++;
     }
@@ -194,7 +232,7 @@ export default function AdminReports() {
     };
 
     return { statusData, priorityData, chartConfig };
-  }, [filteredTickets]);
+  }, [allTickets, date]);
   
   const handleTicketClick = (ticket: WithId<Ticket>) => {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
@@ -358,7 +396,32 @@ export default function AdminReports() {
       <Card className="mt-4">
         <CardHeader>
             <CardTitle>All Tickets</CardTitle>
-            <CardDescription>A list of all support tickets within the selected date range.</CardDescription>
+            <CardDescription>A list of all support tickets. Use the filters below to narrow your search.</CardDescription>
+             <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                <Input 
+                    placeholder="Filter by Ticket ID..."
+                    value={ticketIdFilter}
+                    onChange={(e) => setTicketIdFilter(e.target.value)}
+                    className="max-w-xs"
+                />
+                <Input 
+                    placeholder="Filter by User Name..."
+                    value={userFilter}
+                    onChange={(e) => setUserFilter(e.target.value)}
+                    className="max-w-xs"
+                />
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Resolved">Resolved</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </CardHeader>
         <CardContent>
             <Table>
@@ -371,12 +434,13 @@ export default function AdminReports() {
                     <TableHead>Created</TableHead>
                     <TableHead>Completed</TableHead>
                     <TableHead>Resolution Time</TableHead>
+                    <TableHead>Resolved By</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {loading ? (
                     <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
+                        <TableCell colSpan={8} className="h-24 text-center">
                             <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                         </TableCell>
                     </TableRow>
@@ -409,11 +473,12 @@ export default function AdminReports() {
                         <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
                         <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
                         <TableCell>{getResolutionTime(ticket.createdAt, ticket.completedAt)}</TableCell>
+                        <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
                       </TableRow>
                     ))) : (
                     <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                        No tickets found in this date range.
+                        <TableCell colSpan={8} className="h-24 text-center">
+                        No tickets found matching your filters.
                         </TableCell>
                     </TableRow>
                     )}
