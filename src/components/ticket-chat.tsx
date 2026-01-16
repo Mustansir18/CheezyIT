@@ -283,14 +283,14 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                     </div>
                 </div>
             </CardHeader>
-            <CardContent ref={messagesContainerRef} className="space-y-4 h-96 overflow-y-auto p-4 bg-muted/50 flex-grow">
+            <CardContent ref={messagesContainerRef} className="h-96 overflow-y-auto p-4 bg-muted/50 flex-grow">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
                             <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
                         </div>
                     )}
-                    {messages?.map((msg) => {
+                    {messages?.map((msg, index) => {
                         const isSender = msg.userId === user?.uid;
                         const senderName = isSender ? user?.displayName : ticketOwnerProfile?.displayName;
                         
@@ -298,47 +298,66 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                            return null;
                         }
 
+                        const prevMessage = messages[index - 1];
+                        const nextMessage = messages[index + 1];
+
+                        const isFirstInGroup = !prevMessage || prevMessage.userId !== msg.userId;
+                        const isLastInGroup = !nextMessage || nextMessage.userId !== msg.userId;
+
                         return (
-                            <div key={msg.id} className={cn("flex w-full items-start gap-3", isSender ? "justify-end" : "justify-start")}>
+                            <div key={msg.id} className={cn(
+                                "flex w-full items-start gap-2.5", 
+                                isSender ? "justify-end" : "justify-start",
+                                isFirstInGroup ? "mt-4" : "mt-0.5"
+                            )}>
                                 {!isSender && (
-                                    <Avatar className="h-8 w-8">
+                                    isLastInGroup ? 
+                                    <Avatar className="h-8 w-8 self-end">
                                         <AvatarFallback>{senderName?.charAt(0) || 'S'}</AvatarFallback>
-                                    </Avatar>
+                                    </Avatar> :
+                                    <div className="w-8 flex-shrink-0"></div>
                                 )}
+
                                 <div className={cn(
-                                    "flex flex-col gap-1 max-w-[85%]",
+                                    "flex flex-col max-w-[70%]",
                                     isSender ? "items-end" : "items-start"
                                 )}>
-                                    <span className="text-xs text-muted-foreground px-2">
-                                        {senderName || msg.displayName}
-                                    </span>
+                                    {isFirstInGroup && (
+                                        <span className="text-xs text-muted-foreground px-1 mb-0.5">
+                                            {senderName || msg.displayName}
+                                        </span>
+                                    )}
                                     <div
                                       className={cn(
-                                        "p-3 rounded-lg shadow-sm max-w-[85%]",
+                                        "p-3 shadow-sm flex flex-col",
                                         isSender
-                                          ? "bg-[#DCF8C6] text-black"
-                                          : "bg-white text-black border"
+                                          ? "bg-[#DCF8C6] text-black rounded-t-xl rounded-l-xl"
+                                          : "bg-white text-black border rounded-t-xl rounded-r-xl",
+                                        isLastInGroup && (isSender ? "rounded-br-none" : "rounded-bl-none"),
                                       )}
                                     >
                                         {msg.audioUrl ? (
                                             <AudioPlayer src={msg.audioUrl} />
                                         ) : (
-                                            <p className="whitespace-pre-wrap text-base leading-relaxed">
+                                            <p className="whitespace-pre-wrap text-base leading-relaxed break-words">
                                                 {msg.text}
                                             </p>
                                         )}
-                                        <div className="text-[11px] mt-1 flex items-center justify-end gap-1 text-gray-600">
+                                        <div className="self-end text-[11px] mt-1 flex items-center justify-end gap-1 text-gray-600/80">
                                             {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             {isSender && (
-                                                <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-chart-1" : "text-gray-600")} />
+                                                <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-chart-1" : "text-gray-400")} />
                                             )}
                                         </div>
                                     </div>
                                 </div>
+                                
                                 {isSender && (
-                                    <Avatar className="h-8 w-8">
+                                    isLastInGroup ?
+                                    <Avatar className="h-8 w-8 self-end">
                                         <AvatarFallback>{senderName?.charAt(0) || 'U'}</AvatarFallback>
-                                    </Avatar>
+                                    </Avatar> :
+                                    <div className="w-8 flex-shrink-0"></div>
                                 )}
                             </div>
                         )
@@ -393,3 +412,5 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
         </Card>
     );
 }
+
+    
