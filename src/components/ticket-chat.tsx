@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -203,4 +202,3 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
         </div>
     );
 }
-
