@@ -27,6 +27,7 @@ export async function sendAnnouncementAction(data: {
   message: string;
   targetRoles: string[];
   targetRegions: string[];
+  targetUsers: string[];
 }) {
   'use server';
   try {
@@ -37,21 +38,31 @@ export async function sendAnnouncementAction(data: {
 
     const allUsers: any[] = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    const targetUsers = allUsers.filter(user => {
-      if (data.targetRoles.length === 0 && data.targetRegions.length === 0) {
-        return true; // Target all users if no roles or regions are specified
-      }
+    let targetUsers: any[] = [];
+    
+    // Priority 1: Target specific user IDs if provided
+    if (data.targetUsers && data.targetUsers.length > 0) {
+        targetUsers = allUsers.filter(user => data.targetUsers.includes(user.id));
+    } else {
+        // Priority 2: Filter by roles and/or regions
+        targetUsers = allUsers.filter(user => {
+            // If no roles or regions are selected, target everyone
+            if (data.targetRoles.length === 0 && data.targetRegions.length === 0) {
+                return true; 
+            }
 
-      const roleMatch = data.targetRoles.length === 0 || data.targetRoles.includes(user.role);
-      
-      const userRegions = user.regions || (user.region ? [user.region] : []);
-      const regionMatch = data.targetRegions.length === 0 || userRegions.some((r: string) => data.targetRegions.includes(r));
-      
-      if (data.targetRoles.length > 0 && data.targetRegions.length > 0) {
-        return roleMatch && regionMatch;
-      }
-      return roleMatch || regionMatch;
-    });
+            const roleMatch = data.targetRoles.length === 0 || data.targetRoles.includes(user.role);
+            
+            const userRegions = user.regions || (user.region ? [user.region] : []);
+            const regionMatch = data.targetRegions.length === 0 || userRegions.some((r: string) => data.targetRegions.includes(r));
+            
+            // Logic for when both are specified vs one is specified
+            if (data.targetRoles.length > 0 && data.targetRegions.length > 0) {
+                return roleMatch && regionMatch; // Must match both
+            }
+            return roleMatch || regionMatch; // Must match one or the other
+        });
+    }
 
     if (targetUsers.length === 0) {
       return { error: 'No users found matching the selected criteria.' };
@@ -73,7 +84,7 @@ export async function sendAnnouncementAction(data: {
     await batch.commit();
     revalidatePath('/dashboard');
     revalidatePath('/admin');
-    return { success: `Announcement sent to ${targetUsers.length} users.` };
+    return { success: `Announcement sent to ${targetUsers.length} user(s).` };
 
   } catch (e: any) {
     console.error("Error sending announcement:", e);
