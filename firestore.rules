@@ -110,6 +110,17 @@ service cloud.firestore {
        */
       allow delete: if isOwner(userId) || isRoot();
     }
+    
+    /**
+     * @description Rules for system-wide settings.
+     * @path /system_settings/{settingId}
+     */
+    match /system_settings/{settingId} {
+      // Allow any signed-in admin/support/root user to read settings (e.g., for forms)
+      allow get: if canManageTickets(); 
+      // Only allow the Root user to change settings.
+      allow write: if isRoot();
+    }
 
     /**
      * @description Rules for issues, which are owned by a specific user.

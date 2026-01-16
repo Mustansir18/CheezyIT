@@ -172,6 +172,30 @@
         "displayName",
         "createdAt"
       ]
+    },
+    "RegionSettings": {
+        "title": "Region Settings",
+        "type": "object",
+        "description": "Stores the list of available regions in the application.",
+        "properties": {
+            "list": {
+                "type": "array",
+                "description": "An array of region names.",
+                "items": { "type": "string" }
+            }
+        }
+    },
+    "RoleSettings": {
+        "title": "Role Settings",
+        "type": "object",
+        "description": "Stores the list of assignable user roles.",
+        "properties": {
+            "list": {
+                "type": "array",
+                "description": "An array of role names.",
+                "items": { "type": "string" }
+            }
+        }
     }
   },
   "auth": {
@@ -198,6 +222,15 @@
         "$ref": "#/backend/entities/ChatMessage"
       },
       "description": "Stores chat messages for a specific issue. Both the user and support staff can post messages here."
+    },
+    "/system_settings/{settingId}": {
+      "schema": {
+        "oneOf": [
+            { "$ref": "#/backend/entities/RegionSettings" },
+            { "$ref": "#/backend/entities/RoleSettings" }
+        ]
+      },
+      "description": "Stores global system settings like available regions and roles. Only accessible by Root users."
     }
   }
 }

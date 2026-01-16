@@ -1,10 +1,12 @@
 'use client';
 import UserManagement from '@/components/user-management';
+import SystemSettings from '@/components/system-settings';
 import { useUser } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AdminSettingsPage() {
   const { user, loading } = useUser();
@@ -31,9 +33,18 @@ export default function AdminSettingsPage() {
           Root Settings
         </h1>
       </div>
-      <div className="mt-4">
-        <UserManagement />
-      </div>
+      <Tabs defaultValue="users" className="mt-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users">User Management</TabsTrigger>
+          <TabsTrigger value="system">System Settings</TabsTrigger>
+        </TabsList>
+        <TabsContent value="users" className="mt-4">
+          <UserManagement />
+        </TabsContent>
+        <TabsContent value="system" className="mt-4">
+          <SystemSettings />
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
