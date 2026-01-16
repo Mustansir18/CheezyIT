@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
     <>
       <div className="flex items-center justify-between space-y-2">
         <h1 className="text-3xl font-bold tracking-tight font-headline">
-          Root Dashboard
+          IT Support
         </h1>
       </div>
       <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-3">
