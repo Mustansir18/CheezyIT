@@ -314,7 +314,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                     </span>
                                     <div
                                       className={cn(
-                                        "px-6 py-4 rounded-2xl shadow-sm max-w-[75%]",
+                                        "px-6 py-4 rounded-xl shadow-sm max-w-[75%]",
                                         isSender
                                           ? "bg-[#DCF8C6] text-black rounded-br-md"
                                           : "bg-white text-black rounded-bl-md border"
