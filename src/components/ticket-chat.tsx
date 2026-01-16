@@ -303,7 +303,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                             )}>
                                 <div className={cn(
                                     "relative max-w-[75%] rounded-xl px-3 py-2",
-                                    isSender ? "bg-zinc-800" : "bg-zinc-700",
+                                    isSender ? "bg-[#005C4B]" : "bg-zinc-700",
                                     index > 0 && "mt-2"
                                 )}>
                                     {msg.audioUrl ? (
