@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect } from 'react';
@@ -271,7 +272,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                             <p className="whitespace-pre-wrap text-sm">{msg.text}</p>
                                         )}
                                         <div className={cn("text-xs mt-1 text-right", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                                            {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {msg.createdAt?.toDate && msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                     </div>
                                 </div>
