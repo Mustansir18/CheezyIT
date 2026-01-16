@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 type User = {
   id: string;
@@ -39,7 +40,7 @@ const newUserSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.'),
   role: z.string().min(1, 'Role is required.'),
-  region: z.string().min(1, 'Region assignment is required.'),
+  regions: z.array(z.string()).min(1, 'At least one region must be assigned.'),
 });
 
 type NewUserFormData = z.infer<typeof newUserSchema>;
@@ -47,7 +48,7 @@ type NewUserFormData = z.infer<typeof newUserSchema>;
 const editUserSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
   role: z.string().min(1, 'Role is required.'),
-  region: z.string().min(1, 'Region assignment is required.'),
+  regions: z.array(z.string()).min(1, 'At least one region must be assigned.'),
 });
 
 type EditUserFormData = z.infer<typeof editUserSchema>;
@@ -62,7 +63,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
         defaultValues: {
             displayName: user.displayName,
             role: user.role,
-            region: user.role === 'User' ? user.region : user.regions?.join(', '),
+            regions: user.role === 'User' ? (user.region ? [user.region] : []) : (user.regions || []),
         },
     });
     
@@ -70,11 +71,11 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
     const selectedRole = watch('role');
 
     useEffect(() => {
-        if (user) {
+        if (open) {
             reset({
                 displayName: user.displayName,
                 role: user.role,
-                region: user.role === 'User' ? user.region : user.regions?.join(', '),
+                regions: user.role === 'User' ? (user.region ? [user.region] : []) : (user.regions || []),
             });
         }
     }, [user, open, reset]);
@@ -89,18 +90,15 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
             };
 
             if (data.role === 'User') {
-                updateData.region = data.region;
-                updateData.regions = []; // Clear admin regions
+                updateData.region = data.regions[0] || '';
+                updateData.regions = [];
             } else {
-                updateData.regions = data.region.split(',').map(r => r.trim()).filter(r => r);
-                updateData.region = ''; // Clear standard user region
+                updateData.regions = data.regions;
+                updateData.region = '';
             }
 
             await updateDoc(userDocRef, updateData);
             
-            // Note: We cannot update the auth profile (displayName) for another user from the client.
-            // This would require an admin SDK on a backend. The name will be updated in Firestore only.
-
             toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
             onOpenChange(false);
         } catch (error: any) {
@@ -115,7 +113,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                 <DialogHeader>
                     <DialogTitle>Edit User: {user.displayName}</DialogTitle>
                     <DialogDescription>
-                        Modify the user's details below. Note: Changing name here only affects the database record, not the login display name.
+                        Modify the user's details below. Note: Changing name here only affects the database record.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -139,21 +137,29 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="region" render={({ field }) => (
+                        <FormField control={form.control} name="regions" render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Region</FormLabel>
+                                <FormLabel>Region(s)</FormLabel>
                                 {selectedRole === 'User' ? (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                    <Select
+                                        onValueChange={(value) => field.onChange(value ? [value] : [])}
+                                        defaultValue={field.value?.[0]}
+                                    >
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 ) : (
-                                    <FormControl><Input placeholder="North, South, all" {...field} /></FormControl>
+                                    <MultiSelect
+                                        options={regions.map(r => ({ value: r, label: r }))}
+                                        selected={field.value || []}
+                                        onChange={field.onChange}
+                                        placeholder="Select regions..."
+                                    />
                                 )}
                                 <FormDescription>
-                                    {selectedRole === 'User' ? 'Assign to a single region.' : "For Admin/Support, provide comma-separated regions or 'all'."}
+                                    {selectedRole === 'User' ? 'Assign to a single region.' : "Assign one or more regions."}
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -193,10 +199,10 @@ export default function UserManagement() {
 
   const addUserForm = useForm<NewUserFormData>({
     resolver: zodResolver(newUserSchema),
-    defaultValues: { displayName: '', email: '', password: '', role: '', region: '' },
+    defaultValues: { displayName: '', email: '', password: '', role: '', regions: [] },
   });
 
-  const { formState: { isSubmitting: isAddingUser }, watch: watchAddUser } = addUserForm;
+  const { formState: { isSubmitting: isAddingUser }, watch: watchAddUser, control: addUserControl } = addUserForm;
   const selectedRoleForNewUser = watchAddUser('role');
 
   const onAddUserSubmit = async (data: NewUserFormData) => {
@@ -209,11 +215,11 @@ export default function UserManagement() {
       const newUser = userCredential.user;
       await updateAuthProfile(newUser, { displayName: data.displayName });
 
-      const userData: Partial<User> = { displayName: data.displayName, email: data.email, role: data.role as any, phoneNumber: '' };
+      const userData: any = { displayName: data.displayName, email: data.email, role: data.role, phoneNumber: '' };
       if (data.role === 'User') {
-        userData.region = data.region;
+        userData.region = data.regions[0] || '';
       } else {
-        userData.regions = data.region.split(',').map(r => r.trim()).filter(r => r);
+        userData.regions = data.regions;
       }
 
       await setDoc(doc(firestore, 'users', newUser.uid), userData);
@@ -254,16 +260,16 @@ export default function UserManagement() {
                     </DialogHeader>
                     <Form {...addUserForm}>
                         <form onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-4">
-                             <FormField control={addUserForm.control} name="displayName" render={({ field }) => (
+                             <FormField control={addUserControl} name="displayName" render={({ field }) => (
                                 <FormItem><FormLabel>Display Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
-                             <FormField control={addUserForm.control} name="email" render={({ field }) => (
+                             <FormField control={addUserControl} name="email" render={({ field }) => (
                                 <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="user@example.com" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
-                             <FormField control={addUserForm.control} name="password" render={({ field }) => (
+                             <FormField control={addUserControl} name="password" render={({ field }) => (
                                 <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
-                            <FormField control={addUserForm.control} name="role" render={({ field }) => (
+                            <FormField control={addUserControl} name="role" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Role</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -275,21 +281,29 @@ export default function UserManagement() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField control={addUserForm.control} name="region" render={({ field }) => (
+                            <FormField control={addUserControl} name="regions" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Region(s)</FormLabel>
                                     {selectedRoleForNewUser === 'User' ? (
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select
+                                            onValueChange={(value) => field.onChange(value ? [value] : [])}
+                                            defaultValue={field.value?.[0]}
+                                        >
                                             <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     ) : (
-                                        <FormControl><Input placeholder="North, South, all" {...field} /></FormControl>
+                                        <MultiSelect
+                                            options={regions.map(r => ({ value: r, label: r }))}
+                                            selected={field.value || []}
+                                            onChange={field.onChange}
+                                            placeholder="Select regions..."
+                                        />
                                     )}
                                     <FormDescription>
-                                        {selectedRoleForNewUser === 'User' ? 'Assign to a single region.' : "For Admin/Support, use comma-separated regions or 'all'."}
+                                        {selectedRoleForNewUser === 'User' ? 'Assign to a single region.' : "Assign one or more regions."}
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
