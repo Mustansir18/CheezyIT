@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { collection, query, doc, setDoc } from 'firebase/firestore';
 import { Loader2, UserPlus } from 'lucide-react';
 
@@ -65,6 +65,8 @@ export default function UserManagement() {
     try {
       const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
       const newUser = userCredential.user;
+
+      await updateProfile(newUser, { displayName: data.displayName });
 
       await setDoc(doc(firestore, 'users', newUser.uid), {
         displayName: data.displayName,
