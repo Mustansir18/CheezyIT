@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -60,7 +61,6 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [showCustomIssueType, setShowCustomIssueType] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,11 +79,18 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     },
   });
 
+  const issueType = form.watch('issueType');
+
+  useEffect(() => {
+    if (issueType !== 'Other') {
+      form.setValue('customIssueType', '');
+    }
+  }, [issueType, form]);
+
   const resetFormState = () => {
     form.reset();
     setPhotoDataUri(null);
     setHasCameraPermission(null);
-    setShowCustomIssueType(false);
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
@@ -199,15 +206,6 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       }
   };
 
-  const handleIssueTypeChange = (value: string) => {
-    const isOther = value === 'Other';
-    setShowCustomIssueType(isOther);
-    form.setValue('issueType', value as typeof issueTypes[number]);
-    if (!isOther) {
-      form.setValue('customIssueType', '');
-    }
-  }
-
   return (
     <Dialog onOpenChange={(open) => !open && resetFormState()}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -250,7 +248,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Issue Type</FormLabel>
-                  <Select onValueChange={handleIssueTypeChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select an issue type" />
@@ -266,7 +264,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 </FormItem>
               )}
             />
-            {showCustomIssueType && (
+            {issueType === 'Other' && (
                  <FormField
                     control={form.control}
                     name="customIssueType"
