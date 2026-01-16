@@ -81,7 +81,7 @@ export default function AdminReports() {
     return { statusData, priorityData, chartConfig };
   }, [filteredTickets]);
   
-  const handleTicketClick = (ticket: Ticket & { userId: string }) => {
+  const handleTicketClick = (ticket: Ticket) => {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 
@@ -228,11 +228,11 @@ export default function AdminReports() {
                     </TableRow>
                     ) : filteredTickets.length > 0 ? (
                     filteredTickets.map((ticket) => (
-                    <TableRow key={ticket.id} className="cursor-pointer" onClick={() => handleTicketClick(ticket as Ticket & { userId: string })}>
+                    <TableRow key={ticket.id} className="cursor-pointer" onClick={() => handleTicketClick(ticket)}>
                         <TableCell>
                            <div className="font-medium">{ticket.title}</div>
                            <div className="hidden text-sm text-muted-foreground md:inline">
-                            {(ticket as any).userId} / {ticket.id}
+                            {ticket.userId} / {ticket.id}
                            </div>
                         </TableCell>
                         <TableCell>

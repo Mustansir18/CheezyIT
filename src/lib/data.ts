@@ -3,6 +3,7 @@ export type TicketStatus = 'Pending' | 'In Progress' | 'Resolved';
 
 export type Ticket = {
   id: string;
+  userId: string;
   title: string;
   description: string;
   status: TicketStatus;

@@ -3,7 +3,7 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Loader2, ArrowLeft, Paperclip } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -92,14 +92,6 @@ export default function TicketDetailPage() {
                 </CardHeader>
                 <CardContent>
                     <p className="mb-4">{ticket.description}</p>
-                    {ticket.attachments && ticket.attachments.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <Paperclip className="h-4 w-4 text-muted-foreground" />
-                            <a href={ticket.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
-                                View Attachment
-                            </a>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
             <TicketChat ticketId={ticketId} userId={effectiveUserId} />
