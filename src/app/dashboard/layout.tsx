@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import AnnouncementBell from '@/components/announcement-bell';
 
 type UserProfile = {
   role: string;
@@ -59,6 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <span>IT Support</span>
                     </Link>
                     <div className="ml-auto flex items-center gap-4">
+                        <AnnouncementBell />
                         <ReportIssueForm>
                             <Button>Report an Issue</Button>
                         </ReportIssueForm>

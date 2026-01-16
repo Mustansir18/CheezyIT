@@ -178,6 +178,18 @@
         "createdAt"
       ]
     },
+    "UserNotification": {
+      "title": "User Notification",
+      "type": "object",
+      "description": "Represents a single notification or announcement sent to a user.",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the notification." },
+        "message": { "type": "string", "description": "The message content of the notification." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the notification was created." },
+        "isRead": { "type": "boolean", "description": "True if the user has read the notification." }
+      },
+      "required": ["title", "message", "createdAt", "isRead"]
+    },
     "RegionSettings": {
         "title": "Region Settings",
         "type": "object",
@@ -227,6 +239,12 @@
         "$ref": "#/backend/entities/ChatMessage"
       },
       "description": "Stores chat messages for a specific issue. Both the user and support staff can post messages here."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserNotification"
+      },
+      "description": "Stores notifications and announcements for a specific user."
     },
     "/system_settings/{settingId}": {
       "schema": {

@@ -9,6 +9,7 @@ import { doc } from 'firebase/firestore';
 import { isRoot } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { cn } from '@/lib/utils';
+import AnnouncementBell from '@/components/announcement-bell';
 
 type UserProfile = {
   role: string;
@@ -65,6 +66,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span>IT Support</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
+          <AnnouncementBell />
           <UserNav />
         </div>
       </header>

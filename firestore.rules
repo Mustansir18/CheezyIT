@@ -116,6 +116,46 @@ service cloud.firestore {
        * Only a Root user can delete other user profiles from the dashboard.
        */
       allow delete: if isOwner(userId) || isRoot();
+      
+      
+        /**
+         * @description Rules for announcements/notifications within a user's profile.
+         * @path /users/{userId}/notifications/{notificationId}
+         */
+        match /notifications/{notificationId} {
+            // Owner can see their notifications. Admin/Support can see anyone's.
+            allow get, list: if isOwner(userId) || canManageTickets();
+            // Only Admin/Root can create notifications. This is handled by the server action which runs as the logged-in user.
+            allow create: if canManageTickets();
+            // Only the owner can mark their own notification as read.
+            allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+            // Only Admin/Root can delete.
+            allow delete: if canManageTickets();
+        }
+
+        /**
+         * @description Rules for issues, which are owned by a specific user.
+         * @path /users/{userId}/issues/{issueId}
+         */
+        match /issues/{issueId} {
+          allow get, list: if isOwner(userId) || canManageTickets();
+          allow create: if isOwner(userId);
+          allow update, delete: if isOwner(userId) || canManageTickets();
+
+            /**
+             * @description Rules for chat messages within an issue.
+             * @path /users/{userId}/issues/{issueId}/messages/{messageId}
+             */
+            match /messages/{messageId} {
+                allow list, get: if isOwner(userId) || canManageTickets();
+                // We validate that the userId in the message matches the sender's UID.
+                allow create: if (isOwner(userId) || canManageTickets())
+                            && request.resource.data.userId == request.auth.uid;
+                // Allow users involved in the ticket to update the 'isRead' status.
+                allow update: if (isOwner(userId) || canManageTickets())
+                            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+            }
+        }
     }
     
     /**
@@ -127,30 +167,6 @@ service cloud.firestore {
       allow get: if canManageTickets(); 
       // Only allow the Root user to change settings.
       allow write: if isRoot();
-    }
-
-    /**
-     * @description Rules for issues, which are owned by a specific user.
-     * @path /users/{userId}/issues/{issueId}
-     */
-    match /users/{userId}/issues/{issueId} {
-      allow get, list: if isOwner(userId) || canManageTickets();
-      allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId) || canManageTickets();
-
-        /**
-         * @description Rules for chat messages within an issue.
-         * @path /users/{userId}/issues/{issueId}/messages/{messageId}
-         */
-        match /messages/{messageId} {
-            allow list, get: if isOwner(userId) || canManageTickets();
-            // We validate that the userId in the message matches the sender's UID.
-            allow create: if (isOwner(userId) || canManageTickets())
-                        && request.resource.data.userId == request.auth.uid;
-            // Allow users involved in the ticket to update the 'isRead' status.
-            allow update: if (isOwner(userId) || canManageTickets())
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-        }
     }
   }
 }

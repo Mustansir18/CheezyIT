@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Ticket, BarChart, Settings, Loader2 } from 'lucide-react';
+import { Ticket, BarChart, Settings, Loader2, Megaphone } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { useMemo } from 'react';
@@ -18,6 +18,12 @@ const baseNavItems = [
     icon: BarChart,
     title: 'Reports',
     description: 'Analyze ticket data with charts and statistics.',
+  },
+  {
+    href: '/admin/announcements',
+    icon: Megaphone,
+    title: 'Announcements',
+    description: 'Send broadcast messages to users and staff.',
   },
 ];
 
