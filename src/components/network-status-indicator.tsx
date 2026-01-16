@@ -35,10 +35,20 @@ export function NetworkStatusIndicator() {
       }
 
       const { id } = toast({
-        title: 'Cannot connect the internet',
+        title: 'Internet not working',
         description: 'Please check your connection. Some features may not be available.',
-        duration: Infinity, // Keep open until back online
-        className: 'bg-[#DCF8C6] text-black border-none',
+        duration: Infinity,
+        className: `
+          bg-[#DCF8C6]
+          text-black
+          border-none
+          rounded-2xl
+          px-6
+          py-4
+          text-base
+          max-w-[90%]
+          shadow-md
+        `,
       });
       toastIdRef.current = id;
     } else {
