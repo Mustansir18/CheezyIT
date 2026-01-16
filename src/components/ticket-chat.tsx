@@ -234,7 +234,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             <CardContent 
                 ref={messagesContainerRef} 
                 className="flex-1 overflow-y-auto p-4 space-y-2 bg-background/90"
-                style={{ backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABZ0RVh0Q3JlYXRpb24gVGltZQAxMC8xMi8xMy+BopcAAAAcdEVYdFNvZnR3YXJlAEFkb2JlIEZpcmV3b3JrcyBDUzVxteM2AAACKklEQVR4nO3VMQ0AIAwDwf7/08sESIfZDgAATXLS1wAAEIxCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAD+CwC2eL246A3uYgAAAABJRU5ErkJggg==")', backgroundBlendMode: 'overlay', backgroundColor: 'var(--background)' }}
+                style={{ backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABZ0RVh0Q3JlYXRpb24gVGltZQAxMC8xMi8xMy+BopcAAAAcdEVYdFNvZnR3YXJlAEFkb2JlIEZpcmV3b3JrcyBDUzVxteM2AAACKklEQVR4nO3VMQ0AIAwDwf7/08sESIfZDgAATXLS1wAAEIxCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAD+CwC2eL246A3uYgAAAABJRU5ErkJggg==")', backgroundBlendMode: 'overlay', backgroundColor: 'var(--background)' }}
             >
                 {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                 {!isLoading && messagesWithDateSeparators.length === 0 && (
@@ -255,12 +255,12 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
                     return (
                         <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
-                            <div className={cn("flex w-fit max-w-[75%] flex-col rounded-lg px-3 py-2 text-sm shadow", isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground")}>
+                            <div className={cn("flex w-fit max-w-[75%] flex-col rounded-lg px-3 pt-2 pb-1.5 text-sm shadow", isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground")}>
                                 {!isSender && <p className="font-semibold text-xs mb-1 text-accent">{msg.displayName}</p>}
                                 <p className="whitespace-pre-wrap break-words">
                                     {msg.text}
                                 </p>
-                                <div className={cn("flex items-center justify-end gap-1 text-[10px] mt-1", isSender ? "text-primary-foreground/80" : "text-card-foreground/60")}>
+                                <div className={cn("flex items-center justify-end gap-1 text-[10px]", isSender ? "text-primary-foreground/80" : "text-card-foreground/60")}>
                                     {msg.createdAt ? (msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                     {isSender && (
                                         <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "text-card-foreground/60")} />
