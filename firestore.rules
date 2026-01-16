@@ -17,6 +17,13 @@
  * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
  *   (e.g., a 'userId' field within an issue document) match the document's path, preventing data
  *   inconsistencies and potential security loopholes.
+ *
+ * User Roles & Permissions:
+ * - Root: Super user (hardcoded email). Has unrestricted access to everything.
+ * - Admin: Can manage users and tickets across assigned regions. Has efficient access to collection group queries for reporting.
+ * - it-support: Can manage tickets across assigned regions. Lacks permission for efficient collection group queries, so client-side fetching is less performant for full listings.
+ * - Branch: Standard user who can only manage their own tickets. Functionally identical to 'User'.
+ * - User: Standard user who can only manage their own tickets.
  */
 rules_version = '2';
 service cloud.firestore {
