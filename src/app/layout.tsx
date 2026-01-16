@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { NetworkStatusIndicator } from '@/components/network-status-indicator';
 
 export const metadata: Metadata = {
   title: 'IT Support',
@@ -23,6 +24,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
+          <NetworkStatusIndicator />
           {children}
         </FirebaseClientProvider>
         <Toaster />
