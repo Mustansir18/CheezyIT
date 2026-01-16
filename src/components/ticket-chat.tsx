@@ -34,6 +34,11 @@ type UserProfile = {
     phoneNumber?: string;
 }
 
+const doodleBg = {
+    backgroundImage: `url('https://raw.githubusercontent.com/jerry-14/whatsapp-chat-parser/main/whatsapp-chat-parser/assets/bg.png')`,
+    backgroundBlendMode: 'soft-light',
+};
+
 export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick }: TicketChatProps) {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -171,7 +176,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     };
 
     return (
-        <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0'>
+        <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0 bg-transparent'>
             <header className="flex items-center justify-between gap-3 border-b bg-card p-3">
                 <div className="flex items-center gap-3">
                     <Button asChild variant="ghost" size="icon" className="flex-shrink-0">
@@ -233,7 +238,8 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             </header>
             <CardContent 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto p-4 space-y-2"
+                className="flex-1 overflow-y-auto p-4 space-y-2 bg-background/70"
+                style={doodleBg}
             >
                 {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                 {!isLoading && messagesWithDateSeparators.length === 0 && (
