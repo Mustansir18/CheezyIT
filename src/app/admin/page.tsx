@@ -10,6 +10,7 @@ import { doc } from 'firebase/firestore';
 import { isAdmin } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CreateBranchUserForm from '@/components/create-branch-user-form';
 import UserList from '@/components/user-list';
 import AdminReports from '@/components/admin-reports';
@@ -78,25 +79,36 @@ export default function AdminPage() {
             Admin Dashboard
           </h1>
         </div>
-        <div className="grid gap-4 md:grid-cols-1">
-            <AdminReports />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <div className="lg:col-span-4">
-               <UserList />
-            </div>
-            <div className="lg:col-span-3">
-              <Card>
-                <CardHeader>
-                    <CardTitle>Create User</CardTitle>
-                    <CardDescription>Create a new user and assign a role.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <CreateBranchUserForm />
-                </CardContent>
-              </Card>
-            </div>
-        </div>
+        
+        <Tabs defaultValue="reports" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="reports">Reports & Tickets</TabsTrigger>
+                <TabsTrigger value="users">User Management</TabsTrigger>
+            </TabsList>
+            <TabsContent value="reports" className="mt-4">
+                <div className="grid gap-4 md:grid-cols-1">
+                    <AdminReports />
+                </div>
+            </TabsContent>
+            <TabsContent value="users" className="mt-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                    <div className="lg:col-span-4">
+                        <UserList />
+                    </div>
+                    <div className="lg:col-span-3">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Create User</CardTitle>
+                                <CardDescription>Create a new user and assign a role.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <CreateBranchUserForm />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
