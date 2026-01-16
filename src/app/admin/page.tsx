@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Ticket, BarChart, Settings } from 'lucide-react';
+import { Ticket, BarChart } from 'lucide-react';
 
 const adminNavItems = [
   {
@@ -15,12 +15,6 @@ const adminNavItems = [
     icon: BarChart,
     title: 'Reports',
     description: 'Analyze ticket data with charts and statistics.',
-  },
-  {
-    href: '/admin/settings',
-    icon: Settings,
-    title: 'Settings',
-    description: 'Manage user accounts and application settings.',
   },
 ];
 
