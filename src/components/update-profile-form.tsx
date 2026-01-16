@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -52,7 +52,7 @@ export default function UpdateProfileForm({ currentPhoneNumber }: { currentPhone
     const updateData = { phoneNumber: data.phoneNumber || '' };
 
     try {
-        await updateDoc(userDocRef, updateData);
+        await setDoc(userDocRef, updateData, { merge: true });
         toast({ title: 'Success!', description: 'Your phone number has been updated.' });
     } catch (error: any) {
         console.error("Error updating profile:", error);
@@ -60,7 +60,7 @@ export default function UpdateProfileForm({ currentPhoneNumber }: { currentPhone
         
         const contextualError = new FirestorePermissionError({
             path: userDocRef.path,
-            operation: 'update',
+            operation: 'write',
             requestResourceData: updateData
         });
         errorEmitter.emit('permission-error', contextualError);
