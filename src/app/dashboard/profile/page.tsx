@@ -35,15 +35,11 @@ export default function ProfilePage() {
         <div className="flex justify-center">
             <Card className="w-full max-w-2xl">
                 <CardHeader>
-                    <CardTitle>Profile</CardTitle>
+                    <CardTitle>{user.displayName}</CardTitle>
                     <CardDescription>View and edit your personal information.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-4">
-                        <div className="flex flex-col space-y-1">
-                            <label className="text-sm font-medium">Display Name</label>
-                            <p className="text-sm text-muted-foreground">{user.displayName}</p>
-                        </div>
                          <div className="flex flex-col space-y-1">
                             <label className="text-sm font-medium">Email</label>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
