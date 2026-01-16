@@ -126,7 +126,7 @@ export default function TicketDetailPage() {
 
     return (
         <>
-        <div className="grid gap-6">
+        <div className="flex flex-1 flex-col min-h-0">
             <TicketChat 
                 ticket={ticket} 
                 canManageTicket={canManageTicket} 

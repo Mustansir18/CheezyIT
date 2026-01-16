@@ -245,25 +245,25 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
 
     return (
-        <Card className='flex flex-col'>
+        <Card className='flex flex-1 flex-col min-h-0'>
             <CardHeader>
-                <div className="flex items-center gap-4">
-                     <Button asChild variant="outline" size="icon" className="h-7 w-7">
+                <div className="flex items-center gap-2 sm:gap-4">
+                     <Button asChild variant="outline" size="icon" className="h-7 w-7 flex-shrink-0">
                         <Link href={backLink}>
                             <ArrowLeft className="h-4 w-4" />
                             <span className="sr-only">Back</span>
                         </Link>
                     </Button>
-                    <div className="flex-1">
-                        <CardTitle>{ticket.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 overflow-hidden">
+                        <CardTitle className="truncate text-base sm:text-lg">{ticket.title}</CardTitle>
+                        <CardDescription className="flex items-center gap-2 mt-1 truncate">
                             {profileLoading ? (
-                                'Loading user details...'
+                                'Loading...'
                             ) : ticketOwnerProfile ? (
                                 <>
-                                    <span>{ticketOwnerProfile.displayName}</span>
+                                    <span className="truncate">{ticketOwnerProfile.displayName}</span>
                                     {ticketOwnerProfile.phoneNumber && (
-                                        <div className="flex items-center gap-1 text-muted-foreground">
+                                        <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
                                             <span>- {ticketOwnerProfile.phoneNumber}</span>
                                             <TooltipProvider>
                                                 <Tooltip>
@@ -286,15 +286,13 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                         </div>
                                     )}
                                 </>
-                            ) : (
-                                'Details about the ticket.'
-                            )}
+                            ) : null }
                         </CardDescription>
                     </div>
                      <div className="ml-auto flex items-center gap-2">
                         {canManageTicket ? (
                             <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                                <SelectTrigger className="w-[160px]">
+                                <SelectTrigger className="w-auto text-xs px-2 sm:px-3 sm:text-sm sm:w-[160px]">
                                     <SelectValue placeholder="Change status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -304,14 +302,14 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 </SelectContent>
                             </Select>
                         ) : (
-                            <Badge variant="outline">
+                            <Badge variant="outline" className="text-xs sm:text-sm">
                                 {ticket.status}
                             </Badge>
                         )}
                         {isOwner && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                                         <MoreVertical className="h-4 w-4" />
                                         <span className="sr-only">More options</span>
                                     </Button>
@@ -328,7 +326,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                 </div>
             </CardHeader>
             <Separator />
-            <CardContent ref={messagesContainerRef} className="h-96 overflow-y-auto p-4 bg-muted/50 flex-grow">
+            <CardContent ref={messagesContainerRef} className="overflow-y-auto p-2 sm:p-4 bg-muted/50 flex-grow">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
@@ -367,7 +365,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     })}
             </CardContent>
 
-             <div className="border-t p-3 bg-background">
+             <div className="border-t p-2 sm:p-3 bg-background">
                  <div className="relative">
                     <Textarea
                         placeholder={"Type a message..."}
@@ -379,9 +377,9 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 handleSendMessage();
                             }
                         }}
-                        className="min-h-12 resize-none border-gray-300 rounded-lg p-3 pr-32 shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="min-h-12 resize-none rounded-lg p-3 pr-24 sm:pr-32 shadow-none focus-visible:ring-1 focus-visible:ring-primary"
                     />
-                     <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+                     <div className="absolute right-2 sm:right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 sm:gap-2">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -391,6 +389,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                         variant="ghost"
                                         onClick={toggleRecording}
                                         disabled={isUploading}
+                                        className="h-9 w-9 sm:h-10 sm:w-10"
                                     >
                                         {isUploading ? (
                                             <Loader2 className="h-5 w-5 animate-spin" />
@@ -406,8 +405,8 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                         </TooltipProvider>
 
                        <Button type="submit" size="sm" onClick={handleSendMessage} disabled={!message.trim()}>
-                            Send
-                            <Send className="ml-2 h-4 w-4" />
+                            <span className="hidden sm:inline-block">Send</span>
+                            <Send className="h-4 w-4 sm:ml-2" />
                         </Button>
                     </div>
                 </div>
