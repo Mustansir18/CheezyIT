@@ -2,9 +2,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { Loader2, Send, Phone } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Loader2, Send, Phone, Mic, Square } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/lib/data';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import AudioPlayer from './audio-player';
 
 
 interface TicketChatProps {
@@ -24,8 +26,13 @@ interface TicketChatProps {
 export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [message, setMessage] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +73,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 title: 'Error',
                 description: 'Failed to send message.',
             });
-            setMessage(messageToSend); // Restore message on failure
+            setMessage(messageToSend);
 
             const contextualError = new FirestorePermissionError({
                 path: messagesCollection.path,
@@ -106,6 +113,85 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         });
     };
 
+    const uploadAndSendAudio = (audioBlob: Blob) => {
+        if (!user) return;
+        setIsUploading(true);
+
+        const storageRef = ref(storage, `tickets/${userId}/${ticketId}/${Date.now()}.webm`);
+
+        uploadBytes(storageRef, audioBlob)
+            .then(snapshot => getDownloadURL(snapshot.ref))
+            .then(downloadURL => {
+                const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
+                const messageData = {
+                    userId: user.uid,
+                    displayName: user.displayName || 'User',
+                    audioUrl: downloadURL,
+                    type: 'user' as const,
+                    createdAt: serverTimestamp(),
+                };
+                return addDoc(messagesCollection, messageData);
+            })
+            .then(() => {
+                setIsUploading(false);
+            })
+            .catch(error => {
+                console.error("Error uploading or sending voice note:", error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Upload Failed',
+                    description: error.code === 'storage/unauthorized' 
+                        ? "You don't have permission to upload files." 
+                        : "Could not send the voice note. Please try again."
+                });
+                setIsUploading(false);
+            });
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunksRef.current.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                uploadAndSendAudio(audioBlob);
+                stream.getTracks().forEach(track => track.stop()); // Stop the mic access
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (error) {
+            console.error("Error starting recording:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Recording Error',
+                description: 'Could not start recording. Please check microphone permissions.',
+            });
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const toggleRecording = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+
 
     return (
         <Card>
@@ -139,12 +225,13 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                         </div>
                     )}
                     {messages?.map((msg) => {
+                        const isSender = msg.userId === user?.uid;
                         if (msg.type === 'call_request') {
                             return (
                                 <div key={msg.id} className="flex justify-center items-center my-4">
                                     <div className="text-xs text-muted-foreground bg-background px-3 py-1 rounded-full flex items-center gap-2">
                                         <Phone className="h-3 w-3" />
-                                        <span>{msg.userId === user?.uid ? 'You requested' : `${msg.displayName} requested`} a call</span>
+                                        <span>{isSender ? 'You requested' : `${msg.displayName} requested`} a call</span>
                                         <span className="text-xs text-muted-foreground/80">
                                             {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
@@ -154,21 +241,25 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                         }
 
                         return (
-                            <div key={msg.id} className={cn("flex w-full items-start gap-3", msg.userId === user?.uid ? "justify-end" : "justify-start")}>
-                                {msg.userId !== user?.uid && (
+                            <div key={msg.id} className={cn("flex w-full items-start gap-3", isSender ? "justify-end" : "justify-start")}>
+                                {!isSender && (
                                     <Avatar className="h-8 w-8">
                                         <AvatarFallback>{msg.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                     </Avatar>
                                 )}
                                 <div className={cn(
                                     "flex flex-col gap-1 max-w-[70%]",
-                                    msg.userId === user?.uid ? "items-end" : "items-start"
+                                    isSender ? "items-end" : "items-start"
                                 )}>
                                     <div className={cn(
                                         "px-3 py-2 rounded-xl",
-                                        msg.userId === user?.uid ? "bg-primary text-primary-foreground" : "bg-background"
+                                        isSender ? "bg-primary text-primary-foreground" : "bg-background"
                                     )}>
-                                        <p className="whitespace-pre-wrap text-sm">{msg.text}</p>
+                                        {msg.audioUrl ? (
+                                            <AudioPlayer src={msg.audioUrl} />
+                                        ) : (
+                                            <p className="whitespace-pre-wrap text-sm">{msg.text}</p>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-muted-foreground">
@@ -179,7 +270,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                         </span>
                                     </div>
                                 </div>
-                                {msg.userId === user?.uid && (
+                                {isSender && (
                                     <Avatar className="h-8 w-8">
                                         <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
                                     </Avatar>
@@ -204,7 +295,30 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                         className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0"
                     />
                     <div className="flex items-center p-3 pt-0">
-                        <div className="ml-auto">
+                        <div className="ml-auto flex items-center gap-2">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={toggleRecording}
+                                            disabled={isUploading}
+                                        >
+                                            {isUploading ? (
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                            ) : (
+                                                <Mic className={cn("h-5 w-5", isRecording && "text-red-500 animate-pulse")} />
+                                            )}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{isRecording ? 'Stop recording' : 'Record voice note'}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
                            <Button type="submit" size="sm" onClick={handleSendMessage} disabled={!message.trim()}>
                                 Send
                                 <Send className="ml-2 h-4 w-4" />

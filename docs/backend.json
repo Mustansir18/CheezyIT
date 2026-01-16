@@ -113,6 +113,10 @@
           "type": "string",
           "description": "The text content of the message. Optional."
         },
+        "audioUrl": {
+            "type": "string",
+            "description": "URL to the audio file in Firebase Storage. Optional."
+        },
         "type": {
             "type": "string",
             "description": "The type of message (e.g., standard user message or a system notification).",
