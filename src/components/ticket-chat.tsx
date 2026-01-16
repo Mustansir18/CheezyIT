@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react';
+import { useState, useRef, useMemo, useLayoutEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -39,7 +38,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
 
     const userProfileRef = useMemoFirebase(
         () => (userId ? doc(firestore, 'users', userId) : null),
@@ -53,12 +52,10 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     );
     const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }
-
     useLayoutEffect(() => {
-        scrollToBottom();
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
     }, [messages]);
 
     const handleCopy = (text: string | undefined) => {
@@ -235,7 +232,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted/50">
+                <div ref={messagesContainerRef} className="space-y-4 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted/50">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
@@ -286,7 +283,6 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                             </div>
                         )
                     })}
-                    <div ref={messagesEndRef} />
                 </div>
 
                 <div className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring">
@@ -338,7 +334,3 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         </Card>
     );
 }
-
-    
-
-    
