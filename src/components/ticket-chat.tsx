@@ -375,7 +375,3 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
         </Card>
     );
 }
-
-    
-
-    
