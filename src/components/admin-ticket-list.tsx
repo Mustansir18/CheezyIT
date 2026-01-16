@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceStrict } from 'date-fns';
-import { Loader2, Trash2, Filter } from 'lucide-react';
+import { Loader2, Trash2, Filter, Circle, CircleDot, CircleCheck } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, deleteDoc, getDocs, collectionGroup } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { Ticket } from '@/lib/data';
+import { getStats } from '@/lib/data';
 import { isAdmin } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -23,6 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 type UserProfile = {
@@ -168,6 +170,7 @@ export default function AdminTicketList() {
     return tickets;
   }, [allTickets, date, ticketIdFilter, userFilter, statusFilter]);
 
+  const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
   const handleTicketClick = (ticket: WithId<Ticket>) => {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
@@ -213,6 +216,44 @@ export default function AdminTicketList() {
 
   return (
     <>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Issues</CardTitle>
+            <Circle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.pending}</div>}
+            <p className="text-xs text-muted-foreground">
+              Tickets awaiting response
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <CircleDot className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.inProgress}</div>}
+             <p className="text-xs text-muted-foreground">
+              Tickets actively being worked on
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Resolved Issues</CardTitle>
+            <CircleCheck className="h-4 w-4 text-chart-2" />
+          </CardHeader>
+          <CardContent>
+             {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.resolved}</div>}
+            <p className="text-xs text-muted-foreground">
+              Completed and closed tickets
+            </p>
+          </CardContent>
+        </Card>
+      </div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <Tabs defaultValue="all" className="w-auto" onValueChange={setStatusFilter}>
           <TabsList>
