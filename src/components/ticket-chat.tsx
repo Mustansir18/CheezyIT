@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { useUser, useFirestore, useCollection, useStorage, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useStorage, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Mic, Send, StopCircle, CornerDownLeft, Paperclip } from 'lucide-react';
@@ -29,7 +28,6 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const storage = useStorage();
     const { toast } = useToast();
     const [message, setMessage] = useState('');
-    const [isSending, setIsSending] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
@@ -68,24 +66,38 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         }
     }, [isRecording])
 
-    const handleSendMessage = async () => {
+    const handleSendMessage = () => {
         if (!message.trim() || !user) return;
-        setIsSending(true);
+
+        const messageToSend = message;
+        setMessage(''); // Optimistically clear the input field
 
         const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
-        try {
-            await addDoc(messagesCollection, {
-                userId: user.uid,
-                displayName: user.displayName || 'User',
-                text: message,
-                createdAt: serverTimestamp(),
+        const messageData = {
+            userId: user.uid,
+            displayName: user.displayName || 'User',
+            text: messageToSend,
+            createdAt: serverTimestamp(),
+        };
+
+        // Non-blocking write. UI updates via onSnapshot listener.
+        addDoc(messagesCollection, messageData)
+          .catch((serverError) => {
+            console.error("Error sending message:", serverError);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to send message.',
             });
-            setMessage('');
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to send message.' });
-        } finally {
-            setIsSending(false);
-        }
+            setMessage(messageToSend); // Restore message on failure
+
+            const contextualError = new FirestorePermissionError({
+                path: messagesCollection.path,
+                operation: 'create',
+                requestResourceData: messageData
+            });
+            errorEmitter.emit('permission-error', contextualError);
+        });
     };
 
      const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,8 +108,8 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
 
         try {
             const sRef = storageRef(storage, `tickets/${userId}/${ticketId}/images_${Date.now()}_${file.name}`);
-            await uploadBytes(sRef, file);
-            const imageUrl = await getDownloadURL(sRef);
+            const uploadTask = await uploadBytes(sRef, file);
+            const imageUrl = await getDownloadURL(uploadTask.ref);
 
             const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
             await addDoc(messagesCollection, {
@@ -154,12 +166,12 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
 
     const handleSendVoiceNote = async (audioBlob: Blob) => {
         if (!user) return;
-        setIsSending(true);
+        setIsUploading(true); // Use isUploading state for voice notes as well
 
         try {
             const sRef = storageRef(storage, `tickets/${userId}/${ticketId}/audio_${Date.now()}.webm`);
-            await uploadBytes(sRef, audioBlob);
-            const audioUrl = await getDownloadURL(sRef);
+            const uploadTask = await uploadBytes(sRef, audioBlob);
+            const audioUrl = await getDownloadURL(uploadTask.ref);
 
             const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
             await addDoc(messagesCollection, {
@@ -176,11 +188,11 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
             }
             toast({ variant: 'destructive', title: 'Error', description });
         } finally {
-            setIsSending(false);
+            setIsUploading(false);
         }
     };
     
-    const isInputDisabled = isSending || isRecording || isUploading;
+    const mediaButtonsDisabled = isRecording || isUploading;
 
     return (
         <Card>
@@ -189,7 +201,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 <CardDescription>Discuss the issue with the support team.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted">
+                <div className="space-y-4 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted/50">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
@@ -197,7 +209,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                         </div>
                     )}
                     {messages?.map((msg) => (
-                        <div key={msg.id} className={cn("flex w-full items-end gap-3", msg.userId === user?.uid ? "justify-end" : "justify-start")}>
+                        <div key={msg.id} className={cn("flex w-full items-start gap-3", msg.userId === user?.uid ? "justify-end" : "justify-start")}>
                              {/* Avatar for receiver */}
                             {msg.userId !== user?.uid && (
                                 <Avatar className="h-8 w-8">
@@ -205,12 +217,12 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                 </Avatar>
                             )}
                             <div className={cn(
-                                "flex flex-col max-w-[70%]",
+                                "flex flex-col gap-1 max-w-[70%]",
                                 msg.userId === user?.uid ? "items-end" : "items-start"
                             )}>
                                 <div className={cn(
-                                    "px-4 py-2 rounded-xl shadow-sm",
-                                    msg.userId === user?.uid ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card border rounded-bl-none"
+                                    "px-3 py-2 rounded-xl",
+                                    msg.userId === user?.uid ? "bg-primary text-primary-foreground" : "bg-background"
                                 )}>
                                     {msg.text && <p className="whitespace-pre-wrap text-sm">{msg.text}</p>}
                                     {msg.audioUrl && <AudioPlayer src={msg.audioUrl} />}
@@ -220,9 +232,14 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                         </div>
                                     )}
                                 </div>
-                                <span className="text-xs text-muted-foreground mt-1 px-1">
-                                    {msg.displayName} - {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">
+                                        {msg.displayName}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
                             </div>
                             {/* Avatar for sender */}
                             {msg.userId === user?.uid && (
@@ -235,28 +252,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="flex items-center gap-2 rounded-lg border bg-background p-2">
-                    {isRecording ? (
-                        <Button size="icon" variant="destructive" onClick={handleStopRecording} disabled={isSending}>
-                            <StopCircle className="h-5 w-5" />
-                        </Button>
-                    ) : (
-                        <>
-                            <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isInputDisabled}>
-                                <Paperclip className="h-5 w-5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={handleStartRecording} disabled={isInputDisabled}>
-                                <Mic className="h-5 w-5" />
-                            </Button>
-                        </>
-                    )}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        accept="image/*"
-                        className="hidden"
-                    />
+                <div className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring">
                     <Textarea
                         placeholder={isRecording ? `Recording... (${Math.floor(recordingTime/60)}:${(recordingTime%60).toString().padStart(2,'0')})` : "Type a message..."}
                         value={message}
@@ -267,23 +263,45 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                 handleSendMessage();
                             }
                         }}
-                        disabled={isInputDisabled}
-                        className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[20px]"
-                        rows={1}
+                        disabled={isRecording}
+                        className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0"
                     />
-                    {isInputDisabled && !isRecording ? (
-                        <div className='p-2'>
-                           <Loader2 className="h-5 w-5 animate-spin" />
+                    <div className="flex items-center p-3 pt-0">
+                         {isRecording ? (
+                            <Button size="icon" variant="destructive" onClick={handleStopRecording} disabled={isUploading}>
+                                <StopCircle className="h-5 w-5" />
+                            </Button>
+                        ) : (
+                            <>
+                                <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={mediaButtonsDisabled}>
+                                    <Paperclip className="h-5 w-5" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={handleStartRecording} disabled={mediaButtonsDisabled}>
+                                    <Mic className="h-5 w-5" />
+                                </Button>
+                            </>
+                        )}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                        <div className="ml-auto">
+                            {isUploading && !isRecording && (
+                               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            )}
+                            {!isUploading && !isRecording && (
+                                <Button type="submit" size="sm" onClick={handleSendMessage} disabled={!message.trim()}>
+                                    Send
+                                    <Send className="ml-2 h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
-                    ) : !isRecording && (
-                        <Button size="icon" variant="ghost" onClick={handleSendMessage} disabled={!message.trim()}>
-                            <Send className="h-5 w-5" />
-                        </Button>
-                    )}
+                    </div>
                 </div>
             </CardContent>
         </Card>
     );
 }
-
-    
