@@ -9,10 +9,9 @@
  * user's specific document (e.g., /users/{userId}/issues/{issueId}).
  *
  * Key Security Decisions:
- * - Admin User Listing via Hardcoded Email: To allow admins to list users, we check the authenticated
- *   user's email against a hardcoded list. This is secure and works without needing custom claims
- *   or database reads within the list rule, which is not allowed. For IT Support roles to gain
- *   management permissions, their email must be added to this list.
+ * - Admin & IT Support Roles: To allow admins and IT support to manage the system, we check their roles.
+ *   For the primary admin, we use a hardcoded email. For IT Support, we perform a `get()` on their user
+ *   document to check their `role` field. This is secure and allows for flexible role management.
  * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
  *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
  * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
@@ -37,21 +36,29 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the user is an admin by checking their email address against a list.
+     * Checks if the user is the primary admin by checking their email address against a list.
      * This is a pragmatic approach when custom claims are not manageable.
-     * To grant IT Support users management permissions, add their email here.
      */
     function isAdmin() {
       return isSignedIn() && request.auth.token.email == 'mustansir133@gmail.com';
     }
 
     /**
+     * Checks if the user has an 'it-support' role stored in their user document,
+     * or if they are the primary admin.
+     */
+    function isSupportOrAdmin() {
+      let isSupport = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'it-support';
+      return isAdmin() || isSupport;
+    }
+
+    /**
      * @description Rule for 'issues' collection group queries.
-     * Allows admins to query across all 'issues' subcollections for analytics.
+     * Allows admins or IT Support to query across all 'issues' subcollections for analytics.
      * This rule is essential for the Admin Analytics dashboard to function.
      */
     match /{path=**}/issues/{issueId} {
-      allow get, list: if isAdmin();
+      allow get, list: if isSupportOrAdmin();
     }
 
     /**
@@ -61,14 +68,14 @@ service cloud.firestore {
     match /users/{userId} {
       /**
        * Allow reading a user's own profile.
-       * Allow an admin to read any user's profile.
+       * Allow an admin or IT support to read any user's profile.
        */
-      allow get: if isOwner(userId) || isAdmin();
+      allow get: if isOwner(userId) || isSupportOrAdmin();
 
       /**
-       * Allow an admin to list all users.
+       * Allow an admin or IT support to list all users.
        */
-      allow list: if isAdmin();
+      allow list: if isSupportOrAdmin();
 
       /**
        * Allow a user to create their own profile document.
@@ -78,15 +85,15 @@ service cloud.firestore {
 
       /**
        * Allow a user to update their own profile.
-       * Allow an admin to update any user's profile.
+       * Allow an admin or IT support to update any user's profile.
        */
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isSupportOrAdmin();
 
       /**
        * Allow a user to delete their own profile.
-       * Allow an admin to delete any user's profile.
+       * Allow an admin or IT support to delete any user's profile.
        */
-      allow delete: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isSupportOrAdmin();
     }
 
     /**
@@ -94,25 +101,25 @@ service cloud.firestore {
      * @path /users/{userId}/issues/{issueId}
      */
     match /users/{userId}/issues/{issueId} {
-      // Admins and owners can read tickets.
-      allow get, list: if isOwner(userId) || isAdmin();
+      // Admins, IT Support and owners can read tickets.
+      allow get, list: if isOwner(userId) || isSupportOrAdmin();
       // Only owners can create tickets under their own user ID.
       allow create: if isOwner(userId);
-      // Owners and Admins can update tickets (e.g., change status).
-      allow update: if isOwner(userId) || isAdmin();
-      // Owners and Admins can delete tickets.
-      allow delete: if isOwner(userId) || isAdmin();
+      // Owners, Admins, and IT Support can update tickets (e.g., change status).
+      allow update: if isOwner(userId) || isSupportOrAdmin();
+      // Owners, Admins, and IT Support can delete tickets.
+      allow delete: if isOwner(userId) || isSupportOrAdmin();
 
         /**
          * @description Rules for chat messages within an issue.
          * @path /users/{userId}/issues/{issueId}/messages/{messageId}
          */
         match /messages/{messageId} {
-            // Users can read messages in their own tickets. Admins can read any.
-            allow list, get: if isOwner(userId) || isAdmin();
-            // Users can create messages in their own tickets. Admins can also post.
+            // Users can read messages in their own tickets. Admins & IT can read any.
+            allow list, get: if isOwner(userId) || isSupportOrAdmin();
+            // Users can create messages in their own tickets. Admins & IT can also post.
             // We validate that the userId in the message matches the sender's UID.
-            allow create: if (isOwner(userId) || isAdmin())
+            allow create: if (isOwner(userId) || isSupportOrAdmin())
                         && request.resource.data.userId == request.auth.uid;
         }
     }

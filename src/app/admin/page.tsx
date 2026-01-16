@@ -1,11 +1,12 @@
 
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { isAdmin } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,19 +14,33 @@ import CreateBranchUserForm from '@/components/create-branch-user-form';
 import UserList from '@/components/user-list';
 import AdminReports from '@/components/admin-reports';
 
+type UserProfile = {
+  role: string;
+}
+
 export default function AdminPage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const isAuthorized = useMemo(() => {
+    if (!user || !userProfile) return false;
+    return isAdmin(user.email) || userProfile.role === 'it-support';
+  }, [user, userProfile]);
+
 
   useEffect(() => {
-    if (!loading) {
-      if (!user || !isAdmin(user.email)) {
+    if (!userLoading && !profileLoading) {
+      if (!user || !isAuthorized) {
         router.push('/dashboard');
       }
     }
-  }, [user, loading, router]);
+  }, [user, userLoading, profileLoading, isAuthorized, router]);
 
-  if (loading || !user) {
+  if (userLoading || profileLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -33,7 +48,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAdmin(user.email)) {
+  if (!isAuthorized) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <p>You are not authorized to view this page.</p>

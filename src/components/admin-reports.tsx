@@ -6,8 +6,8 @@ import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveCon
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collectionGroup, query, collection, getDocs, where, doc, deleteDoc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, type WithId, useUser, useDoc } from '@/firebase';
+import { collectionGroup, query, doc, deleteDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -33,6 +33,10 @@ const COLORS = {
   Low: 'hsl(var(--muted-foreground))',
 };
 
+type UserProfile = {
+  role: string;
+}
+
 export default function AdminReports() {
   const firestore = useFirestore();
   const router = useRouter();
@@ -41,62 +45,22 @@ export default function AdminReports() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Determine fetching strategy based on role
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const canViewAllTickets = useMemo(() => {
+    if (!user || !userProfile) return false;
+    return isAdmin(user.email) || userProfile.role === 'it-support';
+  }, [user, userProfile]);
+
   const allIssuesQuery = useMemoFirebase(() => {
-      if (!user) return null;
-      if (isAdmin(user.email)) {
-          return query(collectionGroup(firestore, 'issues'));
-      }
-      return null; // For non-admins, we'll fetch manually
-  }, [firestore, user]);
+      if (!canViewAllTickets) return null;
+      return query(collectionGroup(firestore, 'issues'));
+  }, [firestore, canViewAllTickets]);
 
-  const { data: adminTickets, isLoading: adminLoading } = useCollection<WithId<Ticket>>(allIssuesQuery);
-  const [supportTickets, setSupportTickets] = useState<WithId<Ticket>[]>([]);
-  const [isSupportLoading, setIsSupportLoading] = useState(false);
+  const { data: allTickets, isLoading: ticketsLoading } = useCollection<WithId<Ticket>>(allIssuesQuery);
 
-
-  useEffect(() => {
-    const fetchSupportTickets = async () => {
-        if (user && !isAdmin(user.email)) {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const userDoc = await getDocs(query(collection(firestore, 'users'), where('__name__', '==', user.uid)));
-            const currentUserRole = userDoc.docs[0]?.data().role;
-
-            if (currentUserRole === 'it-support') {
-                setIsSupportLoading(true);
-                try {
-                    const usersSnapshot = await getDocs(collection(firestore, 'users'));
-                    const allTicketsPromises = usersSnapshot.docs.map(userDoc => {
-                        const userIssuesCol = collection(firestore, 'users', userDoc.id, 'issues');
-                        return getDocs(userIssuesCol).then(issuesSnapshot => 
-                            issuesSnapshot.docs.map(issueDoc => ({...issueDoc.data(), id: issueDoc.id, userId: userDoc.id } as WithId<Ticket>))
-                        );
-                    });
-                    const ticketsPerUser = await Promise.all(allTicketsPromises);
-                    setSupportTickets(ticketsPerUser.flat());
-                } catch (error) {
-                    console.error("Error fetching tickets for IT support:", error);
-                } finally {
-                    setIsSupportLoading(false);
-                }
-            }
-        }
-    };
-
-    if (!userLoading) {
-      fetchSupportTickets();
-    }
-  }, [user, userLoading, firestore]);
-
-  const allTickets = useMemo(() => {
-    if (user && isAdmin(user.email)) {
-        return adminTickets || [];
-    }
-    return supportTickets;
-  }, [user, adminTickets, supportTickets]);
-
-  const loading = adminLoading || isSupportLoading;
-
+  const loading = userLoading || profileLoading || ticketsLoading;
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -104,8 +68,9 @@ export default function AdminReports() {
   });
 
   const filteredTickets = useMemo(() => {
-    if (!date?.from) return allTickets;
-    return allTickets.filter(ticket => {
+    const tickets = allTickets || [];
+    if (!date?.from) return tickets;
+    return tickets.filter(ticket => {
         if (!ticket.createdAt) return false;
         // @ts-ignore
         const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
@@ -150,7 +115,7 @@ export default function AdminReports() {
 
   const handleDeleteAllPending = async () => {
     setIsDeleting(true);
-    const pendingTickets = allTickets.filter(t => t.status === 'Pending');
+    const pendingTickets = (allTickets || []).filter(t => t.status === 'Pending');
     
     if (pendingTickets.length === 0) {
         toast({ title: 'No pending tickets to delete.' });
@@ -177,7 +142,7 @@ export default function AdminReports() {
   };
 
 
-  if (loading || userLoading) {
+  if (loading) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -377,5 +342,3 @@ export default function AdminReports() {
     </>
   );
 }
-
-    

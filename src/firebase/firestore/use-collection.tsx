@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -78,7 +79,15 @@ export function useCollection<T = any>(
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = [];
         for (const doc of snapshot.docs) {
-          results.push({ ...(doc.data() as T), id: doc.id });
+          const docData = doc.data() as T;
+
+          // For collectionGroup queries, parse userId from path
+          const pathSegments = doc.ref.path.split('/');
+          if (pathSegments.length > 1 && pathSegments[0] === 'users' && pathSegments[2] === 'issues') {
+              (docData as any).userId = pathSegments[1];
+          }
+
+          results.push({ ...docData, id: doc.id });
         }
         setData(results);
         setError(null);
