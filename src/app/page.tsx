@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -6,12 +5,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { isAdmin } from '@/lib/admins';
+
+type UserProfile = {
+  role: string;
+};
 
 
 export default function LoginPage() {
@@ -23,12 +28,23 @@ export default function LoginPage() {
   const { user, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
+    if (loading || profileLoading) {
+      return; // Wait until user and profile are loaded
     }
-  }, [user, router]);
+    if (user) {
+      if (isAdmin(user.email) || userProfile?.role === 'it-support') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [user, loading, userProfile, profileLoading, router]);
 
   const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
