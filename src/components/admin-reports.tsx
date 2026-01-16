@@ -5,9 +5,9 @@ import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
-import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
-import { collectionGroup, query } from 'firebase/firestore';
+import { Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase, type WithId, useUser } from '@/firebase';
+import { collectionGroup, query, collection, getDocs, where, doc, deleteDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -19,6 +19,10 @@ import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { Ticket } from '@/lib/data';
+import { isAdmin } from '@/lib/admins';
+import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 const COLORS = {
   Pending: 'hsl(var(--chart-3))',
@@ -32,9 +36,67 @@ const COLORS = {
 export default function AdminReports() {
   const firestore = useFirestore();
   const router = useRouter();
-  const allIssuesQuery = useMemoFirebase(() => query(collectionGroup(firestore, 'issues')), [firestore]);
-  const { data: tickets, isLoading: loading } = useCollection<Ticket>(allIssuesQuery);
-  const allTickets = tickets || [];
+  const { toast } = useToast();
+  const { user, loading: userLoading } = useUser();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Determine fetching strategy based on role
+  const allIssuesQuery = useMemoFirebase(() => {
+      if (!user) return null;
+      if (isAdmin(user.email)) {
+          return query(collectionGroup(firestore, 'issues'));
+      }
+      return null; // For non-admins, we'll fetch manually
+  }, [firestore, user]);
+
+  const { data: adminTickets, isLoading: adminLoading } = useCollection<WithId<Ticket>>(allIssuesQuery);
+  const [supportTickets, setSupportTickets] = useState<WithId<Ticket>[]>([]);
+  const [isSupportLoading, setIsSupportLoading] = useState(false);
+
+
+  useEffect(() => {
+    const fetchSupportTickets = async () => {
+        if (user && !isAdmin(user.email)) {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDoc = await getDocs(query(collection(firestore, 'users'), where('__name__', '==', user.uid)));
+            const currentUserRole = userDoc.docs[0]?.data().role;
+
+            if (currentUserRole === 'it-support') {
+                setIsSupportLoading(true);
+                try {
+                    const usersSnapshot = await getDocs(collection(firestore, 'users'));
+                    const allTicketsPromises = usersSnapshot.docs.map(userDoc => {
+                        const userIssuesCol = collection(firestore, 'users', userDoc.id, 'issues');
+                        return getDocs(userIssuesCol).then(issuesSnapshot => 
+                            issuesSnapshot.docs.map(issueDoc => ({...issueDoc.data(), id: issueDoc.id, userId: userDoc.id } as WithId<Ticket>))
+                        );
+                    });
+                    const ticketsPerUser = await Promise.all(allTicketsPromises);
+                    setSupportTickets(ticketsPerUser.flat());
+                } catch (error) {
+                    console.error("Error fetching tickets for IT support:", error);
+                } finally {
+                    setIsSupportLoading(false);
+                }
+            }
+        }
+    };
+
+    if (!userLoading) {
+      fetchSupportTickets();
+    }
+  }, [user, userLoading, firestore]);
+
+  const allTickets = useMemo(() => {
+    if (user && isAdmin(user.email)) {
+        return adminTickets || [];
+    }
+    return supportTickets;
+  }, [user, adminTickets, supportTickets]);
+
+  const loading = adminLoading || isSupportLoading;
+
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -45,7 +107,8 @@ export default function AdminReports() {
     if (!date?.from) return allTickets;
     return allTickets.filter(ticket => {
         if (!ticket.createdAt) return false;
-        const ticketDate = ticket.createdAt.toDate();
+        // @ts-ignore
+        const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
         // If there's no 'to' date, just check if it's after the 'from' date.
         if (!date.to) return ticketDate >= date.from;
         // Include the 'to' date in the range.
@@ -85,8 +148,36 @@ export default function AdminReports() {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 
+  const handleDeleteAllPending = async () => {
+    setIsDeleting(true);
+    const pendingTickets = allTickets.filter(t => t.status === 'Pending');
+    
+    if (pendingTickets.length === 0) {
+        toast({ title: 'No pending tickets to delete.' });
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+        return;
+    }
 
-  if (loading) {
+    const deletePromises = pendingTickets.map(ticket => {
+        const ticketRef = doc(firestore, 'users', ticket.userId, 'issues', ticket.id);
+        return deleteDoc(ticketRef);
+    });
+
+    try {
+        await Promise.all(deletePromises);
+        toast({ title: 'Success', description: `${pendingTickets.length} pending tickets deleted.` });
+    } catch (error: any) {
+        console.error("Failed to delete pending tickets:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete pending tickets.' });
+    } finally {
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+    }
+  };
+
+
+  if (loading || userLoading) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -103,42 +194,48 @@ export default function AdminReports() {
               <CardTitle>Ticket Analytics</CardTitle>
               <CardDescription>An overview of all support tickets in the system.</CardDescription>
             </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date"
-                  variant={"outline"}
-                  className={cn(
-                    "w-[300px] justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date?.from ? (
-                    date.to ? (
-                      <>
-                        {format(date.from, "LLL dd, y")} -{" "}
-                        {format(date.to, "LLL dd, y")}
-                      </>
-                    ) : (
-                      format(date.from, "LLL dd, y")
-                    )
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
+             <div className="flex items-center gap-2">
+                <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear Pending
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
+                <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                        "w-full sm:w-[300px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                    )}
+                    >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date?.from ? (
+                        date.to ? (
+                        <>
+                            {format(date.from, "LLL dd, y")} -{" "}
+                            {format(date.to, "LLL dd, y")}
+                        </>
+                        ) : (
+                        format(date.from, "LLL dd, y")
+                        )
+                    ) : (
+                        <span>Pick a date</span>
+                    )}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={date?.from}
+                    selected={date}
+                    onSelect={setDate}
+                    numberOfMonths={2}
+                    />
+                </PopoverContent>
+                </Popover>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -246,7 +343,7 @@ export default function AdminReports() {
                         <TableCell>
                             {ticket.priority}
                         </TableCell>
-                        <TableCell>{ticket.createdAt ? ticket.createdAt.toDate().toLocaleDateString() : 'N/A'}</TableCell>
+                        <TableCell>{ticket.createdAt ? (ticket.createdAt.toDate ? ticket.createdAt.toDate().toLocaleDateString() : new Date(ticket.createdAt).toLocaleDateString()) : 'N/A'}</TableCell>
                       </TableRow>
                     ))) : (
                     <TableRow>
@@ -259,6 +356,26 @@ export default function AdminReports() {
             </Table>
         </CardContent>
       </Card>
+      
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete all tickets with the status "Pending".
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteAllPending} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Delete All Pending
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   );
 }
+
+    
