@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc } from '@/firebase';
+import { collection, addDoc, serverTimestamp, query, orderBy, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Send, Phone, Mic } from 'lucide-react';
+import { Loader2, Send, Mic } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +22,11 @@ interface TicketChatProps {
     userId: string;
 }
 
+type UserProfile = {
+    displayName: string;
+    phoneNumber?: string;
+}
+
 export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -35,6 +39,12 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const audioChunksRef = useRef<Blob[]>([]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const userProfileRef = useMemoFirebase(
+        () => (userId ? doc(firestore, 'users', userId) : null),
+        [firestore, userId]
+    );
+    const { data: ticketOwnerProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
     const messagesQuery = useMemoFirebase(
         () => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')),
@@ -79,39 +89,6 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 path: messagesCollection.path,
                 operation: 'create',
                 requestResourceData: messageData
-            });
-            errorEmitter.emit('permission-error', contextualError);
-        });
-    };
-
-    const handleStartCall = () => {
-        if (!user) return;
-
-        const roomName = `IssueTrackrCall-${ticketId.replace(/[^a-zA-Z0-9]/g, '')}`;
-        const callLink = `https://meet.jit.si/${roomName}`;
-
-        const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
-        const callRequestData = {
-            userId: user.uid,
-            displayName: user.displayName || 'User',
-            type: 'call_request' as const,
-            link: callLink,
-            createdAt: serverTimestamp(),
-        };
-        
-        addDoc(messagesCollection, callRequestData)
-          .catch((serverError) => {
-            console.error("Error sending call request:", serverError);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to start call.',
-            });
-
-            const contextualError = new FirestorePermissionError({
-                path: messagesCollection.path,
-                operation: 'create',
-                requestResourceData: callRequestData
             });
             errorEmitter.emit('permission-error', contextualError);
         });
@@ -203,21 +180,19 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle>Conversation</CardTitle>
-                        <CardDescription>Discuss the issue with the support team.</CardDescription>
+                        <CardDescription>
+                             {profileLoading ? (
+                                'Loading user details...'
+                            ) : ticketOwnerProfile ? (
+                                <>
+                                    {ticketOwnerProfile.displayName}
+                                    {ticketOwnerProfile.phoneNumber && ` - ${ticketOwnerProfile.phoneNumber}`}
+                                </>
+                            ) : (
+                                'Discuss the issue with the support team.'
+                            )}
+                        </CardDescription>
                     </div>
-                     <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" onClick={handleStartCall} disabled={!user}>
-                                    <Phone className="h-5 w-5" />
-                                    <span className="sr-only">Start a Call</span>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Start a Call</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
                 </div>
             </CardHeader>
             <CardContent>
@@ -231,25 +206,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                     {messages?.map((msg) => {
                         const isSender = msg.userId === user?.uid;
                         if (msg.type === 'call_request') {
-                            const callMessage = isSender ? 'You started a call' : `${msg.displayName} started a call`;
-                            return (
-                                <div key={msg.id} className="flex justify-center items-center my-4">
-                                    <div className="text-xs text-muted-foreground bg-background px-3 py-1.5 rounded-full text-center shadow-sm">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Phone className="h-3 w-3" />
-                                            <span>{callMessage}</span>
-                                            <span className="text-muted-foreground/80">
-                                                {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </div>
-                                        {msg.link && (
-                                            <a href={msg.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm font-medium">
-                                                Join Now
-                                            </a>
-                                        )}
-                                    </div>
-                                </div>
-                            )
+                           return null;
                         }
 
                         return (
