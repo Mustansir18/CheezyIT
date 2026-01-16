@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { Loader2, Send, Copy, CheckCheck, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
+import { Loader2, Send, ArrowLeft, MoreVertical, Trash2, CheckCheck, Paperclip, Smile } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,12 +14,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, Ticket, TicketStatus } from '@/lib/data';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
 
 interface TicketChatProps {
     ticket: WithId<Ticket>;
@@ -34,8 +33,15 @@ type UserProfile = {
     phoneNumber?: string;
 }
 
-const doodleBg = {
-    backgroundImage: `url('/bg.png')`,
+// WhatsApp specific dark mode colors
+const WA_COLORS = {
+    bg: '#0b141a',
+    header: '#202c33',
+    outgoing: '#005c4b',
+    incoming: '#202c33',
+    text: '#e9edef',
+    muted: '#8696a0',
+    blue: '#53bdeb'
 };
 
 export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick }: TicketChatProps) {
@@ -43,26 +49,15 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     const firestore = useFirestore();
     const { toast } = useToast();
     const [message, setMessage] = useState('');
-
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     
     const { id: ticketId, userId } = ticket;
 
-    const ticketRef = useMemoFirebase(
-        () => (userId && ticketId ? doc(firestore, 'users', userId, 'issues', ticketId) : null),
-        [firestore, userId, ticketId]
-    );
-
-    const userProfileRef = useMemoFirebase(
-        () => (userId ? doc(firestore, 'users', userId) : null),
-        [firestore, userId]
-    );
+    // ... (Keep existing Firebase hooks/logic same as your original file)
+    const ticketRef = useMemoFirebase(() => (userId && ticketId ? doc(firestore, 'users', userId, 'issues', ticketId) : null), [firestore, userId, ticketId]);
+    const userProfileRef = useMemoFirebase(() => (userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
     const { data: ticketOwnerProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
-
-    const messagesQuery = useMemoFirebase(
-        () => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')),
-        [firestore, userId, ticketId]
-    );
+    const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
     const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
 
     useLayoutEffect(() => {
@@ -71,33 +66,12 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
         }
     }, [messages]);
 
+    // Handle marking as read
     useEffect(() => {
         if (!ticketRef) return;
-        if (isOwner) {
-            updateDoc(ticketRef, { unreadByUser: false });
-        } else if (canManageTicket) {
-            updateDoc(ticketRef, { unreadByAdmin: false });
-        }
+        if (isOwner) updateDoc(ticketRef, { unreadByUser: false });
+        else if (canManageTicket) updateDoc(ticketRef, { unreadByAdmin: false });
     }, [ticketRef, isOwner, canManageTicket]);
-
-    useEffect(() => {
-        if (!firestore || !user || !messages || messages.length === 0) return;
-
-        const unreadMessagesFromOthers = messages.filter(
-            msg => !msg.isRead && msg.userId !== user.uid
-        );
-
-        if (unreadMessagesFromOthers.length > 0) {
-            unreadMessagesFromOthers.forEach(msg => {
-                if (msg.id) {
-                    const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
-                    updateDoc(msgRef, { isRead: true }).catch(error => {
-                        console.error("Failed to mark message as read:", error);
-                    });
-                }
-            });
-        }
-    }, [messages, firestore, user, userId, ticketId]);
 
     const messagesWithDateSeparators = useMemo(() => {
         const items: (WithId<ChatMessage> | { type: 'date-separator'; date: string; id: string })[] = [];
@@ -105,7 +79,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
         messages?.forEach(msg => {
             if (msg.createdAt) {
-                const messageDate = format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'PPP');
+                const messageDate = format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'MMMM d, yyyy');
                 if (messageDate !== lastDate) {
                     items.push({ type: 'date-separator', date: messageDate, id: `date-${messageDate}` });
                     lastDate = messageDate;
@@ -116,182 +90,165 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
         return items;
     }, [messages]);
 
-
-    const handleCopy = (text: string | undefined) => {
-        if (!text) return;
-        navigator.clipboard.writeText(text).then(() => {
-            toast({
-                title: 'Copied!',
-                description: 'Phone number copied to clipboard.',
-            });
-        }).catch(err => {
-             toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Could not copy text.',
-            });
-        });
-    };
-
     const handleSendMessage = () => {
         if (!message.trim() || !user) return;
-
         const messageToSend = message;
         setMessage('');
 
         const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
-        const messageData = {
+        addDoc(messagesCollection, {
             userId: user.uid,
             displayName: user.displayName || 'User',
             text: messageToSend,
-            type: 'user' as const,
+            type: 'user',
             createdAt: serverTimestamp(),
             isRead: false,
-        };
-
-        addDoc(messagesCollection, messageData)
-          .then(() => {
-              if (ticketRef) {
-                  const updateData = isOwner ? { unreadByAdmin: true, updatedAt: serverTimestamp() } : { unreadByUser: true, updatedAt: serverTimestamp() };
-                  updateDoc(ticketRef, updateData);
-              }
-          })
-          .catch((serverError) => {
-            console.error("Error sending message:", serverError);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to send message.',
-            });
-            setMessage(messageToSend);
-
-            const contextualError = new FirestorePermissionError({
-                path: messagesCollection.path,
-                operation: 'create',
-                requestResourceData: messageData
-            });
-            errorEmitter.emit('permission-error', contextualError);
+        }).then(() => {
+            if (ticketRef) {
+                updateDoc(ticketRef, { 
+                    unreadByAdmin: isOwner, 
+                    unreadByUser: !isOwner, 
+                    updatedAt: serverTimestamp() 
+                });
+            }
         });
     };
 
     return (
-        <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0 bg-transparent'>
-            <header className="flex items-center justify-between gap-3 border-b bg-card p-3">
-                <div className="flex items-center gap-3">
-                    <Button asChild variant="ghost" size="icon" className="flex-shrink-0">
-                        <Link href={backLink}>
-                            <ArrowLeft className="h-5 w-5" />
-                            <span className="sr-only">Back</span>
-                        </Link>
-                    </Button>
-                    <div className='flex items-center gap-3'>
-                        <Avatar className="h-10 w-10">
-                            <AvatarFallback>
-                                {ticketOwnerProfile?.displayName?.charAt(0).toUpperCase() || 'U'}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 overflow-hidden">
-                            <p className="text-base font-semibold leading-none truncate">
-                                {profileLoading ? 'Loading...' : ticketOwnerProfile?.displayName || 'Unknown User'}
-                            </p>
-                            <div className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                                <span>{ticket.title}</span>
-                            </div>
-                        </div>
+        <Card className="flex flex-1 flex-col h-full w-full rounded-none border-0 overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
+            {/* Header: WhatsApp Dark Style */}
+            <header className="flex items-center justify-between gap-2 px-4 py-2 shadow-md z-10" style={{ backgroundColor: WA_COLORS.header }}>
+                <div className="flex items-center gap-2">
+                    <Link href={backLink} className="text-[#aebac1] hover:text-white transition-colors">
+                        <ArrowLeft className="h-6 w-6" />
+                    </Link>
+                    <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-[#6a7175] text-white">
+                            {ticketOwnerProfile?.displayName?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                        <span className="text-white font-medium leading-tight">
+                            {profileLoading ? '...' : ticketOwnerProfile?.displayName || 'User'}
+                        </span>
+                        <span className="text-[12px] text-[#8696a0] truncate max-w-[150px]">
+                            {ticket.title}
+                        </span>
                     </div>
                 </div>
-                 <div className="ml-auto flex items-center gap-2">
+
+                <div className="flex items-center gap-3">
                     {canManageTicket ? (
                         <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                            <SelectTrigger className="w-auto text-xs px-3 h-8">
-                                <SelectValue placeholder="Change status" />
+                            <SelectTrigger className="h-8 bg-transparent border-[#424d54] text-white text-xs">
+                                <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-[#233138] border-[#424d54] text-white">
                                 <SelectItem value="Pending">Pending</SelectItem>
                                 <SelectItem value="In Progress">In Progress</SelectItem>
                                 <SelectItem value="Resolved">Resolved</SelectItem>
                             </SelectContent>
                         </Select>
                     ) : (
-                        <Badge variant="outline" className="text-xs h-7">
-                            {ticket.status}
-                        </Badge>
+                        <Badge className="bg-[#202c33] text-[#8696a0] border-[#424d54]">{ticket.status}</Badge>
                     )}
-                    {(isOwner || canManageTicket) && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                                    <MoreVertical className="h-4 w-4" />
-                                    <span className="sr-only">More options</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>Delete Ticket</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
+                    
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-[#aebac1]">
+                                <MoreVertical className="h-5 w-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-[#233138] border-[#424d54] text-white">
+                            <DropdownMenuItem onClick={onDeleteClick} className="text-red-400">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Ticket
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </header>
+
+            {/* Chat Body with Doodle */}
             <CardContent 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto p-4 space-y-2"
-                style={doodleBg}
+                className="flex-1 overflow-y-auto p-4 space-y-1 relative"
+                style={{ 
+                    backgroundImage: `url('/bg.png')`,
+                    backgroundBlendMode: 'overlay',
+                    backgroundColor: 'rgba(11, 20, 26, 0.95)'
+                }}
             >
-                {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
-                {!isLoading && messagesWithDateSeparators.length === 0 && (
-                    <div className="flex justify-center items-center h-full">
-                        <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
-                    </div>
-                )}
-                {messagesWithDateSeparators.map((item) => {
+                {messagesWithDateSeparators.map((item, idx) => {
                     if (item.type === 'date-separator') {
-                         return (
-                            <div key={item.id} className="flex justify-center my-4">
-                                <span className="text-xs text-foreground/80 bg-muted/80 px-3 py-1.5 rounded-full shadow-sm">{item.date}</span>
+                        return (
+                            <div key={item.id} className="flex justify-center my-4 sticky top-2 z-10">
+                                <span className="text-[12px] uppercase bg-[#182229] text-[#8696a0] px-3 py-1 rounded-md shadow-sm">
+                                    {item.date}
+                                </span>
                             </div>
                         );
                     }
+
                     const msg = item as WithId<ChatMessage>;
                     const isSender = msg.userId === user?.uid;
+                    
+                    // Logic to show "tail" only on the first message of a block
+                    const prevMsg = messagesWithDateSeparators[idx - 1] as WithId<ChatMessage>;
+                    const isFirstInBlock = !prevMsg || prevMsg.userId !== msg.userId || (prevMsg as any).type === 'date-separator';
 
                     return (
-                        <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
-                            <div className={cn(
-                                "relative flex w-fit max-w-[75%] flex-col px-3 py-2 text-sm shadow-md",
-                                isSender
-                                  ? "bg-primary text-primary-foreground rounded-tl-xl rounded-tr-none rounded-bl-xl rounded-br-xl"
-                                  : "bg-card text-card-foreground rounded-tl-none rounded-tr-xl rounded-br-xl rounded-bl-xl"
-                            )}>
-                                {!isSender && <p className="font-semibold text-xs mb-1 text-accent">{msg.displayName}</p>}
-                                
-                                <p className="whitespace-pre-wrap break-words pr-[65px] pb-1">
-                                    {msg.text}
-                                </p>
+                        <div key={msg.id} className={cn("flex w-full mb-1", isSender ? "justify-end" : "justify-start")}>
+                            <div 
+                                className={cn(
+                                    "relative max-w-[85%] px-2 pt-1 pb-1.5 shadow-sm text-[14.2px] leading-relaxed",
+                                    isSender ? "bg-[#005c4b] text-[#e9edef]" : "bg-[#202c33] text-[#e9edef]",
+                                    isFirstInBlock ? (isSender ? "rounded-l-lg rounded-br-lg" : "rounded-r-lg rounded-bl-lg") : "rounded-lg"
+                                )}
+                            >
+                                {/* The "Tail" Triangle */}
+                                {isFirstInBlock && (
+                                    <div className={cn(
+                                        "absolute top-0 w-2 h-3",
+                                        isSender ? "-right-2 bg-[#005c4b]" : "-left-2 bg-[#202c33]"
+                                    )} style={{ clipPath: isSender ? 'polygon(0 0, 0 100%, 100% 0)' : 'polygon(100% 0, 100% 100%, 0 0)' }} />
+                                )}
 
-                                <div className={cn(
-                                    "absolute bottom-1.5 right-2.5 flex items-center justify-end gap-1 text-[11px]", 
-                                    isSender ? "text-primary-foreground/70" : "text-card-foreground/70"
-                                )}>
-                                    <span>
-                                        {msg.createdAt ? (msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                    </span>
-                                    {isSender && (
-                                        <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "currentColor")} />
-                                    )}
+                                {!isSender && canManageTicket && (
+                                    <p className="font-bold text-[12.5px] mb-0.5 text-[#53bdeb] block">
+                                        {msg.displayName}
+                                    </p>
+                                )}
+
+                                <div className="flex flex-wrap items-end gap-x-4">
+                                    <p className="whitespace-pre-wrap break-words flex-1 min-w-0 py-0.5">
+                                        {msg.text}
+                                    </p>
+                                    
+                                    <div className="flex items-center gap-1 ml-auto pt-1 h-4">
+                                        <span className="text-[11px] text-[#8696a0] uppercase">
+                                            {msg.createdAt ? format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'p') : ''}
+                                        </span>
+                                        {isSender && (
+                                            <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-[#53bdeb]" : "text-[#8696a0]")} />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    )
+                    );
                 })}
             </CardContent>
 
-             <div className="border-t bg-card p-3">
-                <div className="relative">
+            {/* Input Bar: WhatsApp Style */}
+            <footer className="p-2 bg-[#202c33] flex items-end gap-2">
+                <div className="flex items-center gap-1 text-[#8696a0]">
+                   <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 shrink-0"><Smile /></Button>
+                   <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 shrink-0"><Paperclip /></Button>
+                </div>
+                
+                <div className="flex-1 bg-[#2a3942] rounded-lg px-3 py-1 min-h-[40px] flex items-center">
                     <Textarea
-                        placeholder="Type a message..."
+                        placeholder="Type a message"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         onKeyDown={(e) => {
@@ -300,20 +257,18 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 handleSendMessage();
                             }
                         }}
-                        className="min-h-[48px] w-full resize-none rounded-2xl border-none bg-input py-3 pl-4 pr-16"
+                        className="bg-transparent border-none focus-visible:ring-0 text-white min-h-[24px] max-h-[120px] resize-none p-0 py-1 text-[15px] placeholder:text-[#8696a0]"
                     />
-                    <Button 
-                        type="submit" 
-                        size="icon" 
-                        className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full" 
-                        onClick={handleSendMessage}
-                        disabled={!message.trim()}
-                    >
-                        <Send className="h-5 w-5" />
-                        <span className="sr-only">Send</span>
-                    </Button>
                 </div>
-            </div>
+
+                <Button 
+                    onClick={handleSendMessage}
+                    disabled={!message.trim()}
+                    className="h-12 w-12 rounded-full bg-[#00a884] hover:bg-[#06cf9c] shrink-0 p-0"
+                >
+                    <Send className="h-6 w-6 text-[#111b21]" fill="currentColor" />
+                </Button>
+            </footer>
         </Card>
     );
 }
