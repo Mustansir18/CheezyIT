@@ -8,11 +8,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useAuth, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 
 const profileSchema = z.object({
   displayName: z.string().min(1, { message: 'Display name cannot be empty.' }),
@@ -26,7 +27,17 @@ const profileSchema = z.object({
 
 type FormData = z.infer<typeof profileSchema>;
 
-export default function UpdateProfileForm({ currentDisplayName, currentPhoneNumber }: { currentDisplayName?: string | null, currentPhoneNumber?: string }) {
+export default function UpdateProfileForm({ 
+    currentDisplayName, 
+    currentPhoneNumber,
+    backLink,
+    backLinkText
+}: { 
+    currentDisplayName?: string | null, 
+    currentPhoneNumber?: string,
+    backLink: string,
+    backLinkText: string
+}) {
   const { toast } = useToast();
   const { user } = useUser();
   const auth = useAuth();
@@ -120,10 +131,18 @@ export default function UpdateProfileForm({ currentDisplayName, currentPhoneNumb
           )}
         />
         
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Update Profile
-        </Button>
+        <div className="flex items-center gap-4 pt-2">
+            <Button asChild variant="outline">
+                <Link href={backLink}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    {backLinkText}
+                </Link>
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Profile
+            </Button>
+        </div>
       </form>
     </Form>
   );

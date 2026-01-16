@@ -3,11 +3,9 @@
 import UpdateProfileForm from '@/components/update-profile-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 
 type UserProfile = {
@@ -37,13 +35,7 @@ export default function AdminProfilePage() {
         <div className="flex justify-center">
             <Card className="w-full max-w-2xl">
                 <CardHeader>
-                    <Button asChild variant="outline" className="w-fit">
-                        <Link href="/admin">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Admin Dashboard
-                        </Link>
-                    </Button>
-                    <div className="pt-4">
+                    <div>
                         <CardTitle>Your Profile</CardTitle>
                         <CardDescription>View and edit your personal information.</CardDescription>
                     </div>
@@ -59,7 +51,12 @@ export default function AdminProfilePage() {
                     <Separator />
 
                     <div>
-                        <UpdateProfileForm currentDisplayName={user.displayName} currentPhoneNumber={userProfile?.phoneNumber} />
+                        <UpdateProfileForm 
+                            currentDisplayName={user.displayName} 
+                            currentPhoneNumber={userProfile?.phoneNumber}
+                            backLink="/admin"
+                            backLinkText="Back to Admin Dashboard"
+                        />
                     </div>
                 </CardContent>
             </Card>
