@@ -279,7 +279,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                           {priorityIcons[ticket.priority]}
                           {ticket.priority}
                         </TableCell>
-                        <TableCell>{ticket.createdAt ? ticket.createdAt.toDate().toLocaleDateString() : 'N/A'}</TableCell>
+                        <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPp') : 'N/A'}</TableCell>
                       </TableRow>
                     ))) : (
                       <TableRow>
