@@ -3,9 +3,11 @@
 import UpdateProfileForm from '@/components/update-profile-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 
 type UserProfile = {
@@ -32,31 +34,39 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="flex justify-center">
-            <Card className="w-full max-w-2xl">
-                <CardHeader>
-                    <CardTitle>{user.displayName}</CardTitle>
-                    <CardDescription>View and edit your personal information.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                        <div className="flex flex-col space-y-1">
-                            <label className="text-sm font-medium">Display Name</label>
-                            <p className="text-sm text-muted-foreground">{user.displayName}</p>
+        <div className="space-y-4">
+            <Button asChild variant="outline">
+                <Link href="/dashboard">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Dashboard
+                </Link>
+            </Button>
+            <div className="flex justify-center">
+                <Card className="w-full max-w-2xl">
+                    <CardHeader>
+                        <CardTitle>{user.displayName}</CardTitle>
+                        <CardDescription>View and edit your personal information.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-4">
+                            <div className="flex flex-col space-y-1">
+                                <label className="text-sm font-medium">Display Name</label>
+                                <p className="text-sm text-muted-foreground">{user.displayName}</p>
+                            </div>
+                            <div className="flex flex-col space-y-1">
+                                <label className="text-sm font-medium">Email</label>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                            </div>
                         </div>
-                         <div className="flex flex-col space-y-1">
-                            <label className="text-sm font-medium">Email</label>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                        </div>
-                    </div>
-                    
-                    <Separator />
+                        
+                        <Separator />
 
-                    <div>
-                        <UpdateProfileForm currentPhoneNumber={userProfile?.phoneNumber} />
-                    </div>
-                </CardContent>
-            </Card>
+                        <div>
+                            <UpdateProfileForm currentPhoneNumber={userProfile?.phoneNumber} />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
