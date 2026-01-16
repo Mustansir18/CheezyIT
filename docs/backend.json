@@ -111,7 +111,12 @@
         },
         "text": {
           "type": "string",
-          "description": "The text content of the message. Optional if audio is present."
+          "description": "The text content of the message. Optional."
+        },
+        "type": {
+            "type": "string",
+            "description": "The type of message (e.g., standard user message or a system notification).",
+            "enum": ["user", "call_request"]
         },
         "createdAt": {
           "type": "string",
