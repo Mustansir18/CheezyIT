@@ -2,10 +2,9 @@
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
-import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc, type WithId } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Send, Mic, Copy, CheckCheck, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
+import { Loader2, Send, Copy, CheckCheck, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, Ticket, TicketStatus } from '@/lib/data';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import AudioPlayer from './audio-player';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -38,13 +36,8 @@ type UserProfile = {
 export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick }: TicketChatProps) {
     const { user } = useUser();
     const firestore = useFirestore();
-    const storage = useStorage();
     const { toast } = useToast();
     const [message, setMessage] = useState('');
-    const [isRecording, setIsRecording] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     
@@ -159,94 +152,9 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
         });
     };
 
-    const uploadAndSendAudio = (audioBlob: Blob) => {
-        if (!user || !ticketRef) return;
-        setIsUploading(true);
-
-        const storageRef = ref(storage, `tickets/${userId}/${ticketId}/${Date.now()}.webm`);
-
-        uploadBytes(storageRef, audioBlob)
-            .then(snapshot => getDownloadURL(snapshot.ref))
-            .then(downloadURL => {
-                const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
-                const messageData = {
-                    userId: user.uid,
-                    displayName: user.displayName || 'User',
-                    audioUrl: downloadURL,
-                    type: 'user' as const,
-                    createdAt: serverTimestamp(),
-                    isRead: false,
-                };
-                return addDoc(messagesCollection, messageData);
-            })
-            .then(() => {
-                const updateData = isOwner ? { unreadByAdmin: true, updatedAt: serverTimestamp() } : { unreadByUser: true, updatedAt: serverTimestamp() };
-                updateDoc(ticketRef, updateData);
-            })
-            .then(() => {
-                setIsUploading(false);
-            })
-            .catch(error => {
-                console.error("Error uploading or sending voice note:", error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Upload Failed',
-                    description: error.code === 'storage/unauthorized' 
-                        ? "You don't have permission to upload files." 
-                        : "Could not send the voice note. Please try again."
-                });
-                setIsUploading(false);
-            });
-    };
-
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-            mediaRecorderRef.current = mediaRecorder;
-            audioChunksRef.current = [];
-
-            mediaRecorder.ondataavailable = event => {
-                audioChunksRef.current.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                uploadAndSendAudio(audioBlob);
-                stream.getTracks().forEach(track => track.stop()); // Stop the mic access
-            };
-
-            mediaRecorder.start();
-            setIsRecording(true);
-        } catch (error) {
-            console.error("Error starting recording:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Recording Error',
-                description: 'Could not start recording. Please check microphone permissions.',
-            });
-        }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-        }
-    };
-
-    const toggleRecording = () => {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            startRecording();
-        }
-    };
-
-
     return (
-        <Card className='flex flex-1 flex-col min-h-0'>
-            <CardHeader>
+        <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0'>
+            <CardHeader className="flex-shrink-0">
                 <div className="flex items-center gap-2 sm:gap-4">
                      <Button asChild variant="outline" size="icon" className="h-7 w-7 flex-shrink-0">
                         <Link href={backLink}>
@@ -344,15 +252,9 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                     "relative max-w-[75%] rounded-lg px-3 py-2 mt-2",
                                     isSender ? "bg-[#005C4B] text-white" : "bg-zinc-700 text-white"
                                 )}>
-                                    {msg.audioUrl ? (
-                                        <div className="py-2">
-                                            <AudioPlayer src={msg.audioUrl} />
-                                        </div>
-                                    ) : (
-                                        <p className="whitespace-pre-wrap break-words pr-20 text-base leading-relaxed">
-                                            {msg.text}
-                                        </p>
-                                    )}
+                                    <p className="whitespace-pre-wrap break-words pr-20 text-base leading-relaxed">
+                                        {msg.text}
+                                    </p>
                                     <div className="absolute bottom-2 right-3 flex items-center gap-1 text-[11px] text-gray-400">
                                         {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         {isSender && (
@@ -377,33 +279,9 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 handleSendMessage();
                             }
                         }}
-                        className="min-h-12 resize-none rounded-lg p-3 pr-24 sm:pr-32 shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="min-h-12 resize-none rounded-lg p-3 pr-20 shadow-none focus-visible:ring-1 focus-visible:ring-primary"
                     />
                      <div className="absolute right-2 sm:right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 sm:gap-2">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={toggleRecording}
-                                        disabled={isUploading}
-                                        className="h-9 w-9 sm:h-10 sm:w-10"
-                                    >
-                                        {isUploading ? (
-                                            <Loader2 className="h-5 w-5 animate-spin" />
-                                        ) : (
-                                            <Mic className={cn("h-5 w-5", isRecording && "text-red-500 animate-pulse")} />
-                                        )}
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{isRecording ? 'Stop recording' : 'Record voice note'}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-
                        <Button type="submit" size="sm" onClick={handleSendMessage} disabled={!message.trim()}>
                             <span className="hidden sm:inline-block">Send</span>
                             <Send className="h-4 w-4 sm:ml-2" />
