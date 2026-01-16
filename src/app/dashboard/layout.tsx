@@ -8,6 +8,7 @@ import { isAdmin } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user } = useUser();
@@ -28,19 +29,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span>IT Support</span>
                 </Link>
                 <div className="ml-auto flex items-center gap-4">
-                {isAdmin(user?.email) && (
-                    <Button asChild variant="secondary">
-                    <Link href="/admin">Admin</Link>
-                    </Button>
-                )}
                 {isClient ? (
-                  <ReportIssueForm>
-                      <Button>Report an Issue</Button>
-                  </ReportIssueForm>
-                ) : (
-                  <Button disabled>Report an Issue</Button>
-                )}
-                <UserNav />
+                    <>
+                        {isAdmin(user?.email) && (
+                            <Button asChild variant="secondary">
+                            <Link href="/admin">Admin</Link>
+                            </Button>
+                        )}
+                        <ReportIssueForm>
+                            <Button>Report an Issue</Button>
+                        </ReportIssueForm>
+                        <UserNav />
+                    </>
+                    ) : (
+                        <>
+                            <Skeleton className="h-9 w-20" />
+                            <Skeleton className="h-10 w-36" />
+                            <Skeleton className="h-9 w-9 rounded-full" />
+                        </>
+                    )}
                 </div>
             </header>
             <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
