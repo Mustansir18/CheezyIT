@@ -11,7 +11,6 @@ export type Ticket = {
   issueType: string;
   customIssueType?: string;
   anydesk?: string;
-  attachments?: string[];
 };
 
 export type ChatMessage = {
@@ -19,8 +18,6 @@ export type ChatMessage = {
   userId: string;
   displayName: string;
   text?: string;
-  audioUrl?: string;
-  imageUrl?: string;
   createdAt: any; // Firestore Timestamp
 };
 

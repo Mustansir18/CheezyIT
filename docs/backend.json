@@ -51,13 +51,6 @@
           "type": "string",
           "description": "Timestamp indicating when the issue was last updated.",
           "format": "date-time"
-        },
-        "attachments": {
-          "type": "array",
-          "description": "Links to attachments related to the issue.",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": [
@@ -119,14 +112,6 @@
         "text": {
           "type": "string",
           "description": "The text content of the message. Optional if audio is present."
-        },
-        "audioUrl": {
-          "type": "string",
-          "description": "The URL to the audio file for a voice note. Optional if text is present."
-        },
-        "imageUrl": {
-          "type": "string",
-          "description": "The URL to an image attachment. Optional."
         },
         "createdAt": {
           "type": "string",
