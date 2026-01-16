@@ -31,13 +31,13 @@
   }
  
   .dark {
-    --background: 206 33% 8%; /* #0a131a */
+    --background: 208 26% 11%; /* #111b21 */
     --foreground: 200 18% 93%; /* #e9edef */
     --card: 202 25% 16%; /* #202c33 */
     --card-foreground: 200 18% 93%;
     --popover: 202 25% 16%;
     --popover-foreground: 200 18% 93%;
-    --primary: 169 100% 18%; /* #005c4b */
+    --primary: 175 100% 18%; /* #005E54 */
     --primary-foreground: 200 18% 93%;
     --secondary: 215 28% 15%;
     --secondary-foreground: 0 0% 98%;

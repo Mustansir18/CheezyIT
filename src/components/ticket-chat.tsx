@@ -233,8 +233,8 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             </header>
             <CardContent 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto p-4 space-y-2"
-                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.05\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 40L40 0H20L0 20M40 40V20L20 40\'%3E%3C/path%3E%3C/g%3E%3C/svg%3E")' }}
+                className="flex-1 overflow-y-auto p-4 space-y-2 bg-background/90"
+                style={{ backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABZ0RVh0Q3JlYXRpb24gVGltZQAxMC8xMi8xMy+BopcAAAAcdEVYdFNvZnR3YXJlAEFkb2JlIEZpcmV3b3JrcyBDUzVxteM2AAACKklEQVR4nO3VMQ0AIAwDwf7/08sESIfZDgAATXLS1wAAEIxCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAAEIhCoAAAAQpFgAD+CwC2eL246A3uYgAAAABJRU5ErkJggg==")', backgroundBlendMode: 'overlay', backgroundColor: 'var(--background)' }}
             >
                 {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                 {!isLoading && messagesWithDateSeparators.length === 0 && (
@@ -246,7 +246,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     if (item.type === 'date-separator') {
                          return (
                             <div key={item.id} className="flex justify-center my-4">
-                                <span className="text-xs text-muted-foreground bg-black/30 px-3 py-1.5 rounded-full">{item.date}</span>
+                                <span className="text-xs text-foreground/80 bg-muted px-3 py-1.5 rounded-full shadow-sm">{item.date}</span>
                             </div>
                         );
                     }
@@ -255,15 +255,15 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
                     return (
                         <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
-                            <div className={cn("flex w-fit max-w-[75%] flex-col rounded-xl px-3 py-2 text-sm shadow-sm", isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
+                            <div className={cn("flex w-fit max-w-[75%] flex-col rounded-lg px-3 py-2 text-sm shadow", isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground")}>
                                 {!isSender && <p className="font-semibold text-xs mb-1 text-accent">{msg.displayName}</p>}
                                 <p className="whitespace-pre-wrap break-words">
                                     {msg.text}
                                 </p>
-                                <div className={cn("flex items-center justify-end gap-1 text-[10px] mt-1", isSender ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                <div className={cn("flex items-center justify-end gap-1 text-[10px] mt-1", isSender ? "text-primary-foreground/80" : "text-card-foreground/60")}>
                                     {msg.createdAt ? (msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                     {isSender && (
-                                        <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "text-gray-400")} />
+                                        <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "text-card-foreground/60")} />
                                     )}
                                 </div>
                             </div>
