@@ -33,7 +33,8 @@
         },
         "anydesk": {
             "type": "string",
-            "description": "AnyDesk address for remote support."
+            "description": "AnyDesk address for remote support.",
+            "pattern": "^\\d*$"
         },
         "status": {
           "type": "string",

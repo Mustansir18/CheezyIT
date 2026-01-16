@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect }from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,7 +29,7 @@ const ticketSchema = z.object({
   }),
   customIssueType: z.string().optional(),
   description: z.string().min(1, 'Description is required.'),
-  anydesk: z.string().optional(),
+  anydesk: z.string().regex(/^\d*$/, { message: 'AnyDesk ID must be a number.' }).optional(),
   photo: z.string().optional(),
 }).refine(data => {
     if (data.issueType === 'Other') {
@@ -302,7 +301,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 <FormItem>
                   <FormLabel>AnyDesk Address (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 456 789" {...field} />
+                    <Input inputMode="numeric" pattern="[0-9]*" placeholder="123456789" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
