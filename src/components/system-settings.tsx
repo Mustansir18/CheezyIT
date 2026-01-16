@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 
@@ -32,9 +32,10 @@ function SettingsListManager({ title, description, docPath }: SettingsListManage
     if (!newItem.trim()) return;
     setIsSubmitting(true);
     try {
-      await updateDoc(settingsRef, {
+      // Use setDoc with merge: true to create the document if it doesn't exist
+      await setDoc(settingsRef, {
         list: arrayUnion(newItem.trim()),
-      });
+      }, { merge: true });
       toast({ title: 'Success', description: `${newItem.trim()} added.` });
       setNewItem('');
     } catch (error) {
@@ -132,4 +133,3 @@ export default function SystemSettings() {
     </div>
   );
 }
-
