@@ -1,22 +1,17 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId } from '@/firebase';
 import { doc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
-import { Loader2, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import TicketChat from '@/components/ticket-chat';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { isAdmin } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 type UserProfile = {
@@ -63,7 +58,7 @@ export default function TicketDetailPage() {
         () => (effectiveUserId && ticketId ? doc(firestore, 'users', effectiveUserId, 'issues', ticketId) : null),
         [firestore, effectiveUserId, ticketId]
     );
-    const { data: ticket, isLoading: ticketLoading } = useDoc<Ticket>(ticketRef);
+    const { data: ticket, isLoading: ticketLoading } = useDoc<WithId<Ticket>>(ticketRef);
 
 
     const isOwner = useMemo(() => {
@@ -132,63 +127,14 @@ export default function TicketDetailPage() {
     return (
         <>
         <div className="grid gap-6">
-            <div className="flex items-center gap-4">
-                 <Button asChild variant="outline" size="icon" className="h-7 w-7">
-                    <Link href={backLink}>
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">Back</span>
-                    </Link>
-                </Button>
-                <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                    Ticket Details
-                </h1>
-                <div className="ml-auto flex items-center gap-2">
-                    {canManageTicket ? (
-                        <Select onValueChange={(value) => handleStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                            <SelectTrigger className="w-[160px]">
-                                <SelectValue placeholder="Change status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="In Progress">In Progress</SelectItem>
-                                <SelectItem value="Resolved">Resolved</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    ) : (
-                        <Badge variant="outline">
-                            {ticket.status}
-                        </Badge>
-                    )}
-                     {isOwner && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="h-4 w-4" />
-                                    <span className="sr-only">More options</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>Delete Ticket</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                </div>
-            </div>
-            <Card>
-                <CardHeader>
-                    <CardTitle>{ticket.title}</CardTitle>
-                    <CardDescription>
-                        Priority: <Badge variant={ticket.priority === 'High' ? 'destructive' : 'secondary'}>{ticket.priority}</Badge> | Opened on {ticket.createdAt?.toDate().toLocaleDateString()}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="mb-4">{ticket.description}</p>
-                </CardContent>
-            </Card>
-            <TicketChat ticketId={ticket.id} userId={effectiveUserId} canManageTicket={canManageTicket} isOwner={isOwner} />
+            <TicketChat 
+                ticket={ticket} 
+                canManageTicket={canManageTicket} 
+                isOwner={isOwner}
+                backLink={backLink}
+                onStatusChange={handleStatusChange}
+                onDeleteClick={() => setIsDeleteDialogOpen(true)}
+            />
         </div>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

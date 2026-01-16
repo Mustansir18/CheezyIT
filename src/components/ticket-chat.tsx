@@ -1,27 +1,33 @@
-
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc } from '@/firebase';
+import Link from 'next/link';
+import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Send, Mic, Copy, CheckCheck } from 'lucide-react';
+import { Loader2, Send, Mic, Copy, CheckCheck, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { ChatMessage } from '@/lib/data';
+import type { ChatMessage, Ticket, TicketStatus } from '@/lib/data';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import AudioPlayer from './audio-player';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 
 
 interface TicketChatProps {
-    ticketId: string;
-    userId: string; // This is the ticket owner's ID
+    ticket: WithId<Ticket>;
     canManageTicket: boolean;
     isOwner: boolean;
+    backLink: string;
+    onStatusChange: (newStatus: TicketStatus) => void;
+    onDeleteClick: () => void;
 }
 
 type UserProfile = {
@@ -29,7 +35,7 @@ type UserProfile = {
     phoneNumber?: string;
 }
 
-export default function TicketChat({ ticketId, userId, canManageTicket, isOwner }: TicketChatProps) {
+export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick }: TicketChatProps) {
     const { user } = useUser();
     const firestore = useFirestore();
     const storage = useStorage();
@@ -41,6 +47,8 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
     const audioChunksRef = useRef<Blob[]>([]);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
+    
+    const { id: ticketId, userId } = ticket;
 
     const ticketRef = useMemoFirebase(
         () => (userId && ticketId ? doc(firestore, 'users', userId, 'issues', ticketId) : null),
@@ -65,7 +73,6 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
         }
     }, [messages]);
 
-    // Effect to mark messages as read when the chat is opened
     useEffect(() => {
         if (!ticketRef) return;
         if (isOwner) {
@@ -75,7 +82,6 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
         }
     }, [ticketRef, isOwner, canManageTicket]);
 
-    // Effect to mark messages from OTHERS as read when they become visible
     useEffect(() => {
         if (!firestore || !user || !messages || messages.length === 0) return;
 
@@ -87,7 +93,6 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
             unreadMessagesFromOthers.forEach(msg => {
                 if (msg.id) {
                     const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
-                    // Use a non-blocking update, no need to await
                     updateDoc(msgRef, { isRead: true }).catch(error => {
                         console.error("Failed to mark message as read:", error);
                     });
@@ -242,10 +247,16 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
     return (
         <Card className='flex flex-col'>
             <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle>Conversation</CardTitle>
-                         <CardDescription className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-4">
+                     <Button asChild variant="outline" size="icon" className="h-7 w-7">
+                        <Link href={backLink}>
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="sr-only">Back</span>
+                        </Link>
+                    </Button>
+                    <div className="flex-1">
+                        <CardTitle>{ticket.title}</CardTitle>
+                        <CardDescription className="flex items-center gap-2 mt-1">
                             {profileLoading ? (
                                 'Loading user details...'
                             ) : ticketOwnerProfile ? (
@@ -276,12 +287,54 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                     )}
                                 </>
                             ) : (
-                                'Discuss the issue with the support team.'
+                                'Details about the ticket.'
                             )}
                         </CardDescription>
                     </div>
+                     <div className="ml-auto flex items-center gap-2">
+                        {canManageTicket ? (
+                            <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
+                                <SelectTrigger className="w-[160px]">
+                                    <SelectValue placeholder="Change status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Pending">Pending</SelectItem>
+                                    <SelectItem value="In Progress">In Progress</SelectItem>
+                                    <SelectItem value="Resolved">Resolved</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Badge variant="outline">
+                                {ticket.status}
+                            </Badge>
+                        )}
+                        {isOwner && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                        <span className="sr-only">More options</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>Delete Ticket</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
+            <CardContent className="pt-0">
+                <p>{ticket.description}</p>
+                 <div className="text-sm text-muted-foreground mt-2">
+                    <span className="mr-4">Priority: <Badge variant={ticket.priority === 'High' ? 'destructive' : 'secondary'}>{ticket.priority}</Badge></span>
+                    <span>Opened on {ticket.createdAt?.toDate().toLocaleDateString()}</span>
+                </div>
+            </CardContent>
+            <Separator />
             <CardContent ref={messagesContainerRef} className="h-96 overflow-y-auto p-4 bg-muted/50 flex-grow">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
@@ -289,29 +342,23 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                             <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
                         </div>
                     )}
-                    {messages?.map((msg, index) => {
+                    {messages?.map((msg) => {
                         const isSender = msg.userId === user?.uid;
-                        
-                        if (msg.type === 'call_request') {
-                           return null;
-                        }
-
                         return (
-                            <div key={msg.id} className={cn(
+                             <div key={msg.id} className={cn(
                                 "flex w-full",
                                 isSender ? "justify-end" : "justify-start"
                             )}>
                                 <div className={cn(
-                                    "relative max-w-[75%] rounded-xl px-3 py-2",
-                                    isSender ? "bg-[#005C4B]" : "bg-zinc-700",
-                                    index > 0 && "mt-2"
+                                    "relative max-w-[75%] rounded-lg px-3 py-2 mt-2",
+                                    isSender ? "bg-[#005C4B] text-white" : "bg-zinc-700 text-white"
                                 )}>
                                     {msg.audioUrl ? (
                                         <div className="py-2">
                                             <AudioPlayer src={msg.audioUrl} />
                                         </div>
                                     ) : (
-                                        <p className="whitespace-pre-wrap break-words pr-20 text-base leading-relaxed text-gray-50">
+                                        <p className="whitespace-pre-wrap break-words pr-20 text-base leading-relaxed">
                                             {msg.text}
                                         </p>
                                     )}
