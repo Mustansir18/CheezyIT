@@ -10,8 +10,8 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId } fro
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
-import { collection, query, doc, setDoc, updateDoc } from 'firebase/firestore';
-import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,6 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 type User = {
   id: string;
@@ -180,6 +182,115 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
     );
 }
 
+function RegionManagement() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [newItem, setNewItem] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const settingsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
+  const { data: settingsData, isLoading } = useDoc<{ list: string[] }>(settingsRef);
+
+  useEffect(() => {
+    // If not loading and the document doesn't exist, create it with defaults.
+    if (!isLoading && !settingsData) {
+      const defaultRegions = ['ISL', 'LHR', 'South', 'Sug'];
+      setDoc(settingsRef, { list: defaultRegions }).catch(err => {
+        console.error("Failed to set default regions:", err);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not set default regions.' });
+      });
+    }
+  }, [isLoading, settingsData, settingsRef, toast]);
+
+  const handleAddItem = async () => {
+    if (!newItem.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await setDoc(settingsRef, {
+        list: arrayUnion(newItem.trim()),
+      }, { merge: true });
+      toast({ title: 'Success', description: `${newItem.trim()} added.` });
+      setNewItem('');
+    } catch (error) {
+      console.error(`Error adding region:`, error);
+      toast({ variant: 'destructive', title: 'Error', description: `Could not add item.` });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteItem = async (item: string) => {
+    try {
+      await updateDoc(settingsRef, {
+        list: arrayRemove(item),
+      });
+      toast({ title: 'Success', description: `${item} removed.` });
+    } catch (error) {
+      console.error(`Error removing region:`, error);
+      toast({ variant: 'destructive', title: 'Error', description: `Could not remove item.` });
+    }
+  };
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Manage Regions</CardTitle>
+        <CardDescription>Add or remove regions available for user assignment.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <Input
+            placeholder="New region..."
+            value={newItem}
+            onChange={(e) => setNewItem(e.target.value)}
+          />
+          <Button onClick={handleAddItem} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            <span className="sr-only">Add</span>
+          </Button>
+        </div>
+        <div className="mt-4 space-y-2">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </>
+          ) : (
+            settingsData?.list?.map((item) => (
+              <div key={item} className="flex items-center justify-between rounded-md border p-2">
+                <span className="text-sm">{item}</span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the "{item}" region.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteItem(item)} className="bg-destructive hover:bg-destructive/90">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 export default function UserManagement() {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -235,6 +346,7 @@ export default function UserManagement() {
 
   return (
     <>
+    <RegionManagement />
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
