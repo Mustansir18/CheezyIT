@@ -313,16 +313,16 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                         {senderName || msg.displayName}
                                     </span>
                                     <div className={cn(
-                                        "px-6 py-5 rounded-2xl",
+                                        "px-4 py-2 rounded-xl",
                                         isSender ? "bg-primary text-primary-foreground" : "bg-background"
                                     )}>
                                         {msg.audioUrl ? (
                                             <AudioPlayer src={msg.audioUrl} />
                                         ) : (
-                                            <p className="whitespace-pre-wrap text-xl">{msg.text}</p>
+                                            <p className="whitespace-pre-wrap text-base">{msg.text}</p>
                                         )}
                                         <div className={cn("text-xs mt-1 flex items-center justify-end gap-1", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                                            {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                             {isSender && (
                                                 <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-chart-1" : "text-primary-foreground/70")} />
                                             )}
