@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -313,7 +314,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                     </span>
                                     <div
                                       className={cn(
-                                        "px-4 py-2 rounded-lg shadow-sm max-w-[85%]",
+                                        "px-4 py-1.5 rounded-md max-w-[85%]",
                                         isSender
                                           ? "bg-[#DCF8C6] text-black"
                                           : "bg-white text-black border"
