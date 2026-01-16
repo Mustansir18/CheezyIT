@@ -76,7 +76,7 @@ export default function DashboardClient({}: DashboardClientProps) {
     if (!date?.from) return allTickets;
     return allTickets.filter(ticket => {
         if (!ticket.createdAt) return false;
-        const ticketDate = ticket.createdAt.toDate();
+        const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
         if (!date.to) return ticketDate >= date.from;
         const toDate = new Date(date.to);
         toDate.setHours(23, 59, 59, 999);
@@ -279,7 +279,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                           {priorityIcons[ticket.priority]}
                           {ticket.priority}
                         </TableCell>
-                        <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPp') : 'N/A'}</TableCell>
+                        <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
                       </TableRow>
                     ))) : (
                       <TableRow>
