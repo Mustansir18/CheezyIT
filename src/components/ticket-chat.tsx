@@ -261,12 +261,12 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     return (
                         <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
                             <div className={cn(
-                                "relative flex w-fit max-w-[75%] flex-col rounded-lg px-2 pt-1.5 pb-1 text-sm shadow",
+                                "relative flex w-fit max-w-[75%] flex-col rounded-md px-2 pt-1.5 pb-1 text-sm shadow",
                                 isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"
                             )}>
                                 {!isSender && <p className="font-semibold text-xs mb-1 text-accent">{msg.displayName}</p>}
                                 
-                                <p className="whitespace-pre-wrap break-words pr-[60px] pb-1">
+                                <p className="whitespace-pre-wrap break-words pr-[65px] pb-1">
                                     {msg.text}
                                 </p>
 

@@ -31,17 +31,17 @@
   }
  
   .dark {
-    --background: 208 33% 10%; /* #111b21 */
-    --foreground: 200 18% 93%; /* #e9edef */
-    --card: 202 24% 14%; /* #202c33 */
+    --background: 206 35% 8%;
+    --foreground: 200 18% 93%;
+    --card: 202 24% 16%;
     --card-foreground: 200 18% 93%;
     --popover: 202 24% 14%;
     --popover-foreground: 200 18% 93%;
-    --primary: 174 100% 18%; /* #005e54 */
+    --primary: 170 100% 18%;
     --primary-foreground: 200 18% 93%;
     --secondary: 215 28% 15%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 202 24% 14%; /* #202c33 */
+    --muted: 202 24% 16%;
     --muted-foreground: 200 18% 93%;
     --accent: 36 100% 50%;
     --accent-foreground: 0 0% 100%;
