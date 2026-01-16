@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -315,7 +314,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             <FormItem>
               <FormLabel>Attach Photo (Optional)</FormLabel>
                 {photoDataUri ? (
-                    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-muted">
+                    <div className="relative w-full h-48 rounded-md overflow-hidden bg-muted">
                         <Image src={photoDataUri} alt="Issue preview" layout="fill" className="object-contain" />
                         <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full" onClick={clearPhoto}>
                             <X className="h-4 w-4" />
