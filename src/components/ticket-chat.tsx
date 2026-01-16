@@ -36,7 +36,6 @@ type UserProfile = {
 
 const doodleBg = {
     backgroundImage: `url('/bg.png')`,
-    backgroundBlendMode: 'soft-light',
 };
 
 export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick }: TicketChatProps) {
@@ -238,7 +237,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             </header>
             <CardContent 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto p-4 space-y-2 bg-background/70"
+                className="flex-1 overflow-y-auto p-4 space-y-2"
                 style={doodleBg}
             >
                 {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
@@ -261,17 +260,19 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     return (
                         <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
                             <div className={cn(
-                                "relative flex w-fit max-w-[75%] flex-col rounded-md px-2 pt-1.5 pb-1 text-sm",
-                                isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"
+                                "relative flex w-fit max-w-[75%] flex-col px-3 py-2 text-sm shadow-sm",
+                                isSender
+                                  ? "bg-primary text-primary-foreground rounded-t-lg rounded-bl-lg"
+                                  : "bg-card text-card-foreground rounded-t-lg rounded-br-lg"
                             )}>
-                                {!isSender && <p className="font-semibold text-xs mb-1 text-sky-400">{msg.displayName}</p>}
+                                {!isSender && <p className="font-semibold text-xs mb-1 text-yellow-500">{msg.displayName}</p>}
                                 
                                 <p className="whitespace-pre-wrap break-words pr-[65px] pb-1">
                                     {msg.text}
                                 </p>
 
                                 <div className={cn(
-                                    "absolute bottom-1 right-2 flex items-center justify-end gap-1 text-[11px]", 
+                                    "absolute bottom-1.5 right-2.5 flex items-center justify-end gap-1 text-[11px]", 
                                     isSender ? "text-primary-foreground/70" : "text-card-foreground/70"
                                 )}>
                                     <span>

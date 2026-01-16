@@ -6,12 +6,12 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 224 71% 4%;
-    --card: 220 13% 96%;
+    --card: 0 0% 100%;
     --card-foreground: 224 71% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
-    --primary: 196 47% 64%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 101 58% 92%; /* #DCF8C6 */
+    --primary-foreground: 224 71% 4%;
     --secondary: 215 28% 85%;
     --secondary-foreground: 224 71% 4%;
     --muted: 215 28% 92%;
