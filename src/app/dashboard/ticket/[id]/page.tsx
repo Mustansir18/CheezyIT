@@ -44,12 +44,17 @@ export default function TicketDetailPage() {
 
     const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(currentUserProfileRef);
 
+    const canManageTicket = useMemo(() => {
+        if (!user || !currentUserProfile) return false;
+        return isAdmin(user.email) || currentUserProfile.role === 'it-support';
+    }, [user, currentUserProfile]);
+
     const effectiveUserId = useMemo(() => {
-        if (ownerId && user && isAdmin(user?.email)) {
+        if (ownerId && canManageTicket) {
             return ownerId;
         }
         return user?.uid;
-    }, [ownerId, user]);
+    }, [ownerId, user, canManageTicket]);
 
 
     const ticketRef = useMemoFirebase(
@@ -58,17 +63,13 @@ export default function TicketDetailPage() {
     );
     const { data: ticket, isLoading: ticketLoading } = useDoc<Ticket>(ticketRef);
 
-    const canManageTicket = useMemo(() => {
-        if (!user || !currentUserProfile) return false;
-        return isAdmin(user?.email) || currentUserProfile.role === 'it-support';
-    }, [user, currentUserProfile]);
 
     const isOwner = useMemo(() => {
         if (!user || !effectiveUserId) return false;
         return user.uid === effectiveUserId;
     }, [user, effectiveUserId]);
     
-    const backLink = isAdmin(user?.email) && ownerId ? '/admin' : '/dashboard';
+    const backLink = canManageTicket && ownerId ? '/admin' : '/dashboard';
 
     const handleStatusChange = async (newStatus: TicketStatus) => {
         if (!ticketRef) return;

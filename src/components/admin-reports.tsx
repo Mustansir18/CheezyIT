@@ -7,7 +7,7 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collection, collectionGroup, query, doc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, query, doc, deleteDoc, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -65,32 +65,30 @@ export default function AdminReports() {
       try {
         let fetchedTickets: WithId<Ticket>[] = [];
 
-        if (isUserAdmin) {
-          // Admins can use the efficient collectionGroup query
-          const issuesQuery = query(collectionGroup(firestore, 'issues'));
-          const querySnapshot = await getDocs(issuesQuery);
-          fetchedTickets = querySnapshot.docs.map(doc => ({
-            ...(doc.data() as Ticket),
-            id: doc.id,
-          }));
-        } else if (isUserSupport) {
-          // IT Support must fetch users first, then their tickets
-          const usersQuery = query(collection(firestore, 'users'));
-          const usersSnapshot = await getDocs(usersQuery);
-          
-          const ticketPromises = usersSnapshot.docs.map(async (userDoc) => {
-            const userId = userDoc.id;
-            const issuesCollection = collection(firestore, 'users', userId, 'issues');
-            const issuesSnapshot = await getDocs(issuesCollection);
-            return issuesSnapshot.docs.map(issueDoc => ({
-              ...(issueDoc.data() as Ticket),
-              id: issueDoc.id,
-            }));
-          });
+        // Unified logic for Admins and IT Support
+        if (isUserAdmin || isUserSupport) {
+            const usersQuery = query(collection(firestore, 'users'));
+            const usersSnapshot = await getDocs(usersQuery);
 
-          const ticketArrays = await Promise.all(ticketPromises);
-          fetchedTickets = ticketArrays.flat();
+            const ticketPromises = usersSnapshot.docs.map(async (userDoc) => {
+                const ownerId = userDoc.id;
+                const issuesCollection = collection(firestore, 'users', ownerId, 'issues');
+                const issuesSnapshot = await getDocs(issuesCollection);
+
+                return issuesSnapshot.docs.map(issueDoc => {
+                    const ticketData = issueDoc.data() as Omit<Ticket, 'userId'>;
+                    return {
+                        ...ticketData,
+                        id: issueDoc.id,
+                        userId: ownerId, // Explicitly add the owner's ID
+                    } as WithId<Ticket>;
+                });
+            });
+
+            const ticketArrays = await Promise.all(ticketPromises);
+            fetchedTickets = ticketArrays.flat();
         }
+        
         setAllTickets(fetchedTickets);
       } catch (error) {
         console.error("Error fetching tickets for admin/support:", error);
