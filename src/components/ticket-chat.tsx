@@ -4,7 +4,7 @@ import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, where, getDocs } from 'firebase/firestore';
-import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import type { ChatMessage, Ticket, TicketStatus } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 
 const WA_COLORS = {
     bg: '#0b141a',
@@ -28,6 +29,7 @@ const WA_COLORS = {
 export default function TicketChat({ ticket, canManageTicket, backLink, onStatusChange, onDeleteClick }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
+    const { toast } = useToast();
     const [message, setMessage] = useState('');
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const { id: ticketId, userId } = ticket;
@@ -102,7 +104,22 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                        <span className="text-white font-medium text-[16px]">{ticketOwnerProfile?.displayName || 'User'}</span>
+                        <div className="flex items-center gap-2">
+                             <span className="text-white font-medium text-[16px]">{ticketOwnerProfile?.displayName || 'User'}</span>
+                             {ticketOwnerProfile?.phoneNumber && (
+                                <div 
+                                    className="flex items-center gap-1 text-[12px] text-[#8696a0] cursor-pointer hover:text-white transition-colors"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(ticketOwnerProfile.phoneNumber);
+                                        toast({ title: 'Copied!', description: 'Phone number copied to clipboard.' });
+                                    }}
+                                    title="Copy phone number"
+                                >
+                                    <span>{ticketOwnerProfile.phoneNumber}</span>
+                                    <Copy className="h-3 w-3" />
+                                </div>
+                            )}
+                        </div>
                         <span className="text-[13px] text-[#8696a0]">{ticket.title}</span>
                     </div>
                 </div>
