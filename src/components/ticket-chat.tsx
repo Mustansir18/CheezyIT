@@ -323,7 +323,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                             <p className="whitespace-pre-wrap text-sm">{msg.text}</p>
                                         )}
                                         <div className={cn("text-xs mt-1 flex items-center justify-end gap-1", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                                            {msg.createdAt?.toDate?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {msg.createdAt && msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             {isSender && (
                                                 <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-chart-1" : "text-primary-foreground/70")} />
                                             )}
