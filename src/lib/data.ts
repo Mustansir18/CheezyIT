@@ -19,6 +19,7 @@ export type ChatMessage = {
   displayName: string;
   text?: string;
   audioUrl?: string;
+  link?: string;
   type?: 'user' | 'call_request';
   createdAt: any; // Firestore Timestamp
 };

@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Send, Phone, Mic, Square } from 'lucide-react';
+import { Loader2, Send, Phone, Mic } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -84,14 +84,18 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         });
     };
 
-    const handleRequestCall = () => {
+    const handleStartCall = () => {
         if (!user) return;
+
+        const roomName = `IssueTrackrCall-${ticketId.replace(/[^a-zA-Z0-9]/g, '')}`;
+        const callLink = `https://meet.jit.si/${roomName}`;
 
         const messagesCollection = collection(firestore, 'users', userId, 'issues', ticketId, 'messages');
         const callRequestData = {
             userId: user.uid,
             displayName: user.displayName || 'User',
             type: 'call_request' as const,
+            link: callLink,
             createdAt: serverTimestamp(),
         };
         
@@ -101,7 +105,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Failed to send call request.',
+                description: 'Failed to start call.',
             });
 
             const contextualError = new FirestorePermissionError({
@@ -204,13 +208,13 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                      <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" onClick={handleRequestCall} disabled={!user}>
+                                <Button variant="outline" size="icon" onClick={handleStartCall} disabled={!user}>
                                     <Phone className="h-5 w-5" />
-                                    <span className="sr-only">Request a Call</span>
+                                    <span className="sr-only">Start a Call</span>
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>Request a Call</p>
+                                <p>Start a Call</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -227,14 +231,22 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                     {messages?.map((msg) => {
                         const isSender = msg.userId === user?.uid;
                         if (msg.type === 'call_request') {
+                            const callMessage = isSender ? 'You started a call' : `${msg.displayName} started a call`;
                             return (
                                 <div key={msg.id} className="flex justify-center items-center my-4">
-                                    <div className="text-xs text-muted-foreground bg-background px-3 py-1 rounded-full flex items-center gap-2">
-                                        <Phone className="h-3 w-3" />
-                                        <span>{isSender ? 'You requested' : `${msg.displayName} requested`} a call</span>
-                                        <span className="text-xs text-muted-foreground/80">
-                                            {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                    <div className="text-xs text-muted-foreground bg-background px-3 py-1.5 rounded-full text-center shadow-sm">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Phone className="h-3 w-3" />
+                                            <span>{callMessage}</span>
+                                            <span className="text-muted-foreground/80">
+                                                {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        {msg.link && (
+                                            <a href={msg.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm font-medium">
+                                                Join Now
+                                            </a>
+                                        )}
                                     </div>
                                 </div>
                             )

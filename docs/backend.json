@@ -117,6 +117,10 @@
             "type": "string",
             "description": "URL to the audio file in Firebase Storage. Optional."
         },
+        "link": {
+            "type": "string",
+            "description": "A URL for a call or other resource. Optional."
+        },
         "type": {
             "type": "string",
             "description": "The type of message (e.g., standard user message or a system notification).",
