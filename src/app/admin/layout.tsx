@@ -54,13 +54,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const navLinks = [
-      { href: '/admin', label: 'Dashboard' },
-      { href: '/admin/tickets', label: 'Tickets' },
-      { href: '/admin/reports', label: 'Reports' },
-      { href: '/admin/settings', label: 'Settings' },
-  ];
-
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -71,16 +64,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Image src="/logo.png" alt="IT Support Logo" width={32} height={32} />
           <span>IT Support Admin</span>
         </Link>
-        <nav className="ml-6 hidden md:flex items-center gap-4 text-sm font-medium">
-            {navLinks.map(link => (
-                <Link key={link.href} href={link.href} className={cn(
-                    "transition-colors hover:text-foreground",
-                     (pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href))) ? 'text-foreground' : 'text-muted-foreground'
-                )}>
-                    {link.label}
-                </Link>
-            ))}
-        </nav>
         <div className="ml-auto flex items-center gap-4">
           <UserNav />
         </div>
