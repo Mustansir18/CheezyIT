@@ -27,8 +27,10 @@ export default function AdminPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const isAuthorized = useMemo(() => {
-    if (!user || !userProfile) return false;
-    return isAdmin(user.email) || userProfile.role === 'it-support';
+    if (!user) return false;
+    if (isAdmin(user.email)) return true;
+    if (userProfile && userProfile.role === 'it-support') return true;
+    return false;
   }, [user, userProfile]);
 
 

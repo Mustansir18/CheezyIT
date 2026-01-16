@@ -45,8 +45,10 @@ export default function TicketDetailPage() {
     const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(currentUserProfileRef);
 
     const canManageTicket = useMemo(() => {
-        if (!user || !currentUserProfile) return false;
-        return isAdmin(user.email) || currentUserProfile.role === 'it-support';
+        if (!user) return false;
+        if (isAdmin(user.email)) return true;
+        if (currentUserProfile && currentUserProfile.role === 'it-support') return true;
+        return false;
     }, [user, currentUserProfile]);
 
     const effectiveUserId = useMemo(() => {
