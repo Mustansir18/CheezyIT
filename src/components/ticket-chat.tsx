@@ -181,7 +181,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 <CardDescription>Discuss the issue with the support team.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-6 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted/50">
+                <div className="space-y-4 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
@@ -189,7 +189,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                         </div>
                     )}
                     {messages?.map((msg) => (
-                        <div key={msg.id} className={cn("flex w-full items-start gap-3", msg.userId === user?.uid ? "justify-end" : "justify-start")}>
+                        <div key={msg.id} className={cn("flex w-full items-end gap-3", msg.userId === user?.uid ? "justify-end" : "justify-start")}>
                              {/* Avatar for receiver */}
                             {msg.userId !== user?.uid && (
                                 <Avatar className="h-8 w-8">
@@ -201,7 +201,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                 msg.userId === user?.uid ? "items-end" : "items-start"
                             )}>
                                 <div className={cn(
-                                    "p-3 rounded-2xl",
+                                    "px-4 py-2 rounded-xl shadow-sm",
                                     msg.userId === user?.uid ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card border rounded-bl-none"
                                 )}>
                                     {msg.text && <p className="whitespace-pre-wrap text-sm">{msg.text}</p>}
@@ -227,30 +227,28 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="relative">
-                    <div className="absolute top-1/2 left-3 -translate-y-1/2 flex gap-1">
-                        {isRecording ? (
-                            <Button size="icon" variant="destructive" onClick={handleStopRecording} disabled={isSending}>
-                                <StopCircle className="h-5 w-5" />
+                <div className="flex items-center gap-2 rounded-lg border bg-background p-2">
+                    {isRecording ? (
+                        <Button size="icon" variant="destructive" onClick={handleStopRecording} disabled={isSending}>
+                            <StopCircle className="h-5 w-5" />
+                        </Button>
+                    ) : (
+                        <>
+                            <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isInputDisabled}>
+                                <Paperclip className="h-5 w-5" />
                             </Button>
-                        ) : (
-                            <>
-                                <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isInputDisabled}>
-                                    <Paperclip className="h-5 w-5" />
-                                </Button>
-                                <Button size="icon" variant="ghost" onClick={handleStartRecording} disabled={isInputDisabled}>
-                                    <Mic className="h-5 w-5" />
-                                </Button>
-                            </>
-                        )}
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            accept="image/*"
-                            className="hidden"
-                        />
-                    </div>
+                            <Button size="icon" variant="ghost" onClick={handleStartRecording} disabled={isInputDisabled}>
+                                <Mic className="h-5 w-5" />
+                            </Button>
+                        </>
+                    )}
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept="image/*"
+                        className="hidden"
+                    />
                     <Textarea
                         placeholder={isRecording ? `Recording... (${Math.floor(recordingTime/60)}:${(recordingTime%60).toString().padStart(2,'0')})` : "Type a message..."}
                         value={message}
@@ -262,22 +260,19 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                             }
                         }}
                         disabled={isInputDisabled}
-                        className="pl-24 pr-12 min-h-[52px] resize-none"
+                        className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[20px]"
+                        rows={1}
                     />
-                    <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                        {isInputDisabled && !isRecording ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : !isRecording && (
-                            <Button size="icon" variant="ghost" onClick={handleSendMessage} disabled={!message.trim()}>
-                                <Send className="h-5 w-5" />
-                            </Button>
-                        )}
-                    </div>
+                    {isInputDisabled && !isRecording ? (
+                        <div className='p-2'>
+                           <Loader2 className="h-5 w-5 animate-spin" />
+                        </div>
+                    ) : !isRecording && (
+                        <Button size="icon" variant="ghost" onClick={handleSendMessage} disabled={!message.trim()}>
+                            <Send className="h-5 w-5" />
+                        </Button>
+                    )}
                 </div>
-                 <p className="text-xs text-muted-foreground mt-2">
-                    <CornerDownLeft className="inline-block h-3 w-3 mr-1" />
-                    <strong>Enter</strong> to send, <strong>Shift + Enter</strong> for a new line.
-                </p>
             </CardContent>
         </Card>
     );
