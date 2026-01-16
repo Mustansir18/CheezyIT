@@ -1,10 +1,11 @@
+
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Send, Mic } from 'lucide-react';
+import { Loader2, Send, Mic, Copy } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,22 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    const handleCopy = (text: string | undefined) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
+            toast({
+                title: 'Copied!',
+                description: 'Phone number copied to clipboard.',
+            });
+        }).catch(err => {
+             toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not copy text.',
+            });
+        });
+    };
 
     const handleSendMessage = () => {
         if (!message.trim() || !user) return;
@@ -180,13 +197,35 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle>Conversation</CardTitle>
-                        <CardDescription>
-                             {profileLoading ? (
+                         <CardDescription className="flex items-center gap-2 mt-1">
+                            {profileLoading ? (
                                 'Loading user details...'
                             ) : ticketOwnerProfile ? (
                                 <>
-                                    {ticketOwnerProfile.displayName}
-                                    {ticketOwnerProfile.phoneNumber && ` - ${ticketOwnerProfile.phoneNumber}`}
+                                    <span>{ticketOwnerProfile.displayName}</span>
+                                    {ticketOwnerProfile.phoneNumber && (
+                                        <div className="flex items-center gap-1 text-muted-foreground">
+                                            <span>- {ticketOwnerProfile.phoneNumber}</span>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6"
+                                                            onClick={() => handleCopy(ticketOwnerProfile.phoneNumber)}
+                                                        >
+                                                            <Copy className="h-4 w-4" />
+                                                            <span className="sr-only">Copy phone number</span>
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Copy to clipboard</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 'Discuss the issue with the support team.'
@@ -205,6 +244,8 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                     )}
                     {messages?.map((msg) => {
                         const isSender = msg.userId === user?.uid;
+                        const senderName = isSender ? user?.displayName : ticketOwnerProfile?.displayName;
+                        
                         if (msg.type === 'call_request') {
                            return null;
                         }
@@ -213,7 +254,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                             <div key={msg.id} className={cn("flex w-full items-start gap-3", isSender ? "justify-end" : "justify-start")}>
                                 {!isSender && (
                                     <Avatar className="h-8 w-8">
-                                        <AvatarFallback>{msg.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                        <AvatarFallback>{senderName?.charAt(0) || 'S'}</AvatarFallback>
                                     </Avatar>
                                 )}
                                 <div className={cn(
@@ -232,7 +273,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-muted-foreground">
-                                            {msg.displayName}
+                                            {senderName || msg.displayName}
                                         </span>
                                         <span className="text-xs text-muted-foreground">
                                             {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -241,7 +282,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                 </div>
                                 {isSender && (
                                     <Avatar className="h-8 w-8">
-                                        <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                        <AvatarFallback>{senderName?.charAt(0) || 'U'}</AvatarFallback>
                                     </Avatar>
                                 )}
                             </div>
@@ -299,3 +340,5 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         </Card>
     );
 }
+
+    
