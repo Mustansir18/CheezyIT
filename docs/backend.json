@@ -51,6 +51,14 @@
           "type": "string",
           "description": "Timestamp indicating when the issue was last updated.",
           "format": "date-time"
+        },
+        "unreadByAdmin": {
+            "type": "boolean",
+            "description": "True if there are unread messages for an admin or IT support."
+        },
+        "unreadByUser": {
+            "type": "boolean",
+            "description": "True if there are unread messages for the ticket owner."
         }
       },
       "required": [

@@ -11,6 +11,8 @@ export type Ticket = {
   issueType: string;
   customIssueType?: string;
   anydesk?: string;
+  unreadByAdmin?: boolean;
+  unreadByUser?: boolean;
 };
 
 export type ChatMessage = {

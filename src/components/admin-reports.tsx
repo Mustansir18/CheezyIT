@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -365,7 +366,10 @@ export default function AdminReports() {
                     filteredTickets.map((ticket) => (
                     <TableRow key={ticket.id} className="cursor-pointer" onClick={() => handleTicketClick(ticket)}>
                         <TableCell>
-                           <div className="font-medium">{ticket.title}</div>
+                           <div className="font-medium flex items-center gap-2">
+                            {ticket.title}
+                            {ticket.unreadByAdmin && <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />}
+                            </div>
                            <div className="hidden text-sm text-muted-foreground md:inline">
                             {ticket.id}
                            </div>

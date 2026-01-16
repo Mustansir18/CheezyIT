@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useRef, useMemo, useLayoutEffect } from 'react';
+import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, orderBy, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Send, Mic, Copy } from 'lucide-react';
 
@@ -14,13 +14,15 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/lib/data';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import AudioPlayer from './audio-player';
 
 
 interface TicketChatProps {
     ticketId: string;
-    userId: string;
+    userId: string; // This is the ticket owner's ID
+    canManageTicket: boolean;
+    isOwner: boolean;
 }
 
 type UserProfile = {
@@ -28,7 +30,7 @@ type UserProfile = {
     phoneNumber?: string;
 }
 
-export default function TicketChat({ ticketId, userId }: TicketChatProps) {
+export default function TicketChat({ ticketId, userId, canManageTicket, isOwner }: TicketChatProps) {
     const { user } = useUser();
     const firestore = useFirestore();
     const storage = useStorage();
@@ -40,6 +42,11 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const audioChunksRef = useRef<Blob[]>([]);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+    const ticketRef = useMemoFirebase(
+        () => (userId && ticketId ? doc(firestore, 'users', userId, 'issues', ticketId) : null),
+        [firestore, userId, ticketId]
+    );
 
     const userProfileRef = useMemoFirebase(
         () => (userId ? doc(firestore, 'users', userId) : null),
@@ -54,10 +61,20 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
 
     useLayoutEffect(() => {
-        if (messagesContainerRef.current) {
+        if (messages && messages.length > 0 && messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
     }, [messages]);
+
+    // Effect to mark messages as read when the chat is opened
+    useEffect(() => {
+        if (!ticketRef) return;
+        if (isOwner) {
+            updateDoc(ticketRef, { unreadByUser: false });
+        } else if (canManageTicket) {
+            updateDoc(ticketRef, { unreadByAdmin: false });
+        }
+    }, [ticketRef, isOwner, canManageTicket]);
 
     const handleCopy = (text: string | undefined) => {
         if (!text) return;
@@ -91,6 +108,15 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         };
 
         addDoc(messagesCollection, messageData)
+          .then(() => {
+              if (ticketRef) {
+                  const updateData = isOwner ? { unreadByAdmin: true } : { unreadByUser: true };
+                  updateDoc(ticketRef, {
+                      ...updateData,
+                      updatedAt: serverTimestamp(),
+                  });
+              }
+          })
           .catch((serverError) => {
             console.error("Error sending message:", serverError);
             toast({
@@ -110,7 +136,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
     };
 
     const uploadAndSendAudio = (audioBlob: Blob) => {
-        if (!user) return;
+        if (!user || !ticketRef) return;
         setIsUploading(true);
 
         const storageRef = ref(storage, `tickets/${userId}/${ticketId}/${Date.now()}.webm`);
@@ -127,6 +153,13 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                     createdAt: serverTimestamp(),
                 };
                 return addDoc(messagesCollection, messageData);
+            })
+            .then(() => {
+                const updateData = isOwner ? { unreadByAdmin: true } : { unreadByUser: true };
+                updateDoc(ticketRef, {
+                    ...updateData,
+                    updatedAt: serverTimestamp(),
+                });
             })
             .then(() => {
                 setIsUploading(false);

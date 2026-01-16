@@ -259,7 +259,10 @@ export default function DashboardClient({}: DashboardClientProps) {
                       filteredTickets[tab].map((ticket) => (
                       <TableRow key={ticket.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
                         <TableCell>
-                           <div className="font-medium">{ticket.title}</div>
+                           <div className="font-medium flex items-center gap-2">
+                            {ticket.title}
+                            {ticket.unreadByUser && <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />}
+                           </div>
                            <div className="hidden text-sm text-muted-foreground md:inline">
                             {ticket.id}
                            </div>

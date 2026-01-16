@@ -188,7 +188,7 @@ export default function TicketDetailPage() {
                     <p className="mb-4">{ticket.description}</p>
                 </CardContent>
             </Card>
-            <TicketChat ticketId={ticket.id} userId={effectiveUserId} />
+            <TicketChat ticketId={ticket.id} userId={effectiveUserId} canManageTicket={canManageTicket} isOwner={isOwner} />
         </div>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

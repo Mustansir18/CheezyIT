@@ -99,6 +99,8 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             priority: 'Medium', // Default priority
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+            unreadByAdmin: false,
+            unreadByUser: false,
         };
 
         const ticketsCollectionRef = collection(firestore, 'users', user.uid, 'issues');
