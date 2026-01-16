@@ -7,7 +7,7 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collection, query, doc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, query, doc, deleteDoc, getDocs, collectionGroup } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -57,52 +57,63 @@ export default function AdminReports() {
   useEffect(() => {
     const fetchTickets = async () => {
       if (!user || (!isUserAdmin && !isUserSupport)) {
-          setTicketsLoading(false);
-          return;
+        setTicketsLoading(false);
+        return;
       }
       setTicketsLoading(true);
 
       try {
         let fetchedTickets: WithId<Ticket>[] = [];
 
-        // Unified logic for Admins and IT Support
-        if (isUserAdmin || isUserSupport) {
-            const usersQuery = query(collection(firestore, 'users'));
-            const usersSnapshot = await getDocs(usersQuery);
+        if (isUserAdmin) {
+          // For Admins, use a collection group query for maximum efficiency.
+          // This is allowed by the security rule `allow list: if isAdmin()`.
+          const issuesCollectionGroup = collectionGroup(firestore, 'issues');
+          const issuesSnapshot = await getDocs(issuesCollectionGroup);
+          fetchedTickets = issuesSnapshot.docs.map(issueDoc => {
+            return {
+              ...(issueDoc.data() as Ticket),
+              id: issueDoc.id,
+            } as WithId<Ticket>;
+          });
+        } else if (isUserSupport) {
+          // For IT Support, we cannot use a collection group query because the security rule
+          // would require a `get()` call, which is not allowed in collection group rules.
+          // Instead, we fetch all users, then fetch the issues for each user.
+          const usersQuery = query(collection(firestore, 'users'));
+          const usersSnapshot = await getDocs(usersQuery);
 
-            const ticketPromises = usersSnapshot.docs.map(async (userDoc) => {
-                const ownerId = userDoc.id;
-                const issuesCollection = collection(firestore, 'users', ownerId, 'issues');
-                const issuesSnapshot = await getDocs(issuesCollection);
-
-                return issuesSnapshot.docs.map(issueDoc => {
-                    const ticketData = issueDoc.data() as Omit<Ticket, 'userId'>;
-                    return {
-                        ...ticketData,
-                        id: issueDoc.id,
-                        userId: ownerId, // Explicitly add the owner's ID
-                    } as WithId<Ticket>;
-                });
+          const ticketPromises = usersSnapshot.docs.map(async (userDoc) => {
+            const ownerId = userDoc.id;
+            const issuesCollection = collection(firestore, 'users', ownerId, 'issues');
+            const issuesSnapshot = await getDocs(issuesCollection);
+            return issuesSnapshot.docs.map(issueDoc => {
+              return {
+                ...(issueDoc.data() as Ticket),
+                id: issueDoc.id,
+              } as WithId<Ticket>;
             });
+          });
 
-            const ticketArrays = await Promise.all(ticketPromises);
-            fetchedTickets = ticketArrays.flat();
+          const ticketArrays = await Promise.all(ticketPromises);
+          fetchedTickets = ticketArrays.flat();
         }
         
         setAllTickets(fetchedTickets);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching tickets for admin/support:", error);
         toast({
             variant: 'destructive',
             title: 'Error Fetching Tickets',
-            description: 'Could not fetch all tickets. Please check permissions.',
+            description: error.code === 'permission-denied' 
+                ? 'You do not have the required permissions to view all tickets.'
+                : 'Could not fetch all tickets. Please check permissions and console for details.',
         });
       } finally {
         setTicketsLoading(false);
       }
     };
 
-    // Only fetch when user/profile loading is done
     if (!userLoading && !profileLoading) {
         fetchTickets();
     }
@@ -179,6 +190,8 @@ export default function AdminReports() {
     try {
         await Promise.all(deletePromises);
         toast({ title: 'Success', description: `${pendingTickets.length} pending tickets deleted.` });
+        // After deletion, refetch or filter the local state
+        setAllTickets(currentTickets => currentTickets.filter(t => t.status !== 'Pending'));
     } catch (error: any) {
         console.error("Failed to delete pending tickets:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not delete pending tickets.' });
