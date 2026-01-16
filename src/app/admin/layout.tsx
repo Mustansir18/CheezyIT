@@ -59,7 +59,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       { href: '/admin/tickets', label: 'Tickets' },
       { href: '/admin/reports', label: 'Reports' },
       { href: '/admin/settings', label: 'Settings' },
-      { href: '/dashboard', label: 'My Tickets' }
   ];
 
   return (

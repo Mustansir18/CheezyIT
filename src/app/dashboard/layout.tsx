@@ -26,18 +26,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
+    const isPrivilegedUser = user && (isAdmin(user.email) || userProfile?.role === 'it-support');
+
     useEffect(() => {
         if (!userLoading && !profileLoading) {
           if (!user) {
             router.push('/');
+          } else if (isPrivilegedUser) {
+            router.push('/admin');
           }
         }
-    }, [user, userLoading, profileLoading, router]);
+    }, [user, userLoading, profileLoading, isPrivilegedUser, router]);
     
-    const isPrivilegedUser = user && (isAdmin(user.email) || userProfile?.role === 'it-support');
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
 
-    if (userLoading || profileLoading) {
+    if (userLoading || profileLoading || !user || isPrivilegedUser) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-muted/40">
           <Loader2 className="h-8 w-8 animate-spin" />
@@ -45,36 +48,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       );
     }
     
-    if (!user) {
-        return (
-             <div className="flex h-screen w-full items-center justify-center bg-muted/40">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        );
-    }
-
     return (
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
             {!isTicketPage && (
                 <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
                     <Link
-                    href={isPrivilegedUser ? '/admin' : '/dashboard'}
+                    href='/dashboard'
                     className="flex items-center gap-2 font-semibold font-headline"
                     >
                     <Image src="/logo.png" alt="IT Support Logo" width={32} height={32} />
                     <span>IT Support</span>
                     </Link>
                     <div className="ml-auto flex items-center gap-4">
-                        {!isPrivilegedUser && (
-                            <ReportIssueForm>
-                                <Button>Report an Issue</Button>
-                            </ReportIssueForm>
-                        )}
-                        {isPrivilegedUser && (
-                             <Button asChild variant="outline">
-                                <Link href="/admin">Admin Dashboard</Link>
-                            </Button>
-                        )}
+                        <ReportIssueForm>
+                            <Button>Report an Issue</Button>
+                        </ReportIssueForm>
                         <UserNav />
                     </div>
                 </header>
