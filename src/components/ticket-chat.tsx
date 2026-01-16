@@ -261,6 +261,9 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                     "flex flex-col gap-1 max-w-[70%]",
                                     isSender ? "items-end" : "items-start"
                                 )}>
+                                    <span className="text-xs text-muted-foreground px-2">
+                                        {senderName || msg.displayName}
+                                    </span>
                                     <div className={cn(
                                         "px-3 py-2 rounded-xl",
                                         isSender ? "bg-primary text-primary-foreground" : "bg-background"
@@ -270,14 +273,9 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
                                         ) : (
                                             <p className="whitespace-pre-wrap text-sm">{msg.text}</p>
                                         )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">
-                                            {senderName || msg.displayName}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
+                                        <div className={cn("text-xs mt-1 text-right", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
                                             {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        </div>
                                     </div>
                                 </div>
                                 {isSender && (
