@@ -176,9 +176,13 @@ export default function AdminReports() {
         });
     }
 
-    // Ticket ID filter
+    // Ticket ID & Title filter
     if (ticketIdFilter) {
-        tickets = tickets.filter(ticket => ticket.id.toLowerCase().includes(ticketIdFilter.toLowerCase()));
+        const lowerCaseFilter = ticketIdFilter.toLowerCase();
+        tickets = tickets.filter(ticket =>
+            ticket.id.toLowerCase().includes(lowerCaseFilter) ||
+            (ticket.title && ticket.title.toLowerCase().includes(lowerCaseFilter))
+        );
     }
 
     // User name filter
@@ -392,7 +396,7 @@ export default function AdminReports() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between flex-wrap gap-4 my-4">
+      <div className="my-4">
         <Tabs defaultValue="all" className="w-auto" onValueChange={setStatusFilter}>
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
@@ -401,39 +405,39 @@ export default function AdminReports() {
             <TabsTrigger value="Resolved">Resolved</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="flex gap-2 flex-wrap">
-          <Input
-            placeholder="Filter by Ticket ID..."
-            value={ticketIdFilter}
-            onChange={(e) => setTicketIdFilter(e.target.value)}
-            className="max-w-xs"
-          />
-          <Input
-            placeholder="Filter by User Name..."
-            value={userFilter}
-            onChange={(e) => setUserFilter(e.target.value)}
-            className="max-w-xs"
-          />
-        </div>
       </div>
 
       <Card>
         <CardHeader>
             <CardTitle>All Tickets</CardTitle>
-            <CardDescription>A list of all support tickets. Use the filters above to narrow your search.</CardDescription>
+            <CardDescription>A list of all support tickets. Use the filters in the table headers to narrow your search.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
                 <TableHeader>
                     <TableRow>
-                    <TableHead>Ticket</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Completed</TableHead>
-                    <TableHead>Resolution Time</TableHead>
-                    <TableHead>Resolved By</TableHead>
+                        <TableHead>
+                             <Input
+                                placeholder="Filter tickets..."
+                                value={ticketIdFilter}
+                                onChange={(e) => setTicketIdFilter(e.target.value)}
+                                className="h-9"
+                            />
+                        </TableHead>
+                        <TableHead>
+                             <Input
+                                placeholder="Filter users..."
+                                value={userFilter}
+                                onChange={(e) => setUserFilter(e.target.value)}
+                                className="h-9"
+                            />
+                        </TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Completed</TableHead>
+                        <TableHead>Resolution Time</TableHead>
+                        <TableHead>Resolved By</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
