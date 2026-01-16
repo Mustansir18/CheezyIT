@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -23,7 +22,7 @@ import { isAdmin } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 const COLORS = {
@@ -393,35 +392,35 @@ export default function AdminReports() {
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <div className="flex items-center justify-between flex-wrap gap-4 my-4">
+        <Tabs defaultValue="all" className="w-auto" onValueChange={setStatusFilter}>
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="Pending">Pending</TabsTrigger>
+            <TabsTrigger value="In Progress">In Progress</TabsTrigger>
+            <TabsTrigger value="Resolved">Resolved</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex gap-2 flex-wrap">
+          <Input
+            placeholder="Filter by Ticket ID..."
+            value={ticketIdFilter}
+            onChange={(e) => setTicketIdFilter(e.target.value)}
+            className="max-w-xs"
+          />
+          <Input
+            placeholder="Filter by User Name..."
+            value={userFilter}
+            onChange={(e) => setUserFilter(e.target.value)}
+            className="max-w-xs"
+          />
+        </div>
+      </div>
+
+      <Card>
         <CardHeader>
             <CardTitle>All Tickets</CardTitle>
-            <CardDescription>A list of all support tickets. Use the filters below to narrow your search.</CardDescription>
-             <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                <Input 
-                    placeholder="Filter by Ticket ID..."
-                    value={ticketIdFilter}
-                    onChange={(e) => setTicketIdFilter(e.target.value)}
-                    className="max-w-xs"
-                />
-                <Input 
-                    placeholder="Filter by User Name..."
-                    value={userFilter}
-                    onChange={(e) => setUserFilter(e.target.value)}
-                    className="max-w-xs"
-                />
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Filter by Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Resolved">Resolved</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+            <CardDescription>A list of all support tickets. Use the filters above to narrow your search.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
