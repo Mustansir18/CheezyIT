@@ -8,6 +8,8 @@ export type Ticket = {
   status: TicketStatus;
   priority: 'Low' | 'Medium' | 'High';
   createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+  completedAt?: any; // Firestore Timestamp
   issueType: string;
   customIssueType?: string;
   anydesk?: string;

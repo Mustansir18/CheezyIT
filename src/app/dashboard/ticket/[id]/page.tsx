@@ -71,10 +71,20 @@ export default function TicketDetailPage() {
     const handleStatusChange = async (newStatus: TicketStatus) => {
         if (!ticketRef) return;
         try {
-            await updateDoc(ticketRef, {
+            const updateData: {
+                status: TicketStatus;
+                updatedAt: any;
+                completedAt?: any;
+            } = {
                 status: newStatus,
                 updatedAt: serverTimestamp(),
-            });
+            };
+
+            if (newStatus === 'Resolved') {
+                updateData.completedAt = serverTimestamp();
+            }
+            
+            await updateDoc(ticketRef, updateData);
             toast({ title: 'Status Updated', description: `Ticket status changed to ${newStatus}` });
         } catch (error: any) {
             console.error("Failed to update status:", error);

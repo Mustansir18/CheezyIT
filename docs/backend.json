@@ -52,6 +52,11 @@
           "description": "Timestamp indicating when the issue was last updated.",
           "format": "date-time"
         },
+        "completedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the issue was resolved.",
+          "format": "date-time"
+        },
         "unreadByAdmin": {
             "type": "boolean",
             "description": "True if there are unread messages for an admin or IT support."

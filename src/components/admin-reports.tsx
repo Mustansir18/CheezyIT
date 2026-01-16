@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { DateRange } from 'react-day-picker';
-import { addDays, format } from 'date-fns';
+import { addDays, format, formatDistanceStrict } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, deleteDoc, getDocs, collectionGroup } from 'firebase/firestore';
@@ -41,6 +41,22 @@ type UserWithDisplayName = {
     id: string;
     displayName: string;
 }
+
+const getResolutionTime = (createdAt: any, completedAt: any): string => {
+    if (!completedAt || !createdAt) return 'N/A';
+    try {
+        const createdDate = createdAt?.toDate ? createdAt.toDate() : new Date(createdAt);
+        const completedDate = completedAt?.toDate ? completedAt.toDate() : new Date(completedAt);
+        // Ensure both dates are valid
+        if (isNaN(createdDate.getTime()) || isNaN(completedDate.getTime())) {
+            return 'Invalid Date';
+        }
+        return formatDistanceStrict(completedDate, createdDate);
+    } catch (e) {
+        console.error("Error calculating resolution time:", e);
+        return 'Error';
+    }
+};
 
 export default function AdminReports() {
   const firestore = useFirestore();
@@ -352,13 +368,15 @@ export default function AdminReports() {
                     <TableHead>User</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Completed</TableHead>
+                    <TableHead>Resolution Time</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {loading ? (
                     <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                             <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                         </TableCell>
                     </TableRow>
@@ -388,11 +406,13 @@ export default function AdminReports() {
                         <TableCell>
                             {ticket.priority}
                         </TableCell>
-                        <TableCell>{ticket.createdAt ? (ticket.createdAt.toDate ? ticket.createdAt.toDate().toLocaleDateString() : new Date(ticket.createdAt).toLocaleDateString()) : 'N/A'}</TableCell>
+                        <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PP') : 'N/A'}</TableCell>
+                        <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PP') : 'N/A'}</TableCell>
+                        <TableCell>{getResolutionTime(ticket.createdAt, ticket.completedAt)}</TableCell>
                       </TableRow>
                     ))) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                         No tickets found in this date range.
                         </TableCell>
                     </TableRow>
