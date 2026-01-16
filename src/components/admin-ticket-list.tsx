@@ -1,20 +1,16 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceStrict } from 'date-fns';
-import { Calendar as CalendarIcon, Loader2, Trash2, Filter } from 'lucide-react';
+import { Loader2, Trash2, Filter } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, deleteDoc, getDocs, collectionGroup } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { Ticket } from '@/lib/data';
@@ -24,13 +20,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from './ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
-
-const COLORS = {
-  Pending: 'hsl(var(--chart-3))',
-  'In Progress': 'hsl(var(--chart-4))',
-  Resolved: 'hsl(var(--chart-2))',
-};
 
 type UserProfile = {
   role: string;
@@ -46,7 +39,6 @@ const getResolutionTime = (createdAt: any, completedAt: any): string => {
     try {
         const createdDate = createdAt?.toDate ? createdAt.toDate() : new Date(createdAt);
         const completedDate = completedAt?.toDate ? completedAt.toDate() : new Date(completedAt);
-        // Ensure both dates are valid
         if (isNaN(createdDate.getTime()) || isNaN(completedDate.getTime())) {
             return 'Invalid Date';
         }
@@ -57,7 +49,7 @@ const getResolutionTime = (createdAt: any, completedAt: any): string => {
     }
 };
 
-export default function AdminReports() {
+export default function AdminTicketList() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -72,7 +64,6 @@ export default function AdminReports() {
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -90,37 +81,22 @@ export default function AdminReports() {
 
       try {
         let fetchedTickets: WithId<Ticket>[] = [];
-
-        // Fetch all users to map userId to displayName
         const usersQuery = query(collection(firestore, 'users'));
         const usersSnapshot = await getDocs(usersQuery);
         const usersData = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as WithId<UserWithDisplayName>[];
         setAllUsers(usersData);
 
         if (isUserAdmin) {
-          // For Admins, use a collection group query for maximum efficiency.
           const issuesCollectionGroup = collectionGroup(firestore, 'issues');
           const issuesSnapshot = await getDocs(issuesCollectionGroup);
-          fetchedTickets = issuesSnapshot.docs.map(issueDoc => {
-            return {
-              ...(issueDoc.data() as Ticket),
-              id: issueDoc.id,
-            } as WithId<Ticket>;
-          });
+          fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
         } else if (isUserSupport) {
-          // For IT Support, fetch issues for each user.
           const ticketPromises = usersData.map(async (userDoc) => {
             const ownerId = userDoc.id;
             const issuesCollection = collection(firestore, 'users', ownerId, 'issues');
             const issuesSnapshot = await getDocs(issuesCollection);
-            return issuesSnapshot.docs.map(issueDoc => {
-              return {
-                ...(issueDoc.data() as Ticket),
-                id: issueDoc.id,
-              } as WithId<Ticket>;
-            });
+            return issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
           });
-
           const ticketArrays = await Promise.all(ticketPromises);
           fetchedTickets = ticketArrays.flat();
         }
@@ -162,7 +138,6 @@ export default function AdminReports() {
   const filteredTickets = useMemo(() => {
     let tickets = allTickets;
 
-    // Date filter
     if (date?.from) {
         tickets = tickets.filter(ticket => {
             if (!ticket.createdAt) return false;
@@ -174,7 +149,6 @@ export default function AdminReports() {
         });
     }
 
-    // Ticket ID & Title filter
     if (ticketIdFilter) {
         const lowerCaseFilter = ticketIdFilter.toLowerCase();
         tickets = tickets.filter(ticket =>
@@ -183,12 +157,10 @@ export default function AdminReports() {
         );
     }
 
-    // User filter
     if (userFilter !== 'all') {
         tickets = tickets.filter(ticket => ticket.userId === userFilter);
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
         tickets = tickets.filter(ticket => ticket.status === statusFilter);
     }
@@ -196,36 +168,6 @@ export default function AdminReports() {
     return tickets;
   }, [allTickets, date, ticketIdFilter, userFilter, statusFilter]);
 
-
-  const { statusData, chartConfig } = useMemo(() => {
-    const statusCounts: { [key: string]: number } = { Pending: 0, 'In Progress': 0, Resolved: 0 };
-
-    // Use the already filtered-by-date tickets for chart data
-    const chartTickets = allTickets.filter(ticket => {
-        if (!date?.from) return true;
-        if (!ticket.createdAt) return false;
-        const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
-        if (!date.to) return ticketDate >= date.from;
-        const toDate = new Date(date.to);
-        toDate.setHours(23, 59, 59, 999);
-        return ticketDate >= date.from && ticketDate <= toDate;
-    });
-
-    for (const ticket of chartTickets) {
-      if (ticket.status) statusCounts[ticket.status]++;
-    }
-
-    const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value, fill: COLORS[name as keyof typeof COLORS] }));
-    
-    const chartConfig = {
-      value: { label: 'Tickets' },
-      Pending: { label: 'Pending', color: COLORS.Pending },
-      'In Progress': { label: 'In Progress', color: COLORS['In Progress'] },
-      Resolved: { label: 'Resolved', color: COLORS.Resolved },
-    };
-
-    return { statusData, chartConfig };
-  }, [allTickets, date]);
   
   const handleTicketClick = (ticket: WithId<Ticket>) => {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
@@ -250,7 +192,6 @@ export default function AdminReports() {
     try {
         await Promise.all(deletePromises);
         toast({ title: 'Success', description: `${pendingTickets.length} pending tickets deleted.` });
-        // After deletion, refetch or filter the local state
         setAllTickets(currentTickets => currentTickets.filter(t => t.status !== 'Pending'));
     } catch (error: any) {
         console.error("Failed to delete pending tickets:", error);
@@ -272,89 +213,7 @@ export default function AdminReports() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <CardTitle>Ticket Analytics</CardTitle>
-              <CardDescription>An overview of all support tickets in the system.</CardDescription>
-            </div>
-             <div className="flex items-center gap-2">
-                <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Clear Pending
-                </Button>
-                <Popover>
-                <PopoverTrigger asChild>
-                    <Button
-                    id="date"
-                    variant={"outline"}
-                    className={cn(
-                        "w-full sm:w-[300px] justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
-                    )}
-                    >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date?.from ? (
-                        date.to ? (
-                        <>
-                            {format(date.from, "LLL dd, y")} -{" "}
-                            {format(date.to, "LLL dd, y")}
-                        </>
-                        ) : (
-                        format(date.from, "LLL dd, y")
-                        )
-                    ) : (
-                        <span>Pick a date</span>
-                    )}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={date?.from}
-                    selected={date}
-                    onSelect={setDate}
-                    numberOfMonths={2}
-                    />
-                </PopoverContent>
-                </Popover>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 sm:grid-cols-1">
-              <div className="flex flex-col">
-                  <h3 className="text-lg font-semibold mb-2 text-center">Tickets by Status</h3>
-                  <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px] max-w-sm">
-                      <PieChart>
-                          <Tooltip content={<ChartTooltipContent hideLabel />} />
-                          <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                          {statusData.map((entry) => (
-                              <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                          ))}
-                          </Pie>
-                          <Legend content={({ payload }) => {
-                              return (
-                                  <ul className="flex gap-4 justify-center mt-4">
-                                  {payload?.map((entry) => (
-                                      <li key={`item-${entry.value}`} className="flex items-center gap-2">
-                                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                                          <span className="text-sm text-muted-foreground">{entry.value}</span>
-                                      </li>
-                                  ))}
-                                  </ul>
-                              )
-                          }} />
-                      </PieChart>
-                  </ChartContainer>
-              </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="my-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <Tabs defaultValue="all" className="w-auto" onValueChange={setStatusFilter}>
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
@@ -363,12 +222,54 @@ export default function AdminReports() {
             <TabsTrigger value="Resolved">Resolved</TabsTrigger>
           </TabsList>
         </Tabs>
+        <div className="flex items-center gap-2">
+            <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear Pending
+            </Button>
+            <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                    "w-full sm:w-[300px] justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                )}
+                >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                    date.to ? (
+                    <>
+                        {format(date.from, "LLL dd, y")} -{" "}
+                        {format(date.to, "LLL dd, y")}
+                    </>
+                    ) : (
+                    format(date.from, "LLL dd, y")
+                    )
+                ) : (
+                    <span>Pick a date</span>
+                )}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+                />
+            </PopoverContent>
+            </Popover>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
             <CardTitle>All Tickets</CardTitle>
-            <CardDescription>A list of all support tickets. Use the filters in the table headers to narrow your search.</CardDescription>
+            <CardDescription>A list of all support tickets. Use the filters to narrow your search.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>

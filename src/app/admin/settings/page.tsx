@@ -4,15 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import CreateBranchUserForm from '@/components/create-branch-user-form';
 import UserList from '@/components/user-list';
 
-export default function AdminUsersPage() {
+export default function AdminSettingsPage() {
   return (
     <>
         <div className="flex items-center justify-between space-y-2">
             <h1 className="text-3xl font-bold tracking-tight font-headline">
-                User Management
+                Settings
             </h1>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <p className="text-muted-foreground">Manage user accounts and roles.</p>
+        <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-7">
             <div className="lg:col-span-4">
                 <UserList />
             </div>

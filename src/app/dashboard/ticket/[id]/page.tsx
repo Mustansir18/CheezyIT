@@ -66,7 +66,7 @@ export default function TicketDetailPage() {
         return user.uid === effectiveUserId;
     }, [user, effectiveUserId]);
     
-    const backLink = canManageTicket && ownerId ? '/admin' : '/dashboard';
+    const backLink = canManageTicket && ownerId ? '/admin/tickets' : '/dashboard';
 
     const handleStatusChange = async (newStatus: TicketStatus) => {
         if (!ticketRef || !user) return;
