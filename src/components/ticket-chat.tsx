@@ -282,8 +282,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                     </div>
                 </div>
             </CardHeader>
-            <CardContent>
-                <div ref={messagesContainerRef} className="space-y-4 h-96 overflow-y-auto p-4 border rounded-md mb-4 bg-muted/50">
+            <CardContent ref={messagesContainerRef} className="space-y-4 h-96 overflow-y-auto p-4 bg-muted/50">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
@@ -314,10 +313,10 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                     </span>
                                     <div
                                       className={cn(
-                                        "px-6 py-4 rounded-xl shadow-sm max-w-[75%]",
+                                        "px-6 py-4 rounded-md shadow-sm max-w-[75%]",
                                         isSender
-                                          ? "bg-[#DCF8C6] text-black rounded-br-md"
-                                          : "bg-white text-black rounded-bl-md border"
+                                          ? "bg-[#DCF8C6] text-black"
+                                          : "bg-white text-black border"
                                       )}
                                     >
                                         {msg.audioUrl ? (
@@ -343,9 +342,10 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                             </div>
                         )
                     })}
-                </div>
+            </CardContent>
 
-                <div className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring">
+             <div className="border-t p-3 bg-background">
+                 <div className="relative">
                     <Textarea
                         placeholder={"Type a message..."}
                         value={message}
@@ -356,41 +356,39 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                 handleSendMessage();
                             }
                         }}
-                        className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0"
+                        className="min-h-12 resize-none border-gray-300 rounded-lg p-3 pr-32 shadow-none focus-visible:ring-1 focus-visible:ring-primary"
                     />
-                    <div className="flex items-center p-3 pt-0">
-                        <div className="ml-auto flex items-center gap-2">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={toggleRecording}
-                                            disabled={isUploading}
-                                        >
-                                            {isUploading ? (
-                                                <Loader2 className="h-5 w-5 animate-spin" />
-                                            ) : (
-                                                <Mic className={cn("h-5 w-5", isRecording && "text-red-500 animate-pulse")} />
-                                            )}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{isRecording ? 'Stop recording' : 'Record voice note'}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                     <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={toggleRecording}
+                                        disabled={isUploading}
+                                    >
+                                        {isUploading ? (
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                        ) : (
+                                            <Mic className={cn("h-5 w-5", isRecording && "text-red-500 animate-pulse")} />
+                                        )}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{isRecording ? 'Stop recording' : 'Record voice note'}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
 
-                           <Button type="submit" size="sm" onClick={handleSendMessage} disabled={!message.trim()}>
-                                Send
-                                <Send className="ml-2 h-4 w-4" />
-                            </Button>
-                        </div>
+                       <Button type="submit" size="sm" onClick={handleSendMessage} disabled={!message.trim()}>
+                            Send
+                            <Send className="ml-2 h-4 w-4" />
+                        </Button>
                     </div>
                 </div>
-            </CardContent>
+            </div>
         </Card>
     );
 }
