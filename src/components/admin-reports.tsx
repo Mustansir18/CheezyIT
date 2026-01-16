@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -37,6 +36,11 @@ type UserProfile = {
   role: string;
 }
 
+type UserWithDisplayName = {
+    id: string;
+    displayName: string;
+}
+
 export default function AdminReports() {
   const firestore = useFirestore();
   const router = useRouter();
@@ -46,6 +50,7 @@ export default function AdminReports() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
+  const [allUsers, setAllUsers] = useState<WithId<UserWithDisplayName>[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
@@ -55,7 +60,7 @@ export default function AdminReports() {
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
 
   useEffect(() => {
-    const fetchTickets = async () => {
+    const fetchTicketsAndUsers = async () => {
       if (!user || (!isUserAdmin && !isUserSupport)) {
         setTicketsLoading(false);
         return;
@@ -65,9 +70,14 @@ export default function AdminReports() {
       try {
         let fetchedTickets: WithId<Ticket>[] = [];
 
+        // Fetch all users to map userId to displayName
+        const usersQuery = query(collection(firestore, 'users'));
+        const usersSnapshot = await getDocs(usersQuery);
+        const usersData = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as WithId<UserWithDisplayName>[];
+        setAllUsers(usersData);
+
         if (isUserAdmin) {
           // For Admins, use a collection group query for maximum efficiency.
-          // This is allowed by the security rule `allow list: if isAdmin()`.
           const issuesCollectionGroup = collectionGroup(firestore, 'issues');
           const issuesSnapshot = await getDocs(issuesCollectionGroup);
           fetchedTickets = issuesSnapshot.docs.map(issueDoc => {
@@ -77,13 +87,8 @@ export default function AdminReports() {
             } as WithId<Ticket>;
           });
         } else if (isUserSupport) {
-          // For IT Support, we cannot use a collection group query because the security rule
-          // would require a `get()` call, which is not allowed in collection group rules.
-          // Instead, we fetch all users, then fetch the issues for each user.
-          const usersQuery = query(collection(firestore, 'users'));
-          const usersSnapshot = await getDocs(usersQuery);
-
-          const ticketPromises = usersSnapshot.docs.map(async (userDoc) => {
+          // For IT Support, fetch issues for each user.
+          const ticketPromises = usersData.map(async (userDoc) => {
             const ownerId = userDoc.id;
             const issuesCollection = collection(firestore, 'users', ownerId, 'issues');
             const issuesSnapshot = await getDocs(issuesCollection);
@@ -115,7 +120,7 @@ export default function AdminReports() {
     };
 
     if (!userLoading && !profileLoading) {
-        fetchTickets();
+        fetchTicketsAndUsers();
     }
   }, [user, userLoading, profileLoading, isUserAdmin, isUserSupport, firestore, toast]);
 
@@ -140,6 +145,13 @@ export default function AdminReports() {
         return ticketDate >= date.from && ticketDate <= toDate;
     });
   }, [allTickets, date]);
+
+  const usersMap = useMemo(() => {
+    return allUsers.reduce((acc, user) => {
+        acc[user.id] = user.displayName;
+        return acc;
+    }, {} as Record<string, string>);
+  }, [allUsers]);
 
 
   const { statusData, priorityData, chartConfig } = useMemo(() => {
@@ -336,6 +348,7 @@ export default function AdminReports() {
                 <TableHeader>
                     <TableRow>
                     <TableHead>Ticket</TableHead>
+                    <TableHead>User</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Date</TableHead>
@@ -344,7 +357,7 @@ export default function AdminReports() {
                 <TableBody>
                     {loading ? (
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={5} className="h-24 text-center">
                             <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                         </TableCell>
                     </TableRow>
@@ -354,8 +367,11 @@ export default function AdminReports() {
                         <TableCell>
                            <div className="font-medium">{ticket.title}</div>
                            <div className="hidden text-sm text-muted-foreground md:inline">
-                            {ticket.userId} / {ticket.id}
+                            {ticket.id}
                            </div>
+                        </TableCell>
+                        <TableCell>
+                           {usersMap[ticket.userId] || 'Unknown User'}
                         </TableCell>
                         <TableCell>
                            <Badge variant={ticket.status === 'Resolved' ? 'default' : 'outline'} className={cn(
@@ -372,7 +388,7 @@ export default function AdminReports() {
                       </TableRow>
                     ))) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={5} className="h-24 text-center">
                         No tickets found in this date range.
                         </TableCell>
                     </TableRow>
