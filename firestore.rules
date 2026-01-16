@@ -11,7 +11,8 @@
  * Key Security Decisions:
  * - Admin User Listing via Hardcoded Email: To allow admins to list users, we check the authenticated
  *   user's email against a hardcoded list. This is secure and works without needing custom claims
- *   or database reads within the list rule, which is not allowed.
+ *   or database reads within the list rule, which is not allowed. For IT Support roles to gain
+ *   management permissions, their email must be added to this list.
  * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
  *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
  * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
@@ -38,6 +39,7 @@ service cloud.firestore {
     /**
      * Checks if the user is an admin by checking their email address against a list.
      * This is a pragmatic approach when custom claims are not manageable.
+     * To grant IT Support users management permissions, add their email here.
      */
     function isAdmin() {
       return isSignedIn() && request.auth.token.email == 'mustansir133@gmail.com';
@@ -92,10 +94,14 @@ service cloud.firestore {
      * @path /users/{userId}/issues/{issueId}
      */
     match /users/{userId}/issues/{issueId} {
-      // Admins can read all tickets for analytics.
-      // Owners can perform all actions on their own tickets.
+      // Admins and owners can read tickets.
       allow get, list: if isOwner(userId) || isAdmin();
-      allow create, update, delete: if isOwner(userId);
+      // Only owners can create tickets under their own user ID.
+      allow create: if isOwner(userId);
+      // Owners and Admins can update tickets (e.g., change status).
+      allow update: if isOwner(userId) || isAdmin();
+      // Owners and Admins can delete tickets.
+      allow delete: if isOwner(userId) || isAdmin();
 
         /**
          * @description Rules for chat messages within an issue.
