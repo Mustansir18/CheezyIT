@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -306,20 +307,20 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                     </Avatar>
                                 )}
                                 <div className={cn(
-                                    "flex flex-col gap-1 max-w-[70%]",
+                                    "flex flex-col gap-1 max-w-[80%]",
                                     isSender ? "items-end" : "items-start"
                                 )}>
                                     <span className="text-xs text-muted-foreground px-2">
                                         {senderName || msg.displayName}
                                     </span>
                                     <div className={cn(
-                                        "px-4 py-3 rounded-xl",
+                                        "px-5 py-4 rounded-xl",
                                         isSender ? "bg-primary text-primary-foreground" : "bg-background"
                                     )}>
                                         {msg.audioUrl ? (
                                             <AudioPlayer src={msg.audioUrl} />
                                         ) : (
-                                            <p className="whitespace-pre-wrap text-base">{msg.text}</p>
+                                            <p className="whitespace-pre-wrap text-lg">{msg.text}</p>
                                         )}
                                         <div className={cn("text-xs mt-1 flex items-center justify-end gap-1", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
                                             {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
