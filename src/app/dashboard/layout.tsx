@@ -2,22 +2,60 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { doc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
+
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2 } from 'lucide-react';
+
+type UserProfile = {
+  role: string;
+};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { user } = useUser();
-    const [isClient, setIsClient] = useState(false);
+    const { user, loading: userLoading } = useUser();
+    const router = useRouter();
+    const firestore = useFirestore();
+
+    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+    const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
-        setIsClient(true);
-    }, []);
+        if (!userLoading && !profileLoading) {
+          if (!user) {
+            router.push('/');
+          } else if (isAdmin(user.email) || userProfile?.role === 'it-support') {
+            router.push('/admin');
+          }
+        }
+    }, [user, userLoading, profileLoading, userProfile, router]);
     
+    // While checking role or if user is an admin/support, show a loader.
+    // This prevents the standard dashboard from flashing for admin users before redirection.
+    const isPrivilegedUser = user && (isAdmin(user.email) || userProfile?.role === 'it-support');
+    if (userLoading || profileLoading || isPrivilegedUser) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-muted/40">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
+    }
+    
+    // If not loading and not an admin/support, render the standard user dashboard.
+    // An explicit check for `user` ensures we don't render this for a logged-out user during the redirect.
+    if (!user) {
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-muted/40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -29,25 +67,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span>IT Support</span>
                 </Link>
                 <div className="ml-auto flex items-center gap-4">
-                {isClient ? (
-                    <>
-                        {isAdmin(user?.email) && (
-                            <Button asChild variant="secondary">
-                            <Link href="/admin">Admin</Link>
-                            </Button>
-                        )}
-                        <ReportIssueForm>
-                            <Button>Report an Issue</Button>
-                        </ReportIssueForm>
-                        <UserNav />
-                    </>
-                    ) : (
-                        <>
-                            <Skeleton className="h-9 w-20" />
-                            <Skeleton className="h-10 w-36" />
-                            <Skeleton className="h-9 w-9 rounded-full" />
-                        </>
-                    )}
+                    <ReportIssueForm>
+                        <Button>Report an Issue</Button>
+                    </ReportIssueForm>
+                    <UserNav />
                 </div>
             </header>
             <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
