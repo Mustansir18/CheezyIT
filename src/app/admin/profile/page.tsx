@@ -44,16 +44,12 @@ export default function AdminProfilePage() {
             <div className="flex justify-center">
                 <Card className="w-full max-w-2xl">
                     <CardHeader>
-                        <CardTitle>{user.displayName}</CardTitle>
+                        <CardTitle>Your Profile</CardTitle>
                         <CardDescription>View and edit your personal information.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
-                            <div className="flex flex-col space-y-1">
-                                <label className="text-sm font-medium">Display Name</label>
-                                <p className="text-sm text-muted-foreground">{user.displayName}</p>
-                            </div>
-                            <div className="flex flex-col space-y-1">
+                             <div className="flex flex-col space-y-1">
                                 <label className="text-sm font-medium">Email</label>
                                 <p className="text-sm text-muted-foreground">{user.email}</p>
                             </div>
@@ -62,7 +58,7 @@ export default function AdminProfilePage() {
                         <Separator />
 
                         <div>
-                            <UpdateProfileForm currentPhoneNumber={userProfile?.phoneNumber} />
+                            <UpdateProfileForm currentDisplayName={user.displayName} currentPhoneNumber={userProfile?.phoneNumber} />
                         </div>
                     </CardContent>
                 </Card>
