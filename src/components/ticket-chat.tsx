@@ -35,7 +35,7 @@ type UserProfile = {
 }
 
 const doodleBg = {
-    backgroundImage: `url('https://raw.githubusercontent.com/jerry-14/whatsapp-chat-parser/main/whatsapp-chat-parser/assets/bg.png')`,
+    backgroundImage: `url('/bg.png')`,
     backgroundBlendMode: 'soft-light',
 };
 
