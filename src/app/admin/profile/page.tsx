@@ -41,6 +41,10 @@ export default function AdminProfilePage() {
                 <CardContent className="space-y-6">
                     <div className="space-y-4">
                          <div className="flex flex-col space-y-1">
+                            <label className="text-sm font-medium">Display Name</label>
+                            <p className="text-sm text-muted-foreground">{user.displayName}</p>
+                        </div>
+                         <div className="flex flex-col space-y-1">
                             <label className="text-sm font-medium">Email</label>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
