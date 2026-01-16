@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -313,19 +312,25 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                     <span className="text-xs text-muted-foreground px-2">
                                         {senderName || msg.displayName}
                                     </span>
-                                    <div className={cn(
-                                        "px-5 py-3 rounded-xl",
-                                        isSender ? "bg-primary text-primary-foreground" : "bg-background"
-                                    )}>
+                                    <div
+                                      className={cn(
+                                        "px-6 py-4 rounded-2xl shadow-sm max-w-[75%]",
+                                        isSender
+                                          ? "bg-[#DCF8C6] text-black rounded-br-md"
+                                          : "bg-white text-black rounded-bl-md border"
+                                      )}
+                                    >
                                         {msg.audioUrl ? (
                                             <AudioPlayer src={msg.audioUrl} />
                                         ) : (
-                                            <p className="whitespace-pre-wrap text-lg">{msg.text}</p>
+                                            <p className="whitespace-pre-wrap text-base leading-relaxed">
+                                                {msg.text}
+                                            </p>
                                         )}
-                                        <div className={cn("text-xs mt-1 flex items-center justify-end gap-1", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                                            {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                        <div className="text-[11px] mt-1 flex items-center justify-end gap-1 text-gray-600">
+                                            {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             {isSender && (
-                                                <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-chart-1" : "text-primary-foreground/70")} />
+                                                <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-chart-1" : "text-gray-600")} />
                                             )}
                                         </div>
                                     </div>
@@ -389,5 +394,3 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
         </Card>
     );
 }
-
-    
