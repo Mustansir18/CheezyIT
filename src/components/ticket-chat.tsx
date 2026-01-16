@@ -233,7 +233,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             </header>
             <CardContent 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto p-4 space-y-2 bg-background/90"
+                className="flex-1 overflow-y-auto p-4 space-y-2"
             >
                 {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                 {!isLoading && messagesWithDateSeparators.length === 0 && (
@@ -254,15 +254,25 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
                     return (
                         <div key={msg.id} className={cn("flex w-full", isSender ? "justify-end" : "justify-start")}>
-                            <div className={cn("flex w-fit max-w-[75%] flex-col rounded-lg px-3 pt-2 pb-1.5 text-sm shadow", isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground")}>
+                            <div className={cn(
+                                "relative flex w-fit max-w-[75%] flex-col rounded-lg px-2 pt-1.5 pb-1 text-sm shadow",
+                                isSender ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"
+                            )}>
                                 {!isSender && <p className="font-semibold text-xs mb-1 text-accent">{msg.displayName}</p>}
-                                <p className="whitespace-pre-wrap break-words">
+                                
+                                <p className="whitespace-pre-wrap break-words pr-[60px] pb-1">
                                     {msg.text}
                                 </p>
-                                <div className={cn("flex items-center justify-end gap-1 text-[10px]", isSender ? "text-primary-foreground/80" : "text-card-foreground/60")}>
-                                    {msg.createdAt ? (msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+
+                                <div className={cn(
+                                    "absolute bottom-1 right-2 flex items-center justify-end gap-1 text-[11px]", 
+                                    isSender ? "text-primary-foreground/70" : "text-card-foreground/70"
+                                )}>
+                                    <span>
+                                        {msg.createdAt ? (msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                    </span>
                                     {isSender && (
-                                        <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "text-card-foreground/60")} />
+                                        <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "currentColor")} />
                                     )}
                                 </div>
                             </div>
