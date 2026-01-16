@@ -102,7 +102,8 @@
         },
         "phoneNumber": {
           "type": "string",
-          "description": "Phone number of the user."
+          "description": "Phone number of the user.",
+          "pattern": "^\\d{11}$"
         }
       },
       "required": [
@@ -110,6 +111,39 @@
         "email",
         "displayName",
         "role"
+      ]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "type": "object",
+      "description": "Represents a single message within a ticket's chat session.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who sent the message."
+        },
+        "displayName": {
+            "type": "string",
+            "description": "The display name of the user who sent the message."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the message. Optional if audio is present."
+        },
+        "audioUrl": {
+          "type": "string",
+          "description": "The URL to the audio file for a voice note. Optional if text is present."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "createdAt"
       ]
     }
   },
@@ -156,8 +190,32 @@
             }
           ]
         }
+      },
+       {
+        "path": "/users/{userId}/issues/{issueId}/messages/{messageId}",
+        "definition": {
+            "entityName": "ChatMessage",
+            "schema": {
+                "$ref": "#/backend/entities/ChatMessage"
+            },
+            "description": "Stores chat messages for a specific issue. Both the user and support staff can post messages here.",
+            "params": [
+                {
+                    "name": "userId",
+                    "description": "Unique identifier for the user who owns the issue."
+                },
+                {
+                    "name": "issueId",
+                    "description": "Unique identifier for the issue."
+                },
+                {
+                    "name": "messageId",
+                    "description": "Unique identifier for the chat message."
+                }
+            ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and support secure list operations (QAPs). It leverages structural segregation and consistent access modeling for clarity and maintainability.\n\n*   **Users Collection:** Stores user profiles. Listing users is disabled to prevent unauthorized data access.\n*   **User-Owned Issues:** Issues are stored in a subcollection `/users/{userId}/issues/{issueId}`. This establishes clear ownership and simplifies security rules. This approach guarantees that listing issues is always scoped to a specific user.\n\nThis structure avoids `get()` calls in security rules by directly associating issues with their owners, ensuring Authorization Independence. QAPs are satisfied through path-based ownership, allowing secure and efficient data retrieval for each user."
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and support secure list operations (QAPs). It leverages structural segregation and consistent access modeling for clarity and maintainability.\n\n*   **Users Collection:** Stores user profiles. Listing users is disabled to prevent unauthorized data access.\n*   **User-Owned Issues:** Issues are stored in a subcollection `/users/{userId}/issues/{issueId}`. This establishes clear ownership and simplifies security rules. This approach guarantees that listing issues is always scoped to a specific user.\n*   **Issue-Owned Messages:** Chat messages are stored in a subcollection under each issue, ensuring they are tightly coupled to the ticket they belong to.\n\nThis structure avoids `get()` calls in security rules by directly associating issues with their owners, ensuring Authorization Independence. QAPs are satisfied through path-based ownership, allowing secure and efficient data retrieval for each user."
   }
 }

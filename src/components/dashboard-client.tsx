@@ -9,6 +9,7 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -51,6 +52,7 @@ const priorityIcons: Record<Ticket['priority'], React.ReactNode> = {
 export default function DashboardClient({}: DashboardClientProps) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const issuesQuery = useMemoFirebase(
     () => 
@@ -255,7 +257,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                       </TableRow>
                     ) : filteredTickets[tab].length > 0 ? (
                       filteredTickets[tab].map((ticket) => (
-                      <TableRow key={ticket.id}>
+                      <TableRow key={ticket.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
                         <TableCell>
                            <div className="font-medium">{ticket.title}</div>
                            <div className="hidden text-sm text-muted-foreground md:inline">

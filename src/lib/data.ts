@@ -14,6 +14,16 @@ export type Ticket = {
   attachments?: string[];
 };
 
+export type ChatMessage = {
+  id: string;
+  userId: string;
+  displayName: string;
+  text?: string;
+  audioUrl?: string;
+  createdAt: any; // Firestore Timestamp
+};
+
+
 export const getStats = (allTickets: Ticket[]) => {
     if (!allTickets) {
         return { pending: 0, inProgress: 0, resolved: 0 };
