@@ -30,19 +30,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (!userLoading && !profileLoading) {
           if (!user) {
             router.push('/');
-          } else if (
-            (isAdmin(user.email) || userProfile?.role === 'it-support') &&
-            pathname === '/dashboard'
-            ) {
-            router.push('/admin');
           }
         }
-    }, [user, userLoading, profileLoading, userProfile, router, pathname]);
+    }, [user, userLoading, profileLoading, router]);
     
     const isPrivilegedUser = user && (isAdmin(user.email) || userProfile?.role === 'it-support');
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
 
-    if (userLoading || profileLoading || (isPrivilegedUser && pathname === '/dashboard')) {
+    if (userLoading || profileLoading) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-muted/40">
           <Loader2 className="h-8 w-8 animate-spin" />
@@ -74,6 +69,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <ReportIssueForm>
                                 <Button>Report an Issue</Button>
                             </ReportIssueForm>
+                        )}
+                        {isPrivilegedUser && (
+                             <Button asChild variant="outline">
+                                <Link href="/admin">Admin Dashboard</Link>
+                            </Button>
                         )}
                         <UserNav />
                     </div>
