@@ -1,5 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,19 +15,44 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useUser, useAuth } from '@/firebase';
-import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { isAdmin } from '@/lib/admins';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type UserProfile = {
+  role: string;
+};
 
 export function UserNav() {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const isPrivilegedUser = useMemo(() => {
+    if (!user) return false;
+    return isAdmin(user.email) || userProfile?.role === 'it-support';
+  }, [user, userProfile]);
 
   const handleSignOut = async () => {
     await signOut(auth);
     router.push('/');
   };
+
+  const handleProfileClick = () => {
+    if (isPrivilegedUser) {
+      router.push('/admin/profile');
+    } else {
+      router.push('/dashboard/profile');
+    }
+  };
+
+  if (userLoading || profileLoading) {
+    return <Skeleton className="h-8 w-24" />;
+  }
 
   if (!user) {
     return null;
@@ -46,7 +76,7 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
+          <DropdownMenuItem onClick={handleProfileClick}>
             Profile
           </DropdownMenuItem>
         </DropdownMenuGroup>
