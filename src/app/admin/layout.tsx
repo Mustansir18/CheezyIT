@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { isAdmin } from '@/lib/admins';
+import { isRoot } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { cn } from '@/lib/utils';
 
@@ -25,8 +25,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isAuthorized = useMemo(() => {
     if (!user) return false;
-    if (isAdmin(user.email)) return true;
-    if (userProfile && userProfile.role === 'it-support') return true;
+    if (isRoot(user.email)) return true;
+    if (userProfile && (userProfile.role === 'it-support' || userProfile.role === 'Admin')) return true;
     return false;
   }, [user, userProfile]);
 
@@ -62,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="flex items-center gap-2 font-semibold font-headline"
         >
           <Image src="/logo.png" alt="IT Support Logo" width={32} height={32} />
-          <span>IT Support</span>
+          <span>Root Dashboard</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
           <UserNav />

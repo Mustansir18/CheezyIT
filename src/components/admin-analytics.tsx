@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Ticket } from '@/lib/data';
-import { isAdmin } from '@/lib/admins';
+import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 
 const COLORS = {
@@ -39,12 +39,13 @@ export default function AdminAnalytics() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  const isUserAdmin = useMemo(() => user && isAdmin(user.email), [user]);
+  const isUserRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
 
   useEffect(() => {
     const fetchTickets = async () => {
-      if (!user || (!isUserAdmin && !isUserSupport)) {
+      if (!user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
         setTicketsLoading(false);
         return;
       }
@@ -52,7 +53,7 @@ export default function AdminAnalytics() {
 
       try {
         let fetchedTickets: WithId<Ticket>[] = [];
-        if (isUserAdmin) {
+        if (isUserRoot || isUserAdminRole) {
           const issuesCollectionGroup = collectionGroup(firestore, 'issues');
           const issuesSnapshot = await getDocs(issuesCollectionGroup);
           fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
@@ -88,7 +89,7 @@ export default function AdminAnalytics() {
     if (!userLoading && !profileLoading) {
         fetchTickets();
     }
-  }, [user, userLoading, profileLoading, isUserAdmin, isUserSupport, firestore, toast]);
+  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
 
   const loading = userLoading || profileLoading || ticketsLoading;
 

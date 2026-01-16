@@ -55,7 +55,7 @@ export default function AdminProfilePage() {
                             currentDisplayName={user.displayName} 
                             currentPhoneNumber={userProfile?.phoneNumber}
                             backLink="/admin"
-                            backLinkText="Back to Admin Dashboard"
+                            backLinkText="Back to Root Dashboard"
                         />
                     </div>
                 </CardContent>

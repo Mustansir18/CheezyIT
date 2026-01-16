@@ -9,7 +9,7 @@ import TicketChat from '@/components/ticket-chat';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { isAdmin } from '@/lib/admins';
+import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -41,8 +41,8 @@ export default function TicketDetailPage() {
 
     const canManageTicket = useMemo(() => {
         if (!user) return false;
-        if (isAdmin(user.email)) return true;
-        if (currentUserProfile && currentUserProfile.role === 'it-support') return true;
+        if (isRoot(user.email)) return true;
+        if (currentUserProfile && (currentUserProfile.role === 'it-support' || currentUserProfile.role === 'Admin')) return true;
         return false;
     }, [user, currentUserProfile]);
 

@@ -9,9 +9,9 @@
  * user's specific document (e.g., /users/{userId}/issues/{issueId}).
  *
  * Key Security Decisions:
- * - Admin & IT Support Roles: To allow admins and IT support to manage the system, we check their roles.
- *   For the primary admin, we use a hardcoded email. For IT Support, we perform a `get()` on their user
- *   document to check their `role` field. This is secure and allows for flexible role management.
+ * - Root, Admin & IT Support Roles: To allow privileged users to manage the system, we check their roles.
+ *   For the primary "root" user, we use a hardcoded email. For "Admin" and "IT Support", we perform a `get()`
+ *   on their user document to check their `role` field. This is secure and allows for flexible role management.
  * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
  *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
  * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
@@ -36,33 +36,45 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the user is the primary admin by checking their email address against a list.
-     * This is a pragmatic approach when custom claims are not manageable.
+     * Checks if the user is the primary root user by checking their email address.
+     */
+    function isRoot() {
+      return isSignedIn() && request.auth.token.email == 'mustansir133@gmail.com';
+    }
+    
+    /**
+     * Checks if the user has an 'Admin' role.
      */
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'mustansir133@gmail.com';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    /**
+     * Checks if the user has an 'it-support' role.
+     */
+    function isSupport() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'it-support';
     }
 
     /**
-     * Checks if the user has an 'it-support' role stored in their user document,
-     * or if they are the primary admin.
-     * IMPORTANT: This function uses get() and cannot be used in collection group queries.
+     * Checks if the user has a privileged role (Root, Admin, or IT Support).
+     * IMPORTANT: This function uses get() and cannot be used in collection group list queries
+     * unless the query is only performed by the Root user.
      */
-    function isSupportOrAdmin() {
-      let isSupport = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'it-support';
-      return isAdmin() || isSupport;
+    function canManageTickets() {
+      return isRoot() || isAdmin() || isSupport();
     }
 
     /**
      * @description Rule for 'issues' collection group queries.
-     * Allows admins or IT Support to query across all 'issues' subcollections for analytics.
-     * This rule is essential for the Admin Analytics dashboard to function.
-     * NOTE: `list` is restricted to `isAdmin()` because collection group queries
-     * cannot use `get()` in their where clauses/rules.
+     * Allows Root and Admin users to query across all 'issues' subcollections for analytics and listings.
+     * This rule is essential for the Admin/Root dashboards to function.
+     * NOTE: `list` is restricted here because collection group queries
+     * cannot use `get()` in their where clauses/rules for roles like 'it-support'.
      */
     match /{path=**}/issues/{issueId} {
-      allow get: if isSupportOrAdmin();
-      allow list: if isAdmin();
+      allow get: if canManageTickets();
+      allow list: if isRoot() || isAdmin();
     }
 
     /**
@@ -71,33 +83,32 @@ service cloud.firestore {
      */
     match /users/{userId} {
       /**
-       * Allow reading a user's own profile.
-       * Allow an admin or IT support to read any user's profile.
+       * Allow reading a user's own profile or any profile if the requester is privileged.
        */
-      allow get: if isOwner(userId) || isSupportOrAdmin();
+      allow get: if isOwner(userId) || canManageTickets();
 
       /**
-       * Allow an admin or IT support to list all users.
+       * Allow privileged users to list all users (needed for filtering tickets).
        */
-      allow list: if isSupportOrAdmin();
+      allow list: if canManageTickets();
 
       /**
-       * Allow a user to create their own profile document.
-       * Allow an admin to create any user document (for the admin panel).
+       * Allow a user to create their own profile.
+       * Only a Root user can create other user documents from the dashboard.
        */
-      allow create: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) || isRoot();
 
       /**
        * Allow a user to update their own profile.
-       * Allow an admin or IT support to update any user's profile.
+       * Only a Root user can update other user profiles from the dashboard.
        */
-      allow update: if isOwner(userId) || isSupportOrAdmin();
+      allow update: if isOwner(userId) || isRoot();
 
       /**
        * Allow a user to delete their own profile.
-       * Allow an admin or IT support to delete any user's profile.
+       * Only a Root user can delete other user profiles from the dashboard.
        */
-      allow delete: if isOwner(userId) || isSupportOrAdmin();
+      allow delete: if isOwner(userId) || isRoot();
     }
 
     /**
@@ -105,28 +116,21 @@ service cloud.firestore {
      * @path /users/{userId}/issues/{issueId}
      */
     match /users/{userId}/issues/{issueId} {
-      // Admins, IT Support and owners can read tickets.
-      allow get, list: if isOwner(userId) || isSupportOrAdmin();
-      // Only owners can create tickets under their own user ID.
+      allow get, list: if isOwner(userId) || canManageTickets();
       allow create: if isOwner(userId);
-      // Owners, Admins, and IT Support can update tickets (e.g., change status).
-      allow update: if isOwner(userId) || isSupportOrAdmin();
-      // Owners, Admins, and IT Support can delete tickets.
-      allow delete: if isOwner(userId) || isSupportOrAdmin();
+      allow update, delete: if isOwner(userId) || canManageTickets();
 
         /**
          * @description Rules for chat messages within an issue.
          * @path /users/{userId}/issues/{issueId}/messages/{messageId}
          */
         match /messages/{messageId} {
-            // Users can read messages in their own tickets. Admins & IT can read any.
-            allow list, get: if isOwner(userId) || isSupportOrAdmin();
-            // Users can create messages in their own tickets. Admins & IT can also post.
+            allow list, get: if isOwner(userId) || canManageTickets();
             // We validate that the userId in the message matches the sender's UID.
-            allow create: if (isOwner(userId) || isSupportOrAdmin())
+            allow create: if (isOwner(userId) || canManageTickets())
                         && request.resource.data.userId == request.auth.uid;
             // Allow users involved in the ticket to update the 'isRead' status.
-            allow update: if (isOwner(userId) || isSupportOrAdmin())
+            allow update: if (isOwner(userId) || canManageTickets())
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
         }
     }

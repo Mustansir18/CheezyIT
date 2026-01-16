@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { doc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { isAdmin } from '@/lib/admins';
+import { isRoot } from '@/lib/admins';
 
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-    const isPrivilegedUser = user && (isAdmin(user.email) || userProfile?.role === 'it-support');
+    const isPrivilegedUser = user && (isRoot(user.email) || userProfile?.role === 'it-support' || userProfile?.role === 'Admin');
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
 
     useEffect(() => {

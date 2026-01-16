@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { isAdmin } from '@/lib/admins';
+import { isRoot } from '@/lib/admins';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type UserProfile = {
@@ -34,7 +34,7 @@ export function UserNav() {
 
   const isPrivilegedUser = useMemo(() => {
     if (!user) return false;
-    return isAdmin(user.email) || userProfile?.role === 'it-support';
+    return isRoot(user.email) || userProfile?.role === 'it-support' || userProfile?.role === 'Admin';
   }, [user, userProfile]);
 
   const handleSignOut = async () => {

@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import type { Ticket } from '@/lib/data';
 import { getStats } from '@/lib/data';
-import { isAdmin } from '@/lib/admins';
+import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -70,12 +70,13 @@ export default function AdminTicketList() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  const isUserAdmin = useMemo(() => user && isAdmin(user.email), [user]);
+  const isUserRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
 
   useEffect(() => {
     const fetchTicketsAndUsers = async () => {
-      if (!user || (!isUserAdmin && !isUserSupport)) {
+      if (!user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
         setTicketsLoading(false);
         return;
       }
@@ -88,7 +89,7 @@ export default function AdminTicketList() {
         const usersData = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as WithId<UserWithDisplayName>[];
         setAllUsers(usersData);
 
-        if (isUserAdmin) {
+        if (isUserRoot || isUserAdminRole) {
           const issuesCollectionGroup = collectionGroup(firestore, 'issues');
           const issuesSnapshot = await getDocs(issuesCollectionGroup);
           fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
@@ -121,7 +122,7 @@ export default function AdminTicketList() {
     if (!userLoading && !profileLoading) {
         fetchTicketsAndUsers();
     }
-  }, [user, userLoading, profileLoading, isUserAdmin, isUserSupport, firestore, toast]);
+  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
 
   const loading = userLoading || profileLoading || ticketsLoading;
 

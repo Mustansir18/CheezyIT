@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-import { isAdmin } from '@/lib/admins';
+import { isRoot } from '@/lib/admins';
 
 type UserProfile = {
   role: string;
@@ -38,7 +38,7 @@ export default function LoginPage() {
       return; // Wait until user and profile are loaded
     }
     if (user) {
-      if (isAdmin(user.email) || userProfile?.role === 'it-support') {
+      if (isRoot(user.email) || userProfile?.role === 'it-support' || userProfile?.role === 'Admin') {
         router.push('/admin');
       } else {
         router.push('/dashboard');
