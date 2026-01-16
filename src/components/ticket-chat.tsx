@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -57,7 +57,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         scrollToBottom();
     }, [messages]);
 
@@ -338,5 +338,7 @@ export default function TicketChat({ ticketId, userId }: TicketChatProps) {
         </Card>
     );
 }
+
+    
 
     
