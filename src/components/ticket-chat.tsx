@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
+import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'next/link';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
@@ -154,9 +154,9 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
     return (
         <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0'>
-            <CardHeader className="flex-shrink-0">
-                <div className="flex items-center gap-2 sm:gap-4">
-                     <Button asChild variant="outline" size="icon" className="h-7 w-7 flex-shrink-0">
+            <CardHeader className="flex-shrink-0 bg-zinc-800 text-white">
+                <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-4">
+                     <Button asChild variant="destructive" size="icon" className="h-7 w-7 flex-shrink-0">
                         <Link href={backLink}>
                             <ArrowLeft className="h-4 w-4" />
                             <span className="sr-only">Back</span>
@@ -164,14 +164,14 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     </Button>
                     <div className="flex-1 overflow-hidden">
                         <CardTitle className="truncate text-base sm:text-lg">{ticket.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-2 mt-1 truncate">
+                        <CardDescription className="flex items-center gap-2 mt-1 truncate text-gray-400">
                             {profileLoading ? (
                                 'Loading...'
                             ) : ticketOwnerProfile ? (
                                 <>
                                     <span className="truncate">{ticketOwnerProfile.displayName}</span>
                                     {ticketOwnerProfile.phoneNumber && (
-                                        <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
+                                        <div className="hidden sm:flex items-center gap-1">
                                             <span>- {ticketOwnerProfile.phoneNumber}</span>
                                             <TooltipProvider>
                                                 <Tooltip>
@@ -179,7 +179,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-6 w-6"
+                                                            className="h-6 w-6 text-gray-400 hover:bg-zinc-700 hover:text-white"
                                                             onClick={() => handleCopy(ticketOwnerProfile.phoneNumber)}
                                                         >
                                                             <Copy className="h-4 w-4" />
@@ -200,7 +200,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                      <div className="ml-auto flex items-center gap-2">
                         {canManageTicket ? (
                             <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                                <SelectTrigger className="w-auto text-xs px-2 sm:px-3 sm:text-sm sm:w-[160px]">
+                                <SelectTrigger className="w-auto text-xs px-2 sm:px-3 sm:text-sm sm:w-[160px] bg-chart-2 text-primary-foreground border-transparent hover:bg-chart-2/90">
                                     <SelectValue placeholder="Change status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -210,14 +210,14 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 </SelectContent>
                             </Select>
                         ) : (
-                            <Badge variant="outline" className="text-xs sm:text-sm">
+                            <Badge variant="default" className="text-xs sm:text-sm bg-chart-2 text-primary-foreground border-transparent hover:bg-chart-2/80">
                                 {ticket.status}
                             </Badge>
                         )}
                         {isOwner && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 hover:bg-zinc-700">
                                         <MoreVertical className="h-4 w-4" />
                                         <span className="sr-only">More options</span>
                                     </Button>
