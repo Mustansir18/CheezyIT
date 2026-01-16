@@ -327,13 +327,6 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="pt-0">
-                <p>{ticket.description}</p>
-                 <div className="text-sm text-muted-foreground mt-2">
-                    <span className="mr-4">Priority: <Badge variant={ticket.priority === 'High' ? 'destructive' : 'secondary'}>{ticket.priority}</Badge></span>
-                    <span>Opened on {ticket.createdAt?.toDate().toLocaleDateString()}</span>
-                </div>
-            </CardContent>
             <Separator />
             <CardContent ref={messagesContainerRef} className="h-96 overflow-y-auto p-4 bg-muted/50 flex-grow">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
