@@ -1,9 +1,8 @@
-
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { doc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
@@ -20,6 +19,7 @@ type UserProfile = {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, loading: userLoading } = useUser();
     const router = useRouter();
+    const pathname = usePathname();
     const firestore = useFirestore();
 
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
@@ -29,16 +29,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (!userLoading && !profileLoading) {
           if (!user) {
             router.push('/');
-          } else if (isAdmin(user.email) || userProfile?.role === 'it-support') {
+          } else if (
+            (isAdmin(user.email) || userProfile?.role === 'it-support') &&
+            pathname === '/dashboard'
+            ) {
             router.push('/admin');
           }
         }
-    }, [user, userLoading, profileLoading, userProfile, router]);
+    }, [user, userLoading, profileLoading, userProfile, router, pathname]);
     
-    // While checking role or if user is an admin/support, show a loader.
-    // This prevents the standard dashboard from flashing for admin users before redirection.
     const isPrivilegedUser = user && (isAdmin(user.email) || userProfile?.role === 'it-support');
-    if (userLoading || profileLoading || isPrivilegedUser) {
+
+    if (userLoading || profileLoading || (isPrivilegedUser && pathname === '/dashboard')) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-muted/40">
           <Loader2 className="h-8 w-8 animate-spin" />
@@ -46,8 +48,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       );
     }
     
-    // If not loading and not an admin/support, render the standard user dashboard.
-    // An explicit check for `user` ensures we don't render this for a logged-out user during the redirect.
     if (!user) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-muted/40">
@@ -60,16 +60,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
                 <Link
-                href="/dashboard"
+                href={isPrivilegedUser ? '/admin' : '/dashboard'}
                 className="flex items-center gap-2 font-semibold font-headline"
                 >
                 <Image src="/logo.png" alt="IT Support Logo" width={32} height={32} />
                 <span>IT Support</span>
                 </Link>
                 <div className="ml-auto flex items-center gap-4">
-                    <ReportIssueForm>
-                        <Button>Report an Issue</Button>
-                    </ReportIssueForm>
+                    {!isPrivilegedUser && (
+                        <ReportIssueForm>
+                            <Button>Report an Issue</Button>
+                        </ReportIssueForm>
+                    )}
                     <UserNav />
                 </div>
             </header>
