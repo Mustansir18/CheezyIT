@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -36,12 +37,15 @@ export default function TicketDetailPage() {
     const { user, loading: userLoading } = useUser();
     const firestore = useFirestore();
 
-    const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(
-        user ? doc(firestore, 'users', user.uid) : null
+    const currentUserProfileRef = useMemoFirebase(
+        () => (user ? doc(firestore, 'users', user.uid) : null),
+        [firestore, user]
     );
 
+    const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(currentUserProfileRef);
+
     const effectiveUserId = useMemo(() => {
-        if (ownerId && user && isAdmin(user.email)) {
+        if (ownerId && user && isAdmin(user?.email)) {
             return ownerId;
         }
         return user?.uid;
@@ -56,7 +60,7 @@ export default function TicketDetailPage() {
 
     const canManageTicket = useMemo(() => {
         if (!user || !currentUserProfile) return false;
-        return isAdmin(user.email) || currentUserProfile.role === 'it-support';
+        return isAdmin(user?.email) || currentUserProfile.role === 'it-support';
     }, [user, currentUserProfile]);
 
     const isOwner = useMemo(() => {
@@ -64,7 +68,7 @@ export default function TicketDetailPage() {
         return user.uid === effectiveUserId;
     }, [user, effectiveUserId]);
     
-    const backLink = isAdmin(user.email) && ownerId ? '/admin' : '/dashboard';
+    const backLink = isAdmin(user?.email) && ownerId ? '/admin' : '/dashboard';
 
     const handleStatusChange = async (newStatus: TicketStatus) => {
         if (!ticketRef) return;
@@ -181,7 +185,7 @@ export default function TicketDetailPage() {
                     <p className="mb-4">{ticket.description}</p>
                 </CardContent>
             </Card>
-            <TicketChat ticketId={ticketId} userId={effectiveUserId} />
+            <TicketChat ticketId={ticket.id} userId={effectiveUserId} />
         </div>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
