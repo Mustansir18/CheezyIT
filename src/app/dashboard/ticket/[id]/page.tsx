@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase, WithId } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Loader2, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ export default function TicketDetailPage() {
         () => (effectiveUserId && ticketId ? doc(firestore, 'users', effectiveUserId, 'issues', ticketId) : null),
         [firestore, effectiveUserId, ticketId]
     );
-    const { data: ticket, isLoading: ticketLoading } = useDoc<WithId<Ticket>>(ticketRef);
+    const { data: ticket, isLoading: ticketLoading } = useDoc<Ticket>(ticketRef);
 
     const canManageTicket = useMemo(() => {
         if (!user || !currentUserProfile) return false;
