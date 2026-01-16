@@ -44,6 +44,15 @@ service cloud.firestore {
     }
 
     /**
+     * @description Rule for 'issues' collection group queries.
+     * Allows admins to query across all 'issues' subcollections for analytics.
+     * This rule is essential for the Admin Analytics dashboard to function.
+     */
+    match /{path=**}/issues/{issueId} {
+      allow get, list: if isAdmin();
+    }
+
+    /**
      * @description Rules for the 'users' collection.
      * @path /users/{userId}
      */
