@@ -154,123 +154,112 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
     return (
         <Card className='flex flex-1 flex-col min-h-0 h-full w-full rounded-none border-0'>
-            <CardHeader className="flex-shrink-0 bg-zinc-800 text-white px-2 py-1">
-                <div className="flex items-center gap-2">
-                     <Button asChild variant="destructive" size="icon" className="h-7 w-7 flex-shrink-0">
+            <CardHeader className="flex flex-row items-center border-b bg-muted/50 p-4">
+                <div className="flex items-center gap-3">
+                    <Button asChild variant="ghost" size="icon" className="flex-shrink-0">
                         <Link href={backLink}>
-                            <ArrowLeft className="h-4 w-4" />
+                            <ArrowLeft className="h-5 w-5" />
                             <span className="sr-only">Back</span>
                         </Link>
                     </Button>
                     <div className="flex-1 overflow-hidden">
-                        <CardTitle className="truncate text-sm font-semibold">{ticket.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-1 truncate text-gray-400 text-xs">
-                            {profileLoading ? (
-                                'Loading...'
-                            ) : ticketOwnerProfile ? (
-                                <>
-                                    <span className="truncate">{ticketOwnerProfile.displayName}</span>
-                                    {ticketOwnerProfile.phoneNumber && (
-                                        <div className="hidden sm:flex items-center gap-1">
-                                            <span>- {ticketOwnerProfile.phoneNumber}</span>
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-5 w-5 text-gray-400 hover:bg-zinc-700 hover:text-white"
-                                                            onClick={() => handleCopy(ticketOwnerProfile.phoneNumber)}
-                                                        >
-                                                            <Copy className="h-3 w-3" />
-                                                            <span className="sr-only">Copy phone number</span>
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>Copy to clipboard</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </div>
-                                    )}
-                                </>
-                            ) : null }
-                        </CardDescription>
+                        <p className="text-base font-semibold leading-none truncate">{ticket.title}</p>
+                        <div className="text-sm text-muted-foreground truncate flex items-center gap-1">
+                            <span>
+                            {profileLoading ? 'Loading...' : `Opened by ${ticketOwnerProfile?.displayName || 'Unknown User'}`}
+                            </span>
+                             {ticketOwnerProfile?.phoneNumber && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className='flex items-center gap-1'>
+                                                - {ticketOwnerProfile.phoneNumber}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-5 w-5 text-muted-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                    onClick={() => handleCopy(ticketOwnerProfile.phoneNumber)}
+                                                >
+                                                    <Copy className="h-3 w-3" />
+                                                    <span className="sr-only">Copy phone number</span>
+                                                </Button>
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Copy to clipboard</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                        </div>
                     </div>
-                     <div className="ml-auto flex items-center gap-2">
-                        {canManageTicket ? (
-                            <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                                <SelectTrigger className="w-auto text-xs px-2 h-7 bg-green-600 text-white border-transparent hover:bg-green-700 focus:ring-0">
-                                    <SelectValue placeholder="Change status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Pending">Pending</SelectItem>
-                                    <SelectItem value="In Progress">In Progress</SelectItem>
-                                    <SelectItem value="Resolved">Resolved</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <Badge variant="default" className="text-xs h-6 bg-green-600 text-white border-transparent hover:bg-green-700">
-                                {ticket.status}
-                            </Badge>
-                        )}
-                        {isOwner && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 hover:bg-zinc-700">
-                                        <MoreVertical className="h-4 w-4" />
-                                        <span className="sr-only">More options</span>
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>Delete Ticket</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
-                    </div>
+                </div>
+                 <div className="ml-auto flex items-center gap-2">
+                    {canManageTicket ? (
+                        <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
+                            <SelectTrigger className="w-auto text-xs px-3 h-8">
+                                <SelectValue placeholder="Change status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="In Progress">In Progress</SelectItem>
+                                <SelectItem value="Resolved">Resolved</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <Badge variant="outline" className="text-xs h-7">
+                            {ticket.status}
+                        </Badge>
+                    )}
+                    {isOwner && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                    <MoreVertical className="h-4 w-4" />
+                                    <span className="sr-only">More options</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete Ticket</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
             </CardHeader>
             <Separator />
-            <CardContent ref={messagesContainerRef} className="overflow-y-auto p-2 sm:p-4 bg-muted/50 flex-grow">
-                    {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
-                    {!isLoading && messages && messages.length === 0 && (
-                        <div className="flex justify-center items-center h-full">
-                            <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
-                        </div>
-                    )}
-                    {messages?.map((msg) => {
-                        const isSender = msg.userId === user?.uid;
-                        return (
-                             <div key={msg.id} className={cn(
-                                "flex w-full my-1",
-                                isSender ? "justify-end" : "justify-start"
-                            )}>
-                                <div className={cn(
-                                    "relative max-w-[75%] rounded-lg px-3 py-2",
-                                    isSender ? "bg-green-800 text-white" : "bg-zinc-700 text-white"
-                                )}>
-                                    <p className="whitespace-pre-wrap break-words pr-20 text-sm leading-relaxed">
-                                        {msg.text}
-                                    </p>
-                                    <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] text-gray-400">
-                                        {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        {isSender && (
-                                            <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "text-gray-500")} />
-                                        )}
-                                    </div>
-                                </div>
+            <CardContent ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+                {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
+                {!isLoading && messages && messages.length === 0 && (
+                    <div className="flex justify-center items-center h-full">
+                        <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
+                    </div>
+                )}
+                {messages?.map((msg) => {
+                    const isSender = msg.userId === user?.uid;
+                    return (
+                        <div key={msg.id} className={cn("flex w-max max-w-[75%] flex-col gap-1 rounded-lg px-3 py-2 text-sm", isSender ? "ml-auto bg-primary text-primary-foreground" : "bg-muted")}>
+                            {!isSender && <p className="font-semibold text-xs">{msg.displayName}</p>}
+                            <p className="whitespace-pre-wrap break-words">
+                                {msg.text}
+                            </p>
+                            <div className={cn("flex items-center gap-1 text-[10px] self-end", isSender ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {isSender && (
+                                    <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-sky-400" : "text-gray-500")} />
+                                )}
                             </div>
-                        )
-                    })}
+                        </div>
+                    )
+                })}
             </CardContent>
 
-             <div className="border-t p-2 sm:p-3 bg-background">
-                 <div className="relative">
+             <div className="border-t bg-background p-4">
+                <div className="relative">
                     <Textarea
-                        placeholder={"Type a message..."}
+                        placeholder="Type a message..."
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         onKeyDown={(e) => {
@@ -279,14 +268,18 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 handleSendMessage();
                             }
                         }}
-                        className="min-h-12 resize-none rounded-lg p-3 pr-20 shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="min-h-[48px] w-full resize-none rounded-full border bg-muted py-3 pl-4 pr-16"
                     />
-                     <div className="absolute right-2 sm:right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 sm:gap-2">
-                       <Button type="submit" size="sm" onClick={handleSendMessage} disabled={!message.trim()}>
-                            <span className="hidden sm:inline-block">Send</span>
-                            <Send className="h-4 w-4 sm:ml-2" />
-                        </Button>
-                    </div>
+                    <Button 
+                        type="submit" 
+                        size="icon" 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full" 
+                        onClick={handleSendMessage}
+                        disabled={!message.trim()}
+                    >
+                        <Send className="h-5 w-5" />
+                        <span className="sr-only">Send</span>
+                    </Button>
                 </div>
             </div>
         </Card>
