@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lightbulb, Loader2, Circle, CircleDot, CircleCheck, ArrowDown, Minus, TriangleAlert, Calendar as CalendarIcon } from 'lucide-react';
+import { Lightbulb, Loader2, Circle, CircleDot, CircleCheck, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,12 +41,6 @@ const statusIcons: Record<TicketStatus, React.ReactNode> = {
   Pending: <Circle className="mr-2 h-4 w-4 text-muted-foreground" />,
   'In Progress': <CircleDot className="mr-2 h-4 w-4 text-accent" />,
   Resolved: <CircleCheck className="mr-2 h-4 w-4 text-chart-2" />,
-};
-
-const priorityIcons: Record<Ticket['priority'], React.ReactNode> = {
-  Low: <ArrowDown className="mr-2 h-4 w-4 text-muted-foreground" />,
-  Medium: <Minus className="mr-2 h-4 w-4 text-accent" />,
-  High: <TriangleAlert className="mr-2 h-4 w-4 text-destructive" />,
 };
 
 export default function DashboardClient({}: DashboardClientProps) {
@@ -89,12 +83,11 @@ export default function DashboardClient({}: DashboardClientProps) {
   const handleSummarize = () => {
     startTransition(async () => {
       const openTickets = filteredByDateTickets.filter(t => t.status !== 'Resolved');
-      const ticketsForAI = openTickets.map(({id: ticketId, title, description, status, priority}) => ({
+      const ticketsForAI = openTickets.map(({id: ticketId, title, description, status}) => ({
           ticketId,
           title,
           description,
           status,
-          priority
       }));
 
       const result = await summarizeTicketsAction(ticketsForAI);
@@ -244,14 +237,13 @@ export default function DashboardClient({}: DashboardClientProps) {
                     <TableRow>
                       <TableHead>Ticket</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {ticketsLoading ? (
                       <TableRow>
-                          <TableCell colSpan={4} className="h-24 text-center">
+                          <TableCell colSpan={3} className="h-24 text-center">
                             <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                           </TableCell>
                       </TableRow>
@@ -275,15 +267,11 @@ export default function DashboardClient({}: DashboardClientProps) {
                              {ticket.status}
                            </Badge>
                         </TableCell>
-                        <TableCell className="flex items-center">
-                          {priorityIcons[ticket.priority]}
-                          {ticket.priority}
-                        </TableCell>
                         <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
                       </TableRow>
                     ))) : (
                       <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={3} className="h-24 text-center">
                           No tickets found in this date range.
                         </TableCell>
                       </TableRow>

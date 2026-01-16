@@ -96,7 +96,6 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             anydesk: data.anydesk || '',
             attachments: [],
             status: 'Pending',
-            priority: 'Medium', // Default priority
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             unreadByAdmin: false,

@@ -6,7 +6,6 @@ export type Ticket = {
   title: string;
   description: string;
   status: TicketStatus;
-  priority: 'Low' | 'Medium' | 'High';
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   completedAt?: any; // Firestore Timestamp

@@ -37,11 +37,6 @@
           "description": "Current status of the issue (e.g., Open, In Progress, Resolved).",
           "format": "string"
         },
-        "priority": {
-          "type": "string",
-          "description": "Priority level of the issue (e.g., High, Medium, Low).",
-          "format": "string"
-        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the issue was reported.",
@@ -80,7 +75,6 @@
         "issueType",
         "description",
         "status",
-        "priority",
         "createdAt",
         "updatedAt"
       ]

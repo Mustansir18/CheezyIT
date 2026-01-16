@@ -30,9 +30,6 @@ const COLORS = {
   Pending: 'hsl(var(--chart-3))',
   'In Progress': 'hsl(var(--chart-4))',
   Resolved: 'hsl(var(--chart-2))',
-  High: 'hsl(var(--destructive))',
-  Medium: 'hsl(var(--chart-3))',
-  Low: 'hsl(var(--muted-foreground))',
 };
 
 type UserProfile = {
@@ -200,9 +197,8 @@ export default function AdminReports() {
   }, [allTickets, date, ticketIdFilter, userFilter, statusFilter]);
 
 
-  const { statusData, priorityData, chartConfig } = useMemo(() => {
+  const { statusData, chartConfig } = useMemo(() => {
     const statusCounts: { [key: string]: number } = { Pending: 0, 'In Progress': 0, Resolved: 0 };
-    const priorityCounts: { [key: string]: number } = { Low: 0, Medium: 0, High: 0 };
 
     // Use the already filtered-by-date tickets for chart data
     const chartTickets = allTickets.filter(ticket => {
@@ -217,23 +213,18 @@ export default function AdminReports() {
 
     for (const ticket of chartTickets) {
       if (ticket.status) statusCounts[ticket.status]++;
-      if (ticket.priority) priorityCounts[ticket.priority]++;
     }
 
     const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value, fill: COLORS[name as keyof typeof COLORS] }));
-    const priorityData = Object.entries(priorityCounts).map(([name, value]) => ({ name, value, fill: COLORS[name as keyof typeof COLORS] }));
-
+    
     const chartConfig = {
       value: { label: 'Tickets' },
       Pending: { label: 'Pending', color: COLORS.Pending },
       'In Progress': { label: 'In Progress', color: COLORS['In Progress'] },
       Resolved: { label: 'Resolved', color: COLORS.Resolved },
-       High: { label: 'High', color: COLORS.High },
-       Medium: { label: 'Medium', color: COLORS.Medium },
-       Low: { label: 'Low', color: COLORS.Low },
     };
 
-    return { statusData, priorityData, chartConfig };
+    return { statusData, chartConfig };
   }, [allTickets, date]);
   
   const handleTicketClick = (ticket: WithId<Ticket>) => {
@@ -333,10 +324,10 @@ export default function AdminReports() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-1">
               <div className="flex flex-col">
                   <h3 className="text-lg font-semibold mb-2 text-center">Tickets by Status</h3>
-                  <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
+                  <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px] max-w-sm">
                       <PieChart>
                           <Tooltip content={<ChartTooltipContent hideLabel />} />
                           <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
@@ -357,38 +348,6 @@ export default function AdminReports() {
                               )
                           }} />
                       </PieChart>
-                  </ChartContainer>
-              </div>
-               <div className="flex flex-col">
-                  <h3 className="text-lg font-semibold mb-2 text-center">Tickets by Priority</h3>
-                  <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
-                      <BarChart data={priorityData} layout="vertical" margin={{ left: 10 }}>
-                           <XAxis type="number" hide />
-                           <CartesianGrid horizontal={false} />
-                           <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent hideLabel />} />
-                           <Bar dataKey="value" radius={5}>
-                               {priorityData.map((entry) => (
-                                   <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                               ))}
-                           </Bar>
-                           <Legend content={({ payload }) => {
-                              return (
-                                  <ul className="flex flex-wrap gap-4 justify-center mt-4">
-                                  {payload?.map((entry, index) => {
-                                    const { value: name, color } = entry;
-                                    const { value: count } = (entry.payload as any) || {};
-
-                                    return (
-                                       <li key={`item-${name}`} className="flex items-center gap-2">
-                                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                                          <span className="text-sm text-muted-foreground">{name} ({count})</span>
-                                      </li>
-                                    )
-                                  })}
-                                  </ul>
-                              )
-                          }} />
-                      </BarChart>
                   </ChartContainer>
               </div>
           </div>
@@ -455,7 +414,6 @@ export default function AdminReports() {
                             </DropdownMenu>
                         </TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Priority</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Completed</TableHead>
                         <TableHead>Resolution Time</TableHead>
@@ -465,7 +423,7 @@ export default function AdminReports() {
                 <TableBody>
                     {loading ? (
                     <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                             <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                         </TableCell>
                     </TableRow>
@@ -492,9 +450,6 @@ export default function AdminReports() {
                              {ticket.status}
                            </Badge>
                         </TableCell>
-                        <TableCell>
-                            {ticket.priority}
-                        </TableCell>
                         <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
                         <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
                         <TableCell>{getResolutionTime(ticket.createdAt, ticket.completedAt)}</TableCell>
@@ -502,7 +457,7 @@ export default function AdminReports() {
                       </TableRow>
                     ))) : (
                     <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                         No tickets found matching your filters.
                         </TableCell>
                     </TableRow>

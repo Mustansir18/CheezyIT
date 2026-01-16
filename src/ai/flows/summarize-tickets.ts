@@ -18,7 +18,6 @@ const SummarizeTicketsInputSchema = z.object({
       title: z.string(),
       description: z.string(),
       status: z.string(),
-      priority: z.string(),
     })
   ).describe('An array of open IT support tickets for a user.'),
 });
@@ -44,7 +43,6 @@ Ticket ID: {{{ticketId}}}
 Title: {{{title}}}
 Description: {{{description}}}
 Status: {{{status}}}
-Priority: {{{priority}}}
 {% endeach %}
 `,
 });
