@@ -44,24 +44,25 @@ export async function sendAnnouncementAction(data: {
     if (data.targetUsers && data.targetUsers.length > 0) {
         targetUsers = allUsers.filter(user => data.targetUsers.includes(user.id));
     } else {
-        // Priority 2: Filter by roles and/or regions
-        targetUsers = allUsers.filter(user => {
-            // If no roles or regions are selected, target everyone
-            if (data.targetRoles.length === 0 && data.targetRegions.length === 0) {
-                return true; 
-            }
+        // Priority 2: Progressively filter by roles and regions with AND logic.
+        let filteredUsers = allUsers;
 
-            const roleMatch = data.targetRoles.length === 0 || data.targetRoles.includes(user.role);
-            
-            const userRegions = user.regions || (user.region ? [user.region] : []);
-            const regionMatch = data.targetRegions.length === 0 || userRegions.some((r: string) => data.targetRegions.includes(r));
-            
-            // Logic for when both are specified vs one is specified
-            if (data.targetRoles.length > 0 && data.targetRegions.length > 0) {
-                return roleMatch && regionMatch; // Must match both
-            }
-            return roleMatch || regionMatch; // Must match one or the other
-        });
+        // Filter by roles if any are selected
+        if (data.targetRoles.length > 0) {
+            filteredUsers = filteredUsers.filter(user => user.role && data.targetRoles.includes(user.role));
+        }
+
+        // Further filter by regions if any are selected
+        if (data.targetRegions.length > 0) {
+            filteredUsers = filteredUsers.filter(user => {
+                const userRegions = (Array.isArray(user.regions) && user.regions.length > 0)
+                    ? user.regions
+                    : (user.region ? [user.region] : []);
+                return userRegions.some((r: string) => data.targetRegions.includes(r));
+            });
+        }
+        
+        targetUsers = filteredUsers;
     }
 
     if (targetUsers.length === 0) {
