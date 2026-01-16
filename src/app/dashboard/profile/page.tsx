@@ -34,35 +34,35 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="space-y-4">
-            <Button asChild variant="outline">
-                <Link href="/dashboard">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Dashboard
-                </Link>
-            </Button>
-            <div className="flex justify-center">
-                <Card className="w-full max-w-2xl">
-                    <CardHeader>
+        <div className="flex justify-center">
+            <Card className="w-full max-w-2xl">
+                <CardHeader>
+                    <Button asChild variant="outline" className="w-fit">
+                        <Link href="/dashboard">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Dashboard
+                        </Link>
+                    </Button>
+                    <div className="pt-4">
                         <CardTitle>Your Profile</CardTitle>
                         <CardDescription>View and edit your personal information.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                            <div className="flex flex-col space-y-1">
-                                <label className="text-sm font-medium">Email</label>
-                                <p className="text-sm text-muted-foreground">{user.email}</p>
-                            </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                        <div className="flex flex-col space-y-1">
+                            <label className="text-sm font-medium">Email</label>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
-                        
-                        <Separator />
+                    </div>
+                    
+                    <Separator />
 
-                        <div>
-                            <UpdateProfileForm currentDisplayName={user.displayName} currentPhoneNumber={userProfile?.phoneNumber} />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    <div>
+                        <UpdateProfileForm currentDisplayName={user.displayName} currentPhoneNumber={userProfile?.phoneNumber} />
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
