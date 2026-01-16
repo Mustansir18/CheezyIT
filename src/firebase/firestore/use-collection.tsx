@@ -77,18 +77,11 @@ export function useCollection<T = any>(
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
-        const results: ResultItemType[] = [];
-        for (const doc of snapshot.docs) {
-          const docData = doc.data() as T;
+        const results: ResultItemType[] = snapshot.docs.map(doc => ({
+            ...(doc.data() as T),
+            id: doc.id
+        }));
 
-          // For collectionGroup queries, parse userId from path
-          const pathSegments = doc.ref.path.split('/');
-          if (pathSegments.length > 1 && pathSegments[0] === 'users' && pathSegments[2] === 'issues') {
-              (docData as any).userId = pathSegments[1];
-          }
-
-          results.push({ ...docData, id: doc.id });
-        }
         setData(results);
         setError(null);
         setIsLoading(false);

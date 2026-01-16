@@ -46,6 +46,7 @@ service cloud.firestore {
     /**
      * Checks if the user has an 'it-support' role stored in their user document,
      * or if they are the primary admin.
+     * IMPORTANT: This function uses get() and cannot be used in collection group queries.
      */
     function isSupportOrAdmin() {
       let isSupport = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'it-support';
@@ -56,9 +57,12 @@ service cloud.firestore {
      * @description Rule for 'issues' collection group queries.
      * Allows admins or IT Support to query across all 'issues' subcollections for analytics.
      * This rule is essential for the Admin Analytics dashboard to function.
+     * NOTE: `list` is restricted to `isAdmin()` because collection group queries
+     * cannot use `get()` in their where clauses/rules.
      */
     match /{path=**}/issues/{issueId} {
-      allow get, list: if isSupportOrAdmin();
+      allow get: if isSupportOrAdmin();
+      allow list: if isAdmin();
     }
 
     /**

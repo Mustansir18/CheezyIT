@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase, type WithId, useUser, useDoc } from '@/firebase';
-import { collectionGroup, query, doc, deleteDoc } from 'firebase/firestore';
+import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
+import { collection, collectionGroup, query, doc, deleteDoc, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -45,20 +45,70 @@ export default function AdminReports() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+  
+  const isUserAdmin = useMemo(() => user && isAdmin(user.email), [user]);
+  const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
 
-  const canViewAllTickets = useMemo(() => {
-    if (!user || !userProfile) return false;
-    return isAdmin(user.email) || userProfile.role === 'it-support';
-  }, [user, userProfile]);
+  useEffect(() => {
+    const fetchTickets = async () => {
+      if (!user || (!isUserAdmin && !isUserSupport)) {
+          setTicketsLoading(false);
+          return;
+      }
+      setTicketsLoading(true);
 
-  const allIssuesQuery = useMemoFirebase(() => {
-      if (!canViewAllTickets) return null;
-      return query(collectionGroup(firestore, 'issues'));
-  }, [firestore, canViewAllTickets]);
+      try {
+        let fetchedTickets: WithId<Ticket>[] = [];
 
-  const { data: allTickets, isLoading: ticketsLoading } = useCollection<WithId<Ticket>>(allIssuesQuery);
+        if (isUserAdmin) {
+          // Admins can use the efficient collectionGroup query
+          const issuesQuery = query(collectionGroup(firestore, 'issues'));
+          const querySnapshot = await getDocs(issuesQuery);
+          fetchedTickets = querySnapshot.docs.map(doc => ({
+            ...(doc.data() as Ticket),
+            id: doc.id,
+          }));
+        } else if (isUserSupport) {
+          // IT Support must fetch users first, then their tickets
+          const usersQuery = query(collection(firestore, 'users'));
+          const usersSnapshot = await getDocs(usersQuery);
+          
+          const ticketPromises = usersSnapshot.docs.map(async (userDoc) => {
+            const userId = userDoc.id;
+            const issuesCollection = collection(firestore, 'users', userId, 'issues');
+            const issuesSnapshot = await getDocs(issuesCollection);
+            return issuesSnapshot.docs.map(issueDoc => ({
+              ...(issueDoc.data() as Ticket),
+              id: issueDoc.id,
+            }));
+          });
+
+          const ticketArrays = await Promise.all(ticketPromises);
+          fetchedTickets = ticketArrays.flat();
+        }
+        setAllTickets(fetchedTickets);
+      } catch (error) {
+        console.error("Error fetching tickets for admin/support:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error Fetching Tickets',
+            description: 'Could not fetch all tickets. Please check permissions.',
+        });
+      } finally {
+        setTicketsLoading(false);
+      }
+    };
+
+    // Only fetch when user/profile loading is done
+    if (!userLoading && !profileLoading) {
+        fetchTickets();
+    }
+  }, [user, userLoading, profileLoading, isUserAdmin, isUserSupport, firestore, toast]);
 
   const loading = userLoading || profileLoading || ticketsLoading;
 
@@ -68,9 +118,8 @@ export default function AdminReports() {
   });
 
   const filteredTickets = useMemo(() => {
-    const tickets = allTickets || [];
-    if (!date?.from) return tickets;
-    return tickets.filter(ticket => {
+    if (!date?.from) return allTickets;
+    return allTickets.filter(ticket => {
         if (!ticket.createdAt) return false;
         // @ts-ignore
         const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
@@ -142,7 +191,7 @@ export default function AdminReports() {
   };
 
 
-  if (loading) {
+  if (loading && allTickets.length === 0) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
