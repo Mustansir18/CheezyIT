@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceStrict } from 'date-fns';
-import { Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, Trash2, Filter } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, deleteDoc, getDocs, collectionGroup } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 const COLORS = {
@@ -72,7 +73,7 @@ export default function AdminReports() {
   const [ticketsLoading, setTicketsLoading] = useState(true);
   
   const [ticketIdFilter, setTicketIdFilter] = useState('');
-  const [userFilter, setUserFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
 
@@ -185,11 +186,9 @@ export default function AdminReports() {
         );
     }
 
-    // User name filter
-    if (userFilter) {
-        tickets = tickets.filter(ticket =>
-            (usersMap[ticket.userId] || '').toLowerCase().includes(userFilter.toLowerCase())
-        );
+    // User filter
+    if (userFilter !== 'all') {
+        tickets = tickets.filter(ticket => ticket.userId === userFilter);
     }
 
     // Status filter
@@ -198,7 +197,7 @@ export default function AdminReports() {
     }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, usersMap]);
+  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter]);
 
 
   const { statusData, priorityData, chartConfig } = useMemo(() => {
@@ -416,21 +415,44 @@ export default function AdminReports() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>
-                             <Input
-                                placeholder="Filter tickets..."
-                                value={ticketIdFilter}
-                                onChange={(e) => setTicketIdFilter(e.target.value)}
-                                className="h-9"
-                            />
+                        <TableHead className="w-[250px]">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="-ml-3">
+                                        Ticket
+                                        <Filter className="ml-2 h-3 w-3" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-2 w-60" align="start">
+                                    <Input
+                                        placeholder="Filter by ID or title..."
+                                        value={ticketIdFilter}
+                                        onChange={(e) => setTicketIdFilter(e.target.value)}
+                                        className="h-9"
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </TableHead>
-                        <TableHead>
-                             <Input
-                                placeholder="Filter users..."
-                                value={userFilter}
-                                onChange={(e) => setUserFilter(e.target.value)}
-                                className="h-9"
-                            />
+                        <TableHead className="w-[180px]">
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="-ml-3">
+                                        User
+                                        <Filter className="ml-2 h-3 w-3" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                    <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
+                                        <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem>
+                                        <DropdownMenuSeparator />
+                                        {allUsers.sort((a, b) => a.displayName.localeCompare(b.displayName)).map(user => (
+                                            <DropdownMenuRadioItem key={user.id} value={user.id}>
+                                                {user.displayName}
+                                            </DropdownMenuRadioItem>
+                                        ))}
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Priority</TableHead>
