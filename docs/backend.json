@@ -7,10 +7,6 @@
       "type": "object",
       "description": "Represents an IT issue reported by a user.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the issue."
-        },
         "userId": {
           "type": "string",
           "description": "Reference to the User who reported the issue. (Relationship: User 1:N Issue)"
@@ -65,7 +61,6 @@
         }
       },
       "required": [
-        "id",
         "userId",
         "title",
         "issueType",
@@ -82,10 +77,6 @@
       "type": "object",
       "description": "Represents a user of the IssueTrackr application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the user."
-        },
         "email": {
           "type": "string",
           "description": "Email address of the user.",
@@ -107,7 +98,6 @@
         }
       },
       "required": [
-        "id",
         "email",
         "displayName",
         "role"
@@ -158,68 +148,23 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profiles. Listing of users is disabled to prevent unauthorized access. The 'userId' parameter represents the unique identifier for a user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "Unique identifier for the user."
-            }
-          ]
-        }
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/User"
       },
-      {
-        "path": "/users/{userId}/issues/{issueId}",
-        "definition": {
-          "entityName": "Issue",
-          "schema": {
-            "$ref": "#/backend/entities/Issue"
-          },
-          "description": "Stores issues reported by a specific user. The 'userId' parameter represents the owner of the issue, ensuring path-based ownership. The `issueId` parameter represents the unique identifier for an issue within a user's issues.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "Unique identifier for the user who owns the issue."
-            },
-            {
-              "name": "issueId",
-              "description": "Unique identifier for the issue."
-            }
-          ]
-        }
+      "description": "Stores user profiles. Listing of users is disabled to prevent unauthorized access. The 'userId' parameter represents the unique identifier for a user."
+    },
+    "/users/{userId}/issues/{issueId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Issue"
       },
-       {
-        "path": "/users/{userId}/issues/{issueId}/messages/{messageId}",
-        "definition": {
-            "entityName": "ChatMessage",
-            "schema": {
-                "$ref": "#/backend/entities/ChatMessage"
-            },
-            "description": "Stores chat messages for a specific issue. Both the user and support staff can post messages here.",
-            "params": [
-                {
-                    "name": "userId",
-                    "description": "Unique identifier for the user who owns the issue."
-                },
-                {
-                    "name": "issueId",
-                    "description": "Unique identifier for the issue."
-                },
-                {
-                    "name": "messageId",
-                    "description": "Unique identifier for the chat message."
-                }
-            ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and support secure list operations (QAPs). It leverages structural segregation and consistent access modeling for clarity and maintainability.\n\n*   **Users Collection:** Stores user profiles. Listing users is disabled to prevent unauthorized data access.\n*   **User-Owned Issues:** Issues are stored in a subcollection `/users/{userId}/issues/{issueId}`. This establishes clear ownership and simplifies security rules. This approach guarantees that listing issues is always scoped to a specific user.\n*   **Issue-Owned Messages:** Chat messages are stored in a subcollection under each issue, ensuring they are tightly coupled to the ticket they belong to.\n\nThis structure avoids `get()` calls in security rules by directly associating issues with their owners, ensuring Authorization Independence. QAPs are satisfied through path-based ownership, allowing secure and efficient data retrieval for each user."
+      "description": "Stores issues reported by a specific user. The 'userId' parameter represents the owner of the issue, ensuring path-based ownership. The `issueId` parameter represents the unique identifier for an issue within a user's issues."
+    },
+    "/users/{userId}/issues/{issueId}/messages/{messageId}": {
+      "schema": {
+        "$ref": "#/backend/entities/ChatMessage"
+      },
+      "description": "Stores chat messages for a specific issue. Both the user and support staff can post messages here."
+    }
   }
 }
