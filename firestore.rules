@@ -125,6 +125,9 @@ service cloud.firestore {
             // We validate that the userId in the message matches the sender's UID.
             allow create: if (isOwner(userId) || isSupportOrAdmin())
                         && request.resource.data.userId == request.auth.uid;
+            // Allow users involved in the ticket to update the 'isRead' status.
+            allow update: if (isOwner(userId) || isSupportOrAdmin())
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
         }
     }
   }

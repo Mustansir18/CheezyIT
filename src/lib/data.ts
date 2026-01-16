@@ -23,6 +23,7 @@ export type ChatMessage = {
   link?: string;
   type?: 'user' | 'call_request';
   createdAt: any; // Firestore Timestamp
+  isRead?: boolean;
 };
 
 

@@ -138,6 +138,10 @@
           "type": "string",
           "description": "Timestamp indicating when the message was sent.",
           "format": "date-time"
+        },
+        "isRead": {
+            "type": "boolean",
+            "description": "True if the message has been read by the recipient."
         }
       },
       "required": [

@@ -5,7 +5,7 @@ import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, FirestorePermissionError, errorEmitter, useStorage, useDoc } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Send, Mic, Copy } from 'lucide-react';
+import { Loader2, Send, Mic, Copy, CheckCheck } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,7 +61,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
     const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
 
     useLayoutEffect(() => {
-        if (messages && messages.length > 0 && messagesContainerRef.current) {
+        if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
     }, [messages]);
@@ -75,6 +75,28 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
             updateDoc(ticketRef, { unreadByAdmin: false });
         }
     }, [ticketRef, isOwner, canManageTicket]);
+
+    // Effect to mark messages from OTHERS as read when they become visible
+    useEffect(() => {
+        if (!firestore || !user || !messages || messages.length === 0) return;
+
+        const unreadMessagesFromOthers = messages.filter(
+            msg => !msg.isRead && msg.userId !== user.uid
+        );
+
+        if (unreadMessagesFromOthers.length > 0) {
+            unreadMessagesFromOthers.forEach(msg => {
+                if (msg.id) {
+                    const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
+                    // Use a non-blocking update, no need to await
+                    updateDoc(msgRef, { isRead: true }).catch(error => {
+                        console.error("Failed to mark message as read:", error);
+                    });
+                }
+            });
+        }
+    }, [messages, firestore, user, userId, ticketId]);
+
 
     const handleCopy = (text: string | undefined) => {
         if (!text) return;
@@ -105,16 +127,14 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
             text: messageToSend,
             type: 'user' as const,
             createdAt: serverTimestamp(),
+            isRead: false,
         };
 
         addDoc(messagesCollection, messageData)
           .then(() => {
               if (ticketRef) {
-                  const updateData = isOwner ? { unreadByAdmin: true } : { unreadByUser: true };
-                  updateDoc(ticketRef, {
-                      ...updateData,
-                      updatedAt: serverTimestamp(),
-                  });
+                  const updateData = isOwner ? { unreadByAdmin: true, updatedAt: serverTimestamp() } : { unreadByUser: true, updatedAt: serverTimestamp() };
+                  updateDoc(ticketRef, updateData);
               }
           })
           .catch((serverError) => {
@@ -151,15 +171,13 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                     audioUrl: downloadURL,
                     type: 'user' as const,
                     createdAt: serverTimestamp(),
+                    isRead: false,
                 };
                 return addDoc(messagesCollection, messageData);
             })
             .then(() => {
-                const updateData = isOwner ? { unreadByAdmin: true } : { unreadByUser: true };
-                updateDoc(ticketRef, {
-                    ...updateData,
-                    updatedAt: serverTimestamp(),
-                });
+                const updateData = isOwner ? { unreadByAdmin: true, updatedAt: serverTimestamp() } : { unreadByUser: true, updatedAt: serverTimestamp() };
+                updateDoc(ticketRef, updateData);
             })
             .then(() => {
                 setIsUploading(false);
@@ -304,8 +322,11 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                         ) : (
                                             <p className="whitespace-pre-wrap text-sm">{msg.text}</p>
                                         )}
-                                        <div className={cn("text-xs mt-1 text-right", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                                            {msg.createdAt?.toDate && msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <div className={cn("text-xs mt-1 flex items-center justify-end gap-1", isSender ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                                            {msg.createdAt?.toDate?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {isSender && (
+                                                <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-chart-1" : "text-primary-foreground/70")} />
+                                            )}
                                         </div>
                                     </div>
                                 </div>
