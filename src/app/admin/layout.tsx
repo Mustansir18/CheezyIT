@@ -62,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="flex items-center gap-2 font-semibold font-headline"
         >
           <Image src="/logo.png" alt="IT Support Logo" width={32} height={32} />
-          <span>IT Support Admin</span>
+          <span>{user.displayName}</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
           <UserNav />
