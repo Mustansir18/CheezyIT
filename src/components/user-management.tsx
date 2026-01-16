@@ -29,11 +29,13 @@ type User = {
   id: string;
   displayName: string;
   email: string;
-  role: 'User' | 'it-support' | 'Admin';
+  role: 'User' | 'it-support' | 'Admin' | 'Branch';
   phoneNumber?: string;
   region?: string;
   regions?: string[];
 };
+
+const AVAILABLE_ROLES = ['User', 'Branch', 'it-support', 'Admin'];
 
 const newUserSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -54,7 +56,7 @@ const editUserSchema = z.object({
 type EditUserFormData = z.infer<typeof editUserSchema>;
 
 
-function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
+function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -63,7 +65,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
         defaultValues: {
             displayName: user.displayName,
             role: user.role,
-            regions: user.role === 'User' ? (user.region ? [user.region] : []) : (user.regions || []),
+            regions: user.role === 'User' || user.role === 'Branch' ? (user.region ? [user.region] : []) : (user.regions || []),
         },
     });
     
@@ -75,7 +77,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
             reset({
                 displayName: user.displayName,
                 role: user.role,
-                regions: user.role === 'User' ? (user.region ? [user.region] : []) : (user.regions || []),
+                regions: user.role === 'User' || user.role === 'Branch' ? (user.region ? [user.region] : []) : (user.regions || []),
             });
         }
     }, [user, open, reset]);
@@ -89,7 +91,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                 role: data.role,
             };
 
-            if (data.role === 'User') {
+            if (data.role === 'User' || data.role === 'Branch') {
                 updateData.region = data.regions[0] || '';
                 updateData.regions = [];
             } else {
@@ -113,7 +115,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                 <DialogHeader>
                     <DialogTitle>Edit User: {user.displayName}</DialogTitle>
                     <DialogDescription>
-                        Modify the user's details below. Note: Changing name here only affects the database record.
+                        Modify the user's details below. Note: Email and password cannot be changed here.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -140,7 +142,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                         <FormField control={form.control} name="regions" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Region(s)</FormLabel>
-                                {selectedRole === 'User' ? (
+                                {selectedRole === 'User' || selectedRole === 'Branch' ? (
                                     <Select
                                         onValueChange={(value) => field.onChange(value ? [value] : [])}
                                         defaultValue={field.value?.[0]}
@@ -159,7 +161,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                                     />
                                 )}
                                 <FormDescription>
-                                    {selectedRole === 'User' ? 'Assign to a single region.' : "Assign one or more regions."}
+                                    {selectedRole === 'User' || selectedRole === 'Branch' ? 'Assign to a single region.' : "Assign one or more regions."}
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -191,11 +193,7 @@ export default function UserManagement() {
   const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
   const regions = regionsData?.list || [];
   
-  const rolesRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'roles'), [firestore]);
-  const { data: rolesData, isLoading: rolesLoading } = useDoc<{ list: string[] }>(rolesRef);
-  const roles = rolesData?.list || [];
-
-  const isLoading = usersLoading || regionsLoading || rolesLoading;
+  const isLoading = usersLoading || regionsLoading;
 
   const addUserForm = useForm<NewUserFormData>({
     resolver: zodResolver(newUserSchema),
@@ -216,7 +214,7 @@ export default function UserManagement() {
       await updateAuthProfile(newUser, { displayName: data.displayName });
 
       const userData: any = { displayName: data.displayName, email: data.email, role: data.role, phoneNumber: '' };
-      if (data.role === 'User') {
+      if (data.role === 'User' || data.role === 'Branch') {
         userData.region = data.regions[0] || '';
       } else {
         userData.regions = data.regions;
@@ -275,7 +273,7 @@ export default function UserManagement() {
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                            {AVAILABLE_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -284,7 +282,7 @@ export default function UserManagement() {
                             <FormField control={addUserControl} name="regions" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Region(s)</FormLabel>
-                                    {selectedRoleForNewUser === 'User' ? (
+                                    {selectedRoleForNewUser === 'User' || selectedRoleForNewUser === 'Branch' ? (
                                         <Select
                                             onValueChange={(value) => field.onChange(value ? [value] : [])}
                                             defaultValue={field.value?.[0]}
@@ -303,7 +301,7 @@ export default function UserManagement() {
                                         />
                                     )}
                                     <FormDescription>
-                                        {selectedRoleForNewUser === 'User' ? 'Assign to a single region.' : "Assign one or more regions."}
+                                        {selectedRoleForNewUser === 'User' || selectedRoleForNewUser === 'Branch' ? 'Assign to a single region.' : "Assign one or more regions."}
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -372,7 +370,7 @@ export default function UserManagement() {
     {editingUser && (
         <EditUserDialog 
             user={editingUser}
-            roles={roles}
+            roles={AVAILABLE_ROLES}
             regions={regions}
             open={!!editingUser}
             onOpenChange={(isOpen) => !isOpen && setEditingUser(null)}

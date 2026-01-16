@@ -32,7 +32,6 @@ function SettingsListManager({ title, description, docPath }: SettingsListManage
     if (!newItem.trim()) return;
     setIsSubmitting(true);
     try {
-      // Use setDoc with merge: true to create the document if it doesn't exist
       await setDoc(settingsRef, {
         list: arrayUnion(newItem.trim()),
       }, { merge: true });
@@ -119,16 +118,11 @@ function SettingsListManager({ title, description, docPath }: SettingsListManage
 
 export default function SystemSettings() {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-1 max-w-md">
       <SettingsListManager
         title="Manage Regions"
         description="Add or remove regions available for user assignment."
         docPath="regions"
-      />
-      <SettingsListManager
-        title="Manage Roles"
-        description="Add or remove user roles. Note: Permissions are hardcoded in security rules."
-        docPath="roles"
       />
     </div>
   );
