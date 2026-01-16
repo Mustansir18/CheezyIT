@@ -240,7 +240,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
 
 
     return (
-        <Card>
+        <Card className='flex flex-col'>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
@@ -282,7 +282,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                     </div>
                 </div>
             </CardHeader>
-            <CardContent ref={messagesContainerRef} className="space-y-4 h-96 overflow-y-auto p-4 bg-muted/50">
+            <CardContent ref={messagesContainerRef} className="space-y-4 h-96 overflow-y-auto p-4 bg-muted/50 flex-grow">
                     {isLoading && <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     {!isLoading && messages && messages.length === 0 && (
                         <div className="flex justify-center items-center h-full">
@@ -313,7 +313,7 @@ export default function TicketChat({ ticketId, userId, canManageTicket, isOwner 
                                     </span>
                                     <div
                                       className={cn(
-                                        "px-6 py-4 rounded-md shadow-sm max-w-[75%]",
+                                        "px-4 py-2 rounded-lg shadow-sm max-w-[85%]",
                                         isSender
                                           ? "bg-[#DCF8C6] text-black"
                                           : "bg-white text-black border"
