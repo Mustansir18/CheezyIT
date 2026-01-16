@@ -27,20 +27,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
     const isPrivilegedUser = user && (isAdmin(user.email) || userProfile?.role === 'it-support');
+    const isTicketPage = pathname.startsWith('/dashboard/ticket/');
 
     useEffect(() => {
         if (!userLoading && !profileLoading) {
           if (!user) {
             router.push('/');
-          } else if (isPrivilegedUser) {
+          } else if (isPrivilegedUser && !isTicketPage) {
             router.push('/admin');
           }
         }
-    }, [user, userLoading, profileLoading, isPrivilegedUser, router]);
+    }, [user, userLoading, profileLoading, isPrivilegedUser, isTicketPage, router, pathname]);
     
-    const isTicketPage = pathname.startsWith('/dashboard/ticket/');
-
-    if (userLoading || profileLoading || !user || isPrivilegedUser) {
+    if (userLoading || profileLoading || !user || (isPrivilegedUser && !isTicketPage)) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-muted/40">
           <Loader2 className="h-8 w-8 animate-spin" />
