@@ -86,6 +86,46 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     }
   }, [issueType, form]);
 
+  const compressAndSetPhoto = (dataUri: string) => {
+    const img = new window.Image();
+    img.onload = () => {
+        // We use a temporary canvas to draw the resized image.
+        const canvas = document.createElement('canvas');
+
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate the new dimensions
+        if (width > height) {
+            if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+            }
+        } else {
+            if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+            }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Get the data URI in JPEG format with 80% quality
+        const compressedDataUri = canvas.toDataURL('image/jpeg', 0.8);
+        
+        setPhotoDataUri(compressedDataUri);
+        form.setValue('photo', compressedDataUri);
+    };
+    img.src = dataUri;
+  }
+
   const resetFormState = () => {
     form.reset();
     setPhotoDataUri(null);
@@ -179,8 +219,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       const context = canvas.getContext('2d');
       context?.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUri = canvas.toDataURL('image/png');
-      setPhotoDataUri(dataUri);
-      form.setValue('photo', dataUri);
+      compressAndSetPhoto(dataUri);
     }
   };
 
@@ -190,8 +229,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       const reader = new FileReader();
       reader.onload = (e) => {
         const dataUri = e.target?.result as string;
-        setPhotoDataUri(dataUri);
-        form.setValue('photo', dataUri);
+        compressAndSetPhoto(dataUri);
       };
       reader.readAsDataURL(file);
     }
