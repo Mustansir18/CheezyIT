@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Loader2, ArrowLeft, Paperclip } from 'lucide-react';
@@ -11,21 +10,34 @@ import { Badge } from '@/components/ui/badge';
 import TicketChat from '@/components/ticket-chat';
 import type { Ticket } from '@/lib/data';
 import Link from 'next/link';
+import { useMemo } from 'react';
+import { isAdmin } from '@/lib/admins';
 
 export default function TicketDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const ticketId = params.id as string;
+    const ownerId = searchParams.get('ownerId');
+
     const { user, loading: userLoading } = useUser();
     const firestore = useFirestore();
 
+    const effectiveUserId = useMemo(() => {
+        if (ownerId && user && isAdmin(user.email)) {
+            return ownerId;
+        }
+        return user?.uid;
+    }, [ownerId, user]);
+
+
     const ticketRef = useMemoFirebase(
-        () => (user && ticketId ? doc(firestore, 'users', user.uid, 'issues', ticketId) : null),
-        [firestore, user, ticketId]
+        () => (effectiveUserId && ticketId ? doc(firestore, 'users', effectiveUserId, 'issues', ticketId) : null),
+        [firestore, effectiveUserId, ticketId]
     );
     const { data: ticket, isLoading: ticketLoading } = useDoc<Ticket>(ticketRef);
 
-    if (userLoading || ticketLoading) {
+    if (userLoading || ticketLoading || !effectiveUserId) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -52,12 +64,14 @@ export default function TicketDetailPage() {
             </div>
         )
     }
+    
+    const backLink = isAdmin(user.email) && ownerId ? '/admin' : '/dashboard';
 
     return (
         <div className="grid gap-6">
             <div className="flex items-center gap-4">
                  <Button asChild variant="outline" size="icon" className="h-7 w-7">
-                    <Link href="/dashboard">
+                    <Link href={backLink}>
                         <ArrowLeft className="h-4 w-4" />
                         <span className="sr-only">Back</span>
                     </Link>
@@ -88,7 +102,7 @@ export default function TicketDetailPage() {
                     )}
                 </CardContent>
             </Card>
-            <TicketChat ticketId={ticketId} userId={user.uid} />
+            <TicketChat ticketId={ticketId} userId={effectiveUserId} />
         </div>
     );
 }
