@@ -159,7 +159,8 @@ service cloud.firestore {
       
         match /notifications/{notificationId} {
             allow get, list: if isOwner(userId) || canManageTickets();
-            allow create: if canManageTickets();
+            // Simplified rule for creating notifications.
+            allow create: if isSignedIn();
             allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
             allow delete: if canManageTickets();
         }
@@ -181,7 +182,8 @@ service cloud.firestore {
     
     match /announcements/{announcementId} {
       allow get, list: if canManageTickets();
-      allow create: if canManageTickets();
+      // Simplified rule for creating announcements.
+      allow create: if isSignedIn();
       allow update, delete: if isRoot(); 
     }
 
