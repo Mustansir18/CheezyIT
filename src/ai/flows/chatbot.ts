@@ -11,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const ChatBotInputSchema = z.object({
   message: z.string().describe("The user's message to the chatbot."),
@@ -28,6 +29,7 @@ export async function chatBot(input: ChatBotInput): Promise<ChatBotOutput> {
 
 const prompt = ai.definePrompt({
   name: 'chatBotPrompt',
+  model: googleAI.model('gemini-1.5-flash-latest'),
   input: {schema: ChatBotInputSchema},
   output: {schema: ChatBotOutputSchema},
   prompt: `You are a friendly and helpful IT support chatbot for Cheezious. Your goal is to assist users with their IT-related questions. Keep your responses concise, helpful, and professional.
