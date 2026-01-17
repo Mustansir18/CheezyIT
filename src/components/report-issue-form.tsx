@@ -10,7 +10,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -134,7 +134,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         <DialogHeader>
           <DialogTitle className='font-headline'>Report a New Issue</DialogTitle>
           <DialogDescription>
-            Fill out the form below to submit a new IT support ticket.
+            Fill out the form below to submit a new Cheezious IT Support ticket.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

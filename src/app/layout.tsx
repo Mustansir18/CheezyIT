@@ -6,8 +6,8 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { NetworkStatusIndicator } from '@/components/network-status-indicator';
 
 export const metadata: Metadata = {
-  title: 'IT Support',
-  description: 'Your IT Support solution.',
+  title: 'Cheezious IT Support',
+  description: 'Your Cheezious IT Support solution.',
 };
 
 export default function RootLayout({

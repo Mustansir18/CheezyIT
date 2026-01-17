@@ -56,8 +56,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     href='/dashboard'
                     className="flex items-center gap-2 font-semibold font-headline"
                     >
-                    <Image src="/logo.png" alt="IT Support Logo" width={32} height={32} />
-                    <span>IT Support</span>
+                    <Image src="/logo.png" alt="Cheezious IT Support Logo" width={40} height={40} />
+                    <span>Cheezious IT Support</span>
                     </Link>
                     <div className="ml-auto flex items-center gap-4">
                         <AnnouncementBell />
