@@ -11,8 +11,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -51,7 +49,7 @@ export function UserNav() {
   };
 
   if (userLoading || profileLoading) {
-    return <Skeleton className="h-8 w-24" />;
+    return <Skeleton className="h-10 w-24 rounded-none" />;
   }
 
   if (!user) {
@@ -61,29 +59,19 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary">
-          {user.displayName || user.email}
+        <Button variant="outline" className="rounded-none">
+          Profile
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            {user.displayName && <p className="text-sm font-medium leading-none">{user.displayName}</p>}
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent className="w-40" align="end" forceMount>
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={handleProfileClick}>
-            Profile
+            See Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleSignOut}>
+            Log out
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut}>
-          Log out
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
