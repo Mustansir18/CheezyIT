@@ -1,33 +1,50 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
-// This hook handles playing a sound effect. It's designed to be robust
-// and handle browser limitations around audio autoplay.
+/**
+ * A robust hook for playing sound effects.
+ * This hook handles creating the audio element and provides a stable `play` function.
+ * It uses a ref to store the audio element, preventing re-renders, and includes
+ * a cleanup effect to pause sound and release resources on unmount.
+ * @param src The path to the audio file.
+ * @returns A stable function to play the sound.
+ */
 export const useSound = (src: string) => {
-  // We use state to hold the audio object. We initialize it in a function
-  // to ensure it's only created once and only on the client-side.
-  const [audio, setAudio] = useState<HTMLAudioElement | undefined>(undefined);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // This effect creates the Audio object on the client-side when the component mounts.
   useEffect(() => {
-    // This effect runs only once on the client to create the Audio object.
-    // This avoids "document is not defined" errors during server-side rendering.
-    setAudio(new Audio(src));
+    audioRef.current = new Audio(src);
+
+    // Cleanup function to run when the component unmounts.
+    return () => {
+      if (audioRef.current) {
+        // Pause the audio to stop it from playing in the background.
+        audioRef.current.pause();
+        // Nullify the ref to allow for garbage collection.
+        audioRef.current = null;
+      }
+    };
   }, [src]);
 
-  // The play function is memoized with useCallback for performance.
+  // The play function is memoized with an empty dependency array.
+  // This means the same function instance is returned on every render,
+  // making it safe to use in other hooks' dependency arrays.
   const play = useCallback(() => {
-    if (audio) {
-      // We ensure the sound plays from the beginning every time.
-      audio.currentTime = 0;
-      audio.play().catch(err => {
-        // Modern browsers often block audio from playing without user interaction.
-        // We log a warning instead of throwing an error because it's a
-        // browser policy, not a code bug. The app can continue without the sound.
-        console.warn(`Sound playback was prevented for ${src}. This is usually due to browser autoplay policies.`, err);
+    if (audioRef.current) {
+      // Reset the sound to the beginning to allow it to be re-played.
+      audioRef.current.currentTime = 0;
+      // Play the sound and catch any errors, which are common due to
+      // browser autoplay policies.
+      audioRef.current.play().catch(err => {
+        console.warn(
+          `Sound playback was prevented for ${src}. This is usually due to browser autoplay policies requiring user interaction.`,
+          err
+        );
       });
     }
-  }, [audio]);
+  }, [src]);
 
   return play;
 };
