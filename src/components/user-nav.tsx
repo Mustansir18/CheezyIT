@@ -59,7 +59,7 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="rounded-none">
+        <Button variant="default" className="rounded-none bg-yellow-400 text-black hover:bg-yellow-500">
           Profile
         </Button>
       </DropdownMenuTrigger>

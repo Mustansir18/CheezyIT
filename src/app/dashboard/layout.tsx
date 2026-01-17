@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div className="ml-auto flex items-center gap-4">
                         <AnnouncementBell />
                         <ReportIssueForm>
-                            <Button>Report an Issue</Button>
+                            <Button className="rounded-none bg-green-500 hover:bg-green-600">Report an Issue</Button>
                         </ReportIssueForm>
                         <UserNav />
                     </div>
