@@ -4,13 +4,15 @@ import { useUser } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function AdminSettingsPage() {
   const { user, loading } = useUser();
   const router = useRouter();
+  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
 
   useEffect(() => {
     if (!loading && (!user || !isRoot(user.email))) {
@@ -35,7 +37,7 @@ export default function AdminSettingsPage() {
                 <span className="sr-only">Back to Dashboard</span>
             </Link>
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight font-headline">
+        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
           User & Region Management
         </h1>
       </div>

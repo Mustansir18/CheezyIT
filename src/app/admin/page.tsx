@@ -7,6 +7,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { useMemo } from 'react';
 import { doc } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 const baseNavItems = [
   {
@@ -73,7 +74,10 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <div className="flex flex-col items-center justify-between">
+      <div className="flex flex-col items-center justify-between mb-4">
+        <h1 className={cn("text-3xl font-bold tracking-tight font-headline mb-4", userIsRoot && "text-primary")}>
+            {dashboardTitle}
+        </h1>
         <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -82,7 +86,7 @@ export default function AdminDashboardPage() {
             <Card className="h-full shadow-md transition-all hover:shadow-xl hover:-translate-y-1 duration-200 group-hover:border-primary">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-lg font-bold font-headline">{item.title}</CardTitle>
-                <item.icon className="h-6 w-6 text-muted-foreground" />
+                <item.icon className="h-6 w-6 text-accent" />
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">

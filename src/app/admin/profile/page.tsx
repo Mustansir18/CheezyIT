@@ -8,6 +8,9 @@ import { doc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { isRoot } from '@/lib/admins';
+import { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 type UserProfile = {
   phoneNumber?: string;
@@ -18,6 +21,7 @@ export default function AdminProfilePage() {
     const firestore = useFirestore();
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+    const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
 
     if (userLoading || profileLoading) {
         return (
@@ -41,7 +45,7 @@ export default function AdminProfilePage() {
                         <span className="sr-only">Back to Dashboard</span>
                     </Link>
                 </Button>
-                <h1 className="text-3xl font-bold tracking-tight font-headline">
+                <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
                     Your Profile
                 </h1>
             </div>
