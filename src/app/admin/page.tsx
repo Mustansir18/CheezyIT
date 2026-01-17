@@ -5,8 +5,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Loader2, Megaphone } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { doc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const baseNavItems = [
@@ -44,6 +45,7 @@ type UserProfile = {
 export default function AdminDashboardPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -53,21 +55,27 @@ export default function AdminDashboardPage() {
   
   const loading = userLoading || profileLoading;
   
-  const navItems = useMemo(() => {
-    if (userIsSupport) {
-      return baseNavItems.filter(item => item.href === '/admin/tickets');
+  useEffect(() => {
+    if (!loading && userIsSupport) {
+      router.replace('/admin/tickets');
     }
-    
-    // For Admin and Root
+  }, [loading, userIsSupport, router]);
+
+  const navItems = useMemo(() => {
+    // This logic is for Admin and Root users, as 'it-support' will be redirected.
     let items = [...baseNavItems];
     if (userIsRoot) {
       items.push(rootNavItem);
     }
     return items;
-  }, [userIsRoot, userIsSupport]);
+  }, [userIsRoot]);
 
-  if (loading) {
-      return <div className="flex h-32 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  if (loading || userIsSupport) {
+      return (
+        <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
   }
 
   return (
