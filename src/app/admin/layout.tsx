@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-gray-100 dark:bg-gray-950">
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-white px-4 text-card-foreground sm:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b bg-white px-4 text-card-foreground sm:px-6">
         <Link
           href="/admin"
           className="flex items-center gap-2 font-headline"
@@ -68,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="text-xs">IT Support</span>
           </div>
         </Link>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <AnnouncementBell />
           <UserNav />
         </div>
