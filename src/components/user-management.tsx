@@ -327,8 +327,10 @@ export default function UserManagement() {
       const userData: any = { displayName: data.displayName, email: data.email, role: data.role, phoneNumber: '' };
       if (data.role === 'User' || data.role === 'Branch') {
         userData.region = data.regions[0] || '';
+        userData.regions = [];
       } else {
         userData.regions = data.regions;
+        userData.region = '';
       }
 
       await setDoc(doc(firestore, 'users', newUser.uid), userData);
