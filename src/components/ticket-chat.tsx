@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -128,8 +127,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
 
     return (
-        /* The main container MUST be flex-1 and overflow-hidden to keep header/footer static */
-        <div className="flex flex-col flex-1 w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
+        <div className="flex flex-col h-full w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
             
             {/* 1. FIXED HEADER - Stays at the top */}
             <header className="flex-none w-full flex items-center justify-between gap-2 px-4 py-2 z-[100] border-b border-white/5" style={{ backgroundColor: WA_COLORS.header }}>
@@ -292,5 +290,3 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
         </div>
     );
 }
-
-    
