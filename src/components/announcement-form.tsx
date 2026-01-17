@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, useUser } from '@/firebase';
+import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, collection, getDocs, query, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,12 +72,13 @@ export default function AnnouncementForm() {
 
   const onSubmit = (data: FormData) => {
     startTransition(async () => {
-      try {
         if (!usersData) {
-            throw new Error("User data not loaded yet.");
+            toast({ variant: 'destructive', title: 'Error', description: 'User data not loaded yet.' });
+            return;
         }
         if (!currentUser) {
-            throw new Error("Admin user not authenticated.");
+            toast({ variant: 'destructive', title: 'Error', description: 'Admin user not authenticated.' });
+            return;
         }
 
         let targetUsers: WithId<User>[] = [];
@@ -112,52 +113,74 @@ export default function AnnouncementForm() {
             return;
         }
         
-        // 1. Create the master announcement document
-        const announcementRef = await addDoc(collection(firestore, 'announcements'), {
-            title: data.title,
-            message: data.message,
-            createdAt: serverTimestamp(),
-            createdByUid: currentUser.uid,
-            createdByDisplayName: currentUser.displayName || 'N/A',
-            target: {
-                roles: data.targetRoles,
-                regions: data.targetRegions,
-                users: data.targetUsers,
-            },
-            recipientCount: targetUsers.length,
-        });
+        try {
+            // 1. Create the master announcement document
+            const announcementPayload = {
+                title: data.title,
+                message: data.message,
+                createdAt: serverTimestamp(),
+                createdByUid: currentUser.uid,
+                createdByDisplayName: currentUser.displayName || 'N/A',
+                target: {
+                    roles: data.targetRoles,
+                    regions: data.targetRegions,
+                    users: data.targetUsers,
+                },
+                recipientCount: targetUsers.length,
+            };
+            const announcementsCollection = collection(firestore, 'announcements');
+            const announcementRef = await addDoc(announcementsCollection, announcementPayload);
 
-        // 2. Fan-out the notifications to individual users
-        const batch = writeBatch(firestore);
-        const notificationData = {
-            title: data.title,
-            message: data.message,
-            createdAt: serverTimestamp(),
-            isRead: false,
-            announcementId: announcementRef.id, // Link to the master announcement
-        };
+            // 2. Fan-out the notifications to individual users
+            const batch = writeBatch(firestore);
+            const notificationData = {
+                title: data.title,
+                message: data.message,
+                createdAt: serverTimestamp(),
+                isRead: false,
+                announcementId: announcementRef.id,
+            };
 
-        targetUsers.forEach(user => {
-            const userNotificationRef = doc(collection(firestore, 'users', user.id, 'notifications'));
-            batch.set(userNotificationRef, notificationData);
-        });
+            targetUsers.forEach(user => {
+                const userNotificationRef = doc(collection(firestore, 'users', user.id, 'notifications'));
+                batch.set(userNotificationRef, notificationData);
+            });
 
-        await batch.commit();
+            await batch.commit();
 
-        toast({
-            title: 'Announcement Sent!',
-            description: `Message sent to ${targetUsers.length} user(s).`,
-        });
-        form.reset();
+            toast({
+                title: 'Announcement Sent!',
+                description: `Message sent to ${targetUsers.length} user(s).`,
+            });
+            form.reset();
 
-      } catch (error: any) {
-        console.error("Error sending announcement:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error Sending Announcement',
-          description: 'Failed to send announcement. You may not have the required permissions.',
-        });
-      }
+        } catch (error: any) {
+            const isBatchError = error.message.includes('batch');
+            let permissionError;
+
+            if (isBatchError) {
+                const firstUser = targetUsers[0];
+                 permissionError = new FirestorePermissionError({
+                    path: `users/${firstUser.id}/notifications`,
+                    operation: 'create',
+                    requestResourceData: { title: data.title, message: data.message, isRead: false },
+                });
+            } else {
+                 permissionError = new FirestorePermissionError({
+                    path: 'announcements',
+                    operation: 'create',
+                    requestResourceData: { title: data.title, message: data.message, recipientCount: targetUsers.length },
+                });
+            }
+            
+            errorEmitter.emit('permission-error', permissionError);
+            
+            toast({
+                variant: 'destructive',
+                title: 'Error Sending Announcement',
+                description: 'Failed to send announcement. You may not have the required permissions.',
+            });
+        }
     });
   };
 

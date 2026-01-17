@@ -133,6 +133,30 @@ service cloud.firestore {
                data.createdAt == request.time &&
                data.isRead == false;
     }
+    
+    function validateAnnouncementData(data) {
+        return data.keys().hasAll(['title', 'message', 'createdAt', 'createdByUid', 'createdByDisplayName', 'target', 'recipientCount']) &&
+               data.title is string && data.title.size() > 0 &&
+               data.message is string && data.message.size() > 0 &&
+               data.createdAt == request.time &&
+               data.createdByUid == request.auth.uid &&
+               data.createdByDisplayName is string &&
+               data.target is map &&
+               data.target.keys().hasAll(['roles', 'regions', 'users']) &&
+               data.target.roles is list &&
+               data.target.regions is list &&
+               data.target.users is list &&
+               data.recipientCount is number && data.recipientCount >= 0;
+    }
+
+    function validateNotificationData(data) {
+        return data.keys().hasAll(['title', 'message', 'createdAt', 'isRead', 'announcementId']) &&
+               data.title is string && data.title.size() > 0 &&
+               data.message is string && data.message.size() > 0 &&
+               data.createdAt == request.time &&
+               data.isRead == false &&
+               data.announcementId is string;
+    }
 
 
     // ========== COLLECTION GROUP RULES ==========
@@ -159,7 +183,7 @@ service cloud.firestore {
       
         match /notifications/{notificationId} {
             allow get, list: if isOwner(userId) || canManageTickets();
-            allow create: if canManageTickets();
+            allow create: if canManageTickets() && validateNotificationData(request.resource.data);
             allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
             allow delete: if canManageTickets();
         }
@@ -181,8 +205,7 @@ service cloud.firestore {
     
     match /announcements/{announcementId} {
       allow get, list: if canManageTickets();
-      allow create: if canManageTickets();
-      // Updates are not expected from the client.
+      allow create: if canManageTickets() && validateAnnouncementData(request.resource.data);
       allow update, delete: if isRoot(); 
     }
 
