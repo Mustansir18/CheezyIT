@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
@@ -45,7 +46,7 @@ export default function ChatBot() {
           title: 'ChatBot Error',
           description: result.error,
         });
-        const errorMessage: ChatMessage = { sender: 'bot', text: "Sorry, I'm having trouble connecting. Please try again later." };
+        const errorMessage: ChatMessage = { sender: 'bot', text: result.error };
         setMessages(prev => [...prev, errorMessage]);
       } else if (result.response) {
         const botMessage: ChatMessage = { sender: 'bot', text: result.response };
