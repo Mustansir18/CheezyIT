@@ -56,9 +56,17 @@ service cloud.firestore {
     }
 
     function canManageTickets() {
-      // This checks the role of the currently authenticated user.
-      let userRole = getUserData(request.auth.uid).role;
-      return isRoot() || userRole == 'Admin' || userRole == 'it-support';
+      // Always allow root user first.
+      if (isRoot()) {
+        return true;
+      }
+      // For other users, check for their document and role.
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      if (!exists(userDocPath)) {
+        return false; // Not root and no user profile, so no special roles.
+      }
+      let userRole = get(userDocPath).data.role;
+      return userRole == 'Admin' || userRole == 'it-support';
     }
 
     // ========== DATA VALIDATION FUNCTIONS ==========
