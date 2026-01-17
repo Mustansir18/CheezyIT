@@ -81,6 +81,7 @@ export default function AdminAnalytics() {
   const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
   const [allUsers, setAllUsers] = useState<WithId<User>[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -287,8 +288,8 @@ export default function AdminAnalytics() {
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" className="border-transparent bg-sky-100 hover:bg-sky-200 text-sky-800" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
-                            <Button variant="outline" size="sm" className="border-transparent bg-sky-100 hover:bg-sky-200 text-sky-800" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
+                            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'this_month' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())}); setActiveDatePreset('this_month'); }}>This Month</Button>
+                            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'last_month' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))}); setActiveDatePreset('last_month'); }}>Last Month</Button>
                         </div>
                         <Popover>
                         <PopoverTrigger asChild>
@@ -321,7 +322,7 @@ export default function AdminAnalytics() {
                             mode="range"
                             defaultMonth={date?.from}
                             selected={date}
-                            onSelect={setDate}
+                            onSelect={(range) => { setDate(range); setActiveDatePreset(null); }}
                             numberOfMonths={isMobile ? 1 : 2}
                             />
                         </PopoverContent>
@@ -560,6 +561,8 @@ export default function AdminAnalytics() {
     </div>
   );
 }
+
+    
 
     
 
