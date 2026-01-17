@@ -158,7 +158,7 @@ service cloud.firestore {
       
         match /notifications/{notificationId} {
             allow get, list: if isOwner(userId) || canManageTickets();
-            allow create: if canManageTickets(); // Only privileged users can send notifications
+            allow create: if isRoot() || isUserRole(request.auth.uid, 'Admin') || isUserRole(request.auth.uid, 'it-support');
             allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
             allow delete: if canManageTickets();
         }
@@ -179,7 +179,8 @@ service cloud.firestore {
     }
     
     match /announcements/{announcementId} {
-      allow get, list, create: if canManageTickets();
+      allow get, list: if canManageTickets();
+      allow create: if isRoot() || isUserRole(request.auth.uid, 'Admin') || isUserRole(request.auth.uid, 'it-support');
       // Updates are not expected from the client.
       allow update, delete: if isRoot(); 
     }
