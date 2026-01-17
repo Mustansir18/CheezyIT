@@ -51,20 +51,6 @@ export default function AdminDashboardPage() {
   const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
   
   const loading = userLoading || profileLoading;
-
-  const dashboardTitle = useMemo(() => {
-    if (!user) return '';
-    if (userIsRoot) return 'Root Dashboard';
-    
-    switch (userProfile?.role) {
-      case 'Admin':
-        return 'Admin Dashboard';
-      case 'it-support':
-        return 'IT Support Dashboard';
-      default:
-        return `${user.displayName}'s Dashboard`;
-    }
-  }, [user, userIsRoot, userProfile]);
   
   if (loading) {
       return <div className="flex h-32 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -75,9 +61,6 @@ export default function AdminDashboardPage() {
   return (
     <>
       <div className="flex flex-col items-center justify-between mb-4">
-        <h1 className={cn("text-3xl font-bold tracking-tight font-headline mb-4", userIsRoot && "text-primary")}>
-            {dashboardTitle}
-        </h1>
         <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
