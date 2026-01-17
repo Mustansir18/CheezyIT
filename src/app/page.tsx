@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -79,7 +78,7 @@ export default function LoginPage() {
           <div className="mb-4 flex flex-col items-center justify-center gap-2">
             <Image src="/logo.png" alt="Cheezious IT Support Logo" width={72} height={72} />
             <div>
-                <span className="font-extrabold text-4xl font-headline text-primary">Cheezious IT Support</span>
+                <span className="font-extrabold text-4xl font-headline text-primary whitespace-nowrap">Cheezious IT Support</span>
             </div>
           </div>
           <CardTitle className="text-3xl font-headline pt-2">Welcome</CardTitle>
