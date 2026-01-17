@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useRef, useEffect } from 'react';
@@ -116,18 +115,18 @@ export default function AnnouncementBell() {
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative overflow-visible">
+                <Button variant="ghost" size="icon" className="relative">
                     <Bell 
                         className={cn(
                             "h-5 w-5 transition-all",
                             // This class is added when a new notification arrives
                             isRinging && "animate-bell-ring text-yellow-500",
                             // Keep the subtle pulse if there are unread items
-                            unreadCount > 0 && !isRinging && "text-accent"
+                            unreadCount > 0 && !isRinging && "animate-pulse text-accent"
                         )} 
                     />
                     {unreadCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white animate-in zoom-in hover:bg-red-500/90">
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white animate-in zoom-in">
                             {unreadCount}
                         </Badge>
                     )}
