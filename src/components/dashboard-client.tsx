@@ -210,7 +210,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                         </TableCell>
                         <TableCell>
                            <Badge variant={ticket.status === 'Resolved' ? 'default' : 'outline'} className={cn(
-                             ticket.status === 'Resolved' && 'bg-chart-2 hover:bg-chart-2/80 text-white',
+                             ticket.status === 'Resolved' && 'bg-green-600 hover:bg-green-600/80 text-white',
                              ticket.status === 'In Progress' && 'text-accent border-accent'
                            )}>
                              {ticket.status}

@@ -400,8 +400,8 @@ export default function AdminTicketList() {
                             variant={ticket.status === 'Pending' ? 'outline' : 'default'}
                             className={cn(
                               {
-                                'bg-yellow-400 text-yellow-950 border-transparent hover:bg-yellow-400/80': ticket.status === 'Resolved',
-                                'bg-accent text-accent-foreground border-transparent hover:bg-accent/80': ticket.status === 'In Progress',
+                                'bg-green-600 text-white border-transparent hover:bg-green-600/80': ticket.status === 'Resolved',
+                                'bg-primary text-primary-foreground hover:bg-primary/90': ticket.status === 'In Progress',
                               }
                             )}
                           >
