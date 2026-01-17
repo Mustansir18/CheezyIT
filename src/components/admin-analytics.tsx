@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, Legend } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, Legend, LineChart, Line, CartesianGrid } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
@@ -248,6 +248,23 @@ export default function AdminAnalytics() {
         .sort((a, b) => b.count - a.count);
   }, [resolvedSupportTickets]);
 
+  const hourlyData = useMemo(() => {
+    const hourlyCounts = Array.from({ length: 24 }, (_, i) => ({ hour: i, tickets: 0 }));
+
+    filteredTickets.forEach(ticket => {
+        if (ticket.createdAt) {
+            const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
+            const hour = ticketDate.getHours();
+            if (hourlyCounts[hour]) {
+                hourlyCounts[hour].tickets++;
+            }
+        }
+    });
+    
+    return hourlyCounts.map(h => ({ ...h, name: `${h.hour}:00` }));
+
+  }, [filteredTickets]);
+
 
   if (loading) {
     return (
@@ -313,11 +330,12 @@ export default function AdminAnalytics() {
         </Card>
       
         <Tabs defaultValue="overview">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="user_tickets">User Tickets</TabsTrigger>
                 <TabsTrigger value="support_performance">Support Performance</TabsTrigger>
                 <TabsTrigger value="region_report">Region Report</TabsTrigger>
+                <TabsTrigger value="hourly_report">Hourly Report</TabsTrigger>
             </TabsList>
             <TabsContent value="overview">
                 <Card>
@@ -481,7 +499,62 @@ export default function AdminAnalytics() {
                     </CardContent>
                 </Card>
             </TabsContent>
+            <TabsContent value="hourly_report">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Hourly Ticket Volume</CardTitle>
+                        <CardDescription>Number of tickets created each hour within the selected date range.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {hourlyData.reduce((acc, curr) => acc + curr.tickets, 0) > 0 ? (
+                            <ChartContainer config={{ tickets: { label: "Tickets", color: "hsl(var(--chart-1))" } }} className="h-[400px] w-full">
+                                <LineChart
+                                    accessibilityLayer
+                                    data={hourlyData}
+                                    margin={{
+                                        top: 5,
+                                        right: 10,
+                                        left: 10,
+                                        bottom: 5,
+                                    }}
+                                >
+                                    <CartesianGrid vertical={false} />
+                                    <XAxis
+                                        dataKey="name"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                    />
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        allowDecimals={false}
+                                    />
+                                    <ChartTooltip
+                                        cursor={false}
+                                        content={<ChartTooltipContent indicator="line" />}
+                                    />
+                                    <Line
+                                        dataKey="tickets"
+                                        type="monotone"
+                                        stroke="hsl(var(--chart-1))"
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
+                                </LineChart>
+                            </ChartContainer>
+                        ) : (
+                            <div className="flex h-48 items-center justify-center text-muted-foreground">
+                                No tickets found for this period to show an hourly report.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
         </Tabs>
     </div>
   );
 }
+
+    
