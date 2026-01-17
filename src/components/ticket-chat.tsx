@@ -127,7 +127,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
 
     return (
-        <div className="flex flex-col h-screen w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
+        <div className="flex flex-col h-full w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
             
             <header className="flex-none w-full flex items-center justify-between gap-2 px-4 py-2 z-20 border-b border-white/5 shadow-md" 
                     style={{ backgroundColor: WA_COLORS.header }}>
