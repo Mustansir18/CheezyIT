@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -73,8 +74,9 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between space-y-2">
+      <div className="flex flex-col items-center justify-between space-y-2">
         <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
+        <h1 className="text-2xl font-bold tracking-tight pt-2">{dashboardTitle}</h1>
       </div>
       <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
