@@ -330,13 +330,15 @@ export default function AdminAnalytics() {
         </Card>
       
         <Tabs defaultValue="overview">
-            <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="user_tickets">User Tickets</TabsTrigger>
-                <TabsTrigger value="support_performance">Support Performance</TabsTrigger>
-                <TabsTrigger value="region_report">Region Report</TabsTrigger>
-                <TabsTrigger value="hourly_report">Hourly Report</TabsTrigger>
-            </TabsList>
+            <div className="w-full overflow-x-auto">
+                <TabsList>
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="user_tickets">User Tickets</TabsTrigger>
+                    <TabsTrigger value="support_performance">Support Performance</TabsTrigger>
+                    <TabsTrigger value="region_report">Region Report</TabsTrigger>
+                    <TabsTrigger value="hourly_report">Hourly Report</TabsTrigger>
+                </TabsList>
+            </div>
             <TabsContent value="overview">
                 <Card>
                     <CardHeader>
