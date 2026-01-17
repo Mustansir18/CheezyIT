@@ -41,3 +41,4 @@ export const getStats = (allTickets: (Ticket & { id: string })[]) => {
         resolved: allTickets.filter(t => t.status === 'Resolved').length,
     };
 };
+

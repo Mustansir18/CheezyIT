@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, where, getDocs } from 'firebase/firestore';
-import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Copy } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Copy, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -85,8 +86,30 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
             text: msgText,
             createdAt: serverTimestamp(),
             isRead: false,
+            type: 'user',
         });
     };
+
+    const handleStartCall = async () => {
+        if (!user || !ticketOwnerProfile?.phoneNumber) {
+            toast({ variant: 'destructive', title: 'Error', description: 'User does not have a phone number.' });
+            return;
+        }
+        // Assuming PK number format '03xxxxxxxxx' -> '923xxxxxxxxx'
+        const whatsappNumber = '92' + ticketOwnerProfile.phoneNumber.substring(1);
+        const callLink = `https://wa.me/${whatsappNumber}`;
+
+        await addDoc(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), {
+            userId: user.uid,
+            displayName: user.displayName || 'Admin',
+            type: 'call_request',
+            link: callLink,
+            text: 'Voice call request',
+            createdAt: serverTimestamp(),
+            isRead: false,
+        });
+    };
+
 
     return (
         /* The main container MUST be flex-1 and overflow-hidden to keep header/footer static */
@@ -125,14 +148,19 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                 </div>
                 <div className="flex items-center gap-1">
                     {canManageTicket && (
-                        <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                            <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs focus:ring-0 shadow-none hover:bg-white/5"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-[#233138] border-[#424d54] text-white">
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="In Progress">In Progress</SelectItem>
-                                <SelectItem value="Resolved">Resolved</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <>
+                            <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!ticketOwnerProfile?.phoneNumber}>
+                                <Phone className="h-5 w-5" />
+                            </Button>
+                            <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
+                                <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs focus:ring-0 shadow-none hover:bg-white/5"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-[#233138] border-[#424d54] text-white">
+                                    <SelectItem value="Pending">Pending</SelectItem>
+                                    <SelectItem value="In Progress">In Progress</SelectItem>
+                                    <SelectItem value="Resolved">Resolved</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </>
                     )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
@@ -168,6 +196,34 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     const prevItem = messagesWithDateSeparators[idx - 1];
                     const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
 
+                    const messageContent = () => {
+                        if (msg.type === 'call_request' && msg.link) {
+                            return (
+                                <div className="flex flex-col items-start gap-3">
+                                    <div className='flex items-center gap-2'>
+                                        <div className='w-10 h-10 rounded-full bg-green-500/80 flex items-center justify-center'>
+                                            <Phone className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-white/90">Voice call</p>
+                                            <p className="text-sm text-white/70">WhatsApp call</p>
+                                        </div>
+                                    </div>
+                                    <div className='w-full border-t border-white/10 my-1'></div>
+                                    <Button asChild size="sm" variant="ghost" className="w-full justify-center text-center !text-blue-400 hover:!text-blue-300 !p-0 h-auto hover:bg-white/10">
+                                        <Link href={msg.link} target="_blank" rel="noopener noreferrer">
+                                            Join Call
+                                        </Link>
+                                    </Button>
+                                </div>
+                            );
+                        }
+                        if (msg.text) {
+                             return <p className="whitespace-pre-wrap break-words leading-[19px] max-w-[500px]">{msg.text}</p>;
+                        }
+                        return null;
+                    };
+
                     return (
                         <div key={msg.id} className={cn("flex w-full relative", isSender ? "justify-end" : "justify-start", isFirstInBlock ? "mt-2" : "mt-0")}>
                             {isFirstInBlock && (
@@ -180,15 +236,18 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
                             <div 
                                 className={cn(
-                                    "relative px-2 pt-1.5 pb-1 shadow-sm text-[14.2px] z-[2] inline-flex items-end gap-x-2",
+                                    "relative px-2 pt-1.5 pb-1 shadow-sm text-[14.2px] z-[2] inline-flex items-end gap-x-2 min-w-20",
                                     isSender ? "bg-[#005c4b] text-[#e9edef]" : "bg-[#202c33] text-[#e9edef]",
                                     isSender 
                                         ? (isFirstInBlock ? "rounded-l-[8px] rounded-br-[8px] rounded-tr-none" : "rounded-[8px]")
-                                        : (isFirstInBlock ? "rounded-r-[8px] rounded-bl-[8px] rounded-tl-none" : "rounded-[8px]")
+                                        : (isFirstInBlock ? "rounded-r-[8px] rounded-bl-[8px] rounded-tl-none" : "rounded-[8px]"),
+                                    msg.type === 'call_request' && '!w-52'
                                 )}
                             >
-                                <p className="whitespace-pre-wrap break-words leading-[19px] max-w-[500px]">{msg.text}</p>
-                                <div className="flex items-center gap-1 shrink-0 mb-[-2px]">
+                                <div className="flex-1">
+                                    {messageContent()}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0 mb-[-2px] self-end">
                                     <span className="text-[10px] text-[#8696a0] whitespace-nowrap uppercase">
                                         {msg.createdAt ? format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'h:mm a') : ''}
                                     </span>
@@ -219,3 +278,4 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
         </div>
     );
 }
+
