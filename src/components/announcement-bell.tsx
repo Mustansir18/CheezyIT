@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, query, orderBy, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, orderBy, deleteDoc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { Bell, Trash2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -31,6 +31,7 @@ type UserNotification = {
     message: string;
     createdAt: any; // Firestore timestamp
     isRead: boolean;
+    announcementId?: string;
 };
 
 export default function AnnouncementBell() {
@@ -78,14 +79,29 @@ export default function AnnouncementBell() {
         prevUnreadCountRef.current = unreadCount;
     }, [unreadCount, isLoading, playNotificationSound]);
 
-    const handleMarkAsRead = async (notificationId: string) => {
-        if (!user) return;
-        const notificationRef = doc(firestore, 'users', user.uid, 'notifications', notificationId);
+    const handleMarkAsRead = async (notification: UserNotification) => {
+        if (!user || !notification || notification.isRead) return;
+
+        const notificationRef = doc(firestore, 'users', user.uid, 'notifications', notification.id);
+        
         try {
-            await updateDoc(notificationRef, { isRead: true });
+            const batch = writeBatch(firestore);
+
+            // Mark the user's personal notification as read
+            batch.update(notificationRef, { isRead: true });
+
+            // If it's a broadcast announcement, also update the central read status
+            if (notification.announcementId) {
+                const announcementRef = doc(firestore, 'announcements', notification.announcementId);
+                batch.update(announcementRef, {
+                    readBy: arrayUnion(user.uid)
+                });
+            }
+
+            await batch.commit();
         } catch (error) {
             console.error("Failed to mark as read:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not update notification.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update notification status.' });
         }
     };
     
@@ -107,9 +123,17 @@ export default function AnnouncementBell() {
         if (unreadNotifications.length === 0) return;
 
         const batch = writeBatch(firestore);
+        
         unreadNotifications.forEach(n => {
             const ref = doc(firestore, 'users', user.uid, 'notifications', n.id);
             batch.update(ref, { isRead: true });
+
+            if (n.announcementId) {
+                const announcementRef = doc(firestore, 'announcements', n.announcementId);
+                batch.update(announcementRef, {
+                    readBy: arrayUnion(user.uid)
+                });
+            }
         });
         try {
             await batch.commit();
@@ -165,7 +189,7 @@ export default function AnnouncementBell() {
                                             // Prevent button clicks from triggering the dialog
                                             if ((e.target as HTMLElement).closest('button')) return;
                                             if (!n.isRead) {
-                                                handleMarkAsRead(n.id);
+                                                handleMarkAsRead(n);
                                             }
                                             setSelectedNotification(n);
                                         }}
@@ -183,7 +207,7 @@ export default function AnnouncementBell() {
                                         </span>
                                         <div className="flex items-center gap-2">
                                             {!n.isRead && (
-                                                <Button variant="outline" size="sm" className="h-auto px-2 py-1 text-xs" onClick={() => handleMarkAsRead(n.id)}>
+                                                <Button variant="outline" size="sm" className="h-auto px-2 py-1 text-xs" onClick={() => handleMarkAsRead(n)}>
                                                     Mark as Read
                                                 </Button>
                                             )}

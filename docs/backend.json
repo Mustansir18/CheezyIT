@@ -197,9 +197,19 @@
             "users": { "type": "array", "items": { "type": "string" } }
           }
         },
-        "recipientCount": { "type": "number", "description": "The number of users the announcement was sent to." }
+        "recipientCount": { "type": "number", "description": "The number of users the announcement was sent to." },
+        "recipientUids": {
+            "type": "array",
+            "description": "The UIDs of all users who received the announcement.",
+            "items": { "type": "string" }
+        },
+        "readBy": {
+            "type": "array",
+            "description": "The UIDs of all users who have read the announcement.",
+            "items": { "type": "string" }
+        }
       },
-      "required": ["title", "message", "createdAt", "createdByUid", "createdByDisplayName", "target", "recipientCount"]
+      "required": ["title", "message", "createdAt", "createdByUid", "createdByDisplayName", "target", "recipientCount", "recipientUids"]
     },
     "UserNotification": {
       "title": "User Notification",

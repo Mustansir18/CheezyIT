@@ -1,29 +1,27 @@
 
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
-import { collection, query, collectionGroup, where } from 'firebase/firestore';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { collection, query } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+type Announcement = {
+    id: string;
+    recipientUids: string[];
+    readBy: string[];
+};
 
 type User = {
     id: string;
     displayName: string;
 };
 
-type UserNotification = {
-    userId: string;
-    isRead: boolean;
-};
-
-export default function ReadStatusList({ announcementId }: { announcementId: string }) {
+export default function ReadStatusList({ announcement }: { announcement: Announcement }) {
     const firestore = useFirestore();
-    const { toast } = useToast();
 
     const usersQuery = useMemoFirebase(
         () => query(collection(firestore, 'users')),
@@ -31,33 +29,12 @@ export default function ReadStatusList({ announcementId }: { announcementId: str
     );
     const { data: allUsers, isLoading: usersLoading, error: usersError } = useCollection<User>(usersQuery);
 
-    const notificationsQuery = useMemoFirebase(
-        () => query(collectionGroup(firestore, 'notifications'), where('announcementId', '==', announcementId)),
-        [firestore, announcementId]
-    );
-    // Note: This query requires a composite index in Firestore.
-    // The console error will provide a link to create it.
-    const { data: notifications, isLoading: notificationsLoading, error: notificationsError } = useCollection<UserNotification>(notificationsQuery);
-    
-    // Show a toast if a permission error occurs on the collection group query
-    useEffect(() => {
-        if (notificationsError?.message.includes('permission-denied')) {
-            toast({
-                variant: 'destructive',
-                title: 'Permission Denied',
-                description: 'A required Firestore index is missing. Check the browser console for a link to create it.',
-                duration: 10000
-            });
-        }
-    }, [notificationsError, toast]);
+    const usersMap = useMemo(() => {
+        if (!allUsers) return new Map<string, string>();
+        return new Map(allUsers.map(u => [u.id, u.displayName]));
+    }, [allUsers]);
 
-
-    const readStatusMap = useMemo(() => {
-        if (!notifications) return new Map();
-        return new Map(notifications.map(n => [n.userId, n.isRead]));
-    }, [notifications]);
-
-    const isLoading = usersLoading || notificationsLoading;
+    const isLoading = usersLoading;
 
     if (isLoading) {
         return (
@@ -71,31 +48,22 @@ export default function ReadStatusList({ announcementId }: { announcementId: str
        return <p className="text-destructive text-sm">Error loading user list.</p>
     }
 
-    if (notificationsError) {
-        return (
-             <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Index Required</AlertTitle>
-                <AlertDescription>
-                    To view read statuses, a composite index must be created in Firestore. Please open your browser's developer console. You should find an error message with a direct link to create the required index.
-                </AlertDescription>
-            </Alert>
-        )
-    }
+    const recipientUids = announcement.recipientUids || [];
+    const readByUids = new Set(announcement.readBy || []);
 
-    if (!allUsers || allUsers.length === 0) {
-        return <p className="text-muted-foreground text-sm">No users found.</p>;
+    if (recipientUids.length === 0) {
+        return <p className="text-muted-foreground text-sm">This announcement had no recipients.</p>;
     }
-
+    
     return (
         <ScrollArea className="h-64 rounded-md border">
             <div className="p-4">
                 <div className="space-y-2">
-                    {allUsers
-                        .filter(user => readStatusMap.has(user.id)) // Only show users who were recipients
+                    {recipientUids
+                        .map(uid => ({ id: uid, displayName: usersMap.get(uid) || `Unknown User (${uid.substring(0,5)}...)` }))
                         .sort((a,b) => a.displayName.localeCompare(b.displayName))
                         .map(user => {
-                            const isRead = readStatusMap.get(user.id) || false;
+                            const isRead = readByUids.has(user.id);
                             return (
                                 <div key={user.id} className="flex items-center justify-between text-sm">
                                     <span>{user.displayName}</span>

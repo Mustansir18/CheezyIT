@@ -105,6 +105,8 @@ export default function AnnouncementForm() {
             });
             return;
         }
+        
+        const recipientUids = targetUsers.map(user => user.id);
 
         const announcementPayload = {
             title: data.title,
@@ -117,7 +119,9 @@ export default function AnnouncementForm() {
                 regions: data.targetRegions,
                 users: data.targetUsers,
             },
-            recipientCount: targetUsers.length,
+            recipientUids: recipientUids,
+            recipientCount: recipientUids.length,
+            readBy: [],
         };
 
         let announcementRef;

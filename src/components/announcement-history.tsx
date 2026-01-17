@@ -20,6 +20,8 @@ type Announcement = {
     createdAt: any;
     createdByDisplayName: string;
     recipientCount: number;
+    recipientUids: string[];
+    readBy: string[];
     target: {
         roles: string[];
         regions: string[];
@@ -49,7 +51,7 @@ function AnnouncementDetailsDialog({ announcement }: { announcement: Announcemen
                     </div>
                     <div>
                          <h4 className="font-semibold mb-2">Read Status ({announcement.recipientCount} recipients)</h4>
-                         <ReadStatusList announcementId={announcement.id} />
+                         <ReadStatusList announcement={announcement} />
                     </div>
                 </div>
             </DialogContent>
