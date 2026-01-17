@@ -134,22 +134,6 @@ service cloud.firestore {
                data.isRead == false;
     }
     
-    function validateAnnouncementData(data) {
-      // Simple validation for core fields, removing strict checks on 'target' and 'recipientCount'
-      return 'title' in data && data.title is string &&
-            'message' in data && data.message is string &&
-            'createdByUid' in data && data.createdByUid == request.auth.uid &&
-            'createdByDisplayName' in data && data.createdByDisplayName is string;
-    }
-
-    function validateNotificationData(data) {
-        // Simplified check for fan-out notifications
-        return 'title' in data && data.title is string &&
-               'message' in data && data.message is string &&
-               'isRead' in data && data.isRead == false &&
-               'announcementId' in data && data.announcementId is string;
-    }
-
 
     // ========== COLLECTION GROUP RULES ==========
     match /{path=**}/issues/{issueId} {
@@ -175,7 +159,7 @@ service cloud.firestore {
       
         match /notifications/{notificationId} {
             allow get, list: if isOwner(userId) || canManageTickets();
-            allow create: if canManageTickets() && validateNotificationData(request.resource.data);
+            allow create: if canManageTickets();
             allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
             allow delete: if canManageTickets();
         }
@@ -197,7 +181,7 @@ service cloud.firestore {
     
     match /announcements/{announcementId} {
       allow get, list: if canManageTickets();
-      allow create: if canManageTickets() && validateAnnouncementData(request.resource.data);
+      allow create: if canManageTickets();
       allow update, delete: if isRoot(); 
     }
 

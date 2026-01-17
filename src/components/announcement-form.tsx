@@ -70,39 +70,30 @@ export default function AnnouncementForm() {
   });
 
   const onSubmit = (data: FormData) => {
-    let announcementPayload: any;
-    let notificationData: any;
-    let targetUsers: WithId<User>[] = [];
-    const announcementsCollection = collection(firestore, 'announcements');
-
     startTransition(async () => {
-        if (!usersData) {
-            toast({ variant: 'destructive', title: 'Error', description: 'User data not loaded yet.' });
-            return;
-        }
         if (!currentUser) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Admin user not authenticated.' });
+            toast({ variant: 'destructive', title: 'Authentication Error', description: 'Admin user not authenticated.' });
             return;
         }
-        
+        if (!usersData) {
+            toast({ variant: 'destructive', title: 'User data not loaded', description: 'Please wait a moment and try again.' });
+            return;
+        }
+
+        let targetUsers: WithId<User>[] = [];
         if (data.targetUsers && data.targetUsers.length > 0) {
             targetUsers = usersData.filter(user => data.targetUsers.includes(user.id));
         } else {
             let filteredUsers = usersData;
-
             if (data.targetRoles.length > 0) {
                 filteredUsers = filteredUsers.filter(user => user.role && data.targetRoles.includes(user.role));
             }
-
             if (data.targetRegions.length > 0) {
                 filteredUsers = filteredUsers.filter(user => {
-                    const userRegions = (Array.isArray(user.regions) && user.regions.length > 0)
-                        ? user.regions
-                        : (user.region ? [user.region] : []);
+                    const userRegions = (Array.isArray(user.regions) && user.regions.length > 0) ? user.regions : (user.region ? [user.region] : []);
                     return userRegions.some((r: string) => data.targetRegions.includes(r));
                 });
             }
-            
             targetUsers = filteredUsers;
         }
 
@@ -114,9 +105,8 @@ export default function AnnouncementForm() {
             });
             return;
         }
-        
-        // 1. Create the master announcement document
-        announcementPayload = {
+
+        const announcementPayload = {
             title: data.title,
             message: data.message,
             createdAt: serverTimestamp(),
@@ -130,12 +120,28 @@ export default function AnnouncementForm() {
             recipientCount: targetUsers.length,
         };
 
+        let announcementRef;
         try {
-            const announcementRef = await addDoc(announcementsCollection, announcementPayload);
+            announcementRef = await addDoc(collection(firestore, 'announcements'), announcementPayload);
+        } catch (error: any) {
+            console.error("Error creating master announcement:", error);
+            const permissionError = new FirestorePermissionError({
+                path: 'announcements',
+                operation: 'create',
+                requestResourceData: announcementPayload,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({
+                variant: 'destructive',
+                title: 'Error Step 1: Saving Announcement',
+                description: 'Could not save the master announcement. Check permissions for the /announcements collection.',
+            });
+            return;
+        }
 
-            // 2. Fan-out the notifications to individual users
+        try {
             const batch = writeBatch(firestore);
-            notificationData = {
+            const notificationData = {
                 title: data.title,
                 message: data.message,
                 createdAt: serverTimestamp(),
@@ -157,31 +163,21 @@ export default function AnnouncementForm() {
             form.reset();
 
         } catch (error: any) {
-            const isBatchError = error.message.includes('batch');
-            let permissionError;
-
-            // This creates a detailed error object for debugging security rules.
-            if (isBatchError) {
-                const firstUser = targetUsers[0];
-                 permissionError = new FirestorePermissionError({
-                    path: `users/${firstUser.id}/notifications`,
-                    operation: 'create',
-                    requestResourceData: notificationData, // Use the full data payload
-                });
-            } else {
-                 permissionError = new FirestorePermissionError({
-                    path: announcementsCollection.path,
-                    operation: 'create',
-                    requestResourceData: announcementPayload, // Use the full data payload
-                });
-            }
-            
+            console.error("Error fanning out notifications:", error);
+            const firstUser = targetUsers[0];
+            const notificationData = {
+                title: data.title, message: data.message, createdAt: 'SERVER_TIMESTAMP', isRead: false, announcementId: announcementRef.id
+            };
+            const permissionError = new FirestorePermissionError({
+                path: `users/${firstUser?.id || 'some-user'}/notifications`,
+                operation: 'create',
+                requestResourceData: notificationData,
+            });
             errorEmitter.emit('permission-error', permissionError);
-            
             toast({
                 variant: 'destructive',
-                title: 'Error Sending Announcement',
-                description: 'Failed to send announcement. You may not have the required permissions.',
+                title: 'Error Step 2: Sending to Users',
+                description: 'Master announcement was saved, but failed to send to users. Check permissions for notifications subcollections.',
             });
         }
     });
