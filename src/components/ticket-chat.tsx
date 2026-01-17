@@ -41,7 +41,12 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
     
     const playMessageSound = useSound('/sounds/new-message.mp3');
-    const prevMessagesCountRef = useRef<number | undefined>(undefined);
+    const prevUnreadCountRef = useRef<number | undefined>(undefined);
+
+    const unreadMessagesCount = useMemo(() => {
+        if (!messages || !user) return 0;
+        return messages.filter(m => !m.isRead && m.userId !== user.uid).length;
+    }, [messages, user]);
 
     useLayoutEffect(() => {
         if (messagesContainerRef.current) {
@@ -50,24 +55,19 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     }, [messages]);
 
     useEffect(() => {
-        if (messagesLoading || !messages) {
+        if (messagesLoading) return;
+
+        if (prevUnreadCountRef.current === undefined) {
+            prevUnreadCountRef.current = unreadMessagesCount;
             return;
         }
 
-        if (prevMessagesCountRef.current === undefined) {
-            prevMessagesCountRef.current = messages.length;
-            return;
+        if (unreadMessagesCount > prevUnreadCountRef.current) {
+            playMessageSound();
         }
 
-        if (messages.length > prevMessagesCountRef.current) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage && user && lastMessage.userId !== user.uid) {
-                playMessageSound();
-            }
-        }
-
-        prevMessagesCountRef.current = messages.length;
-    }, [messages, messagesLoading, user, playMessageSound]);
+        prevUnreadCountRef.current = unreadMessagesCount;
+    }, [unreadMessagesCount, messagesLoading, playMessageSound]);
 
 
     // Effect to mark messages as read and clear ticket-level unread flags
