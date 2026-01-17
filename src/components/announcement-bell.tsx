@@ -30,6 +30,7 @@ export default function AnnouncementBell() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
+    const [isRinging, setIsRinging] = useState(false); // Track animation state
     
     const playNotificationSound = useSound('/notification.mp3');
     const prevUnreadCountRef = useRef<number | undefined>(undefined);
@@ -46,18 +47,25 @@ export default function AnnouncementBell() {
     }, [notifications]);
 
     useEffect(() => {
-        // On initial load, set the ref to the current count without playing a sound.
-        if (prevUnreadCountRef.current === undefined && !isLoading) {
+        if (isLoading) return;
+
+        // Initialize ref on first load
+        if (prevUnreadCountRef.current === undefined) {
             prevUnreadCountRef.current = unreadCount;
             return;
         }
 
-        // Play sound only when the unread count increases from its previous state.
-        if (!isLoading && prevUnreadCountRef.current !== undefined && unreadCount > prevUnreadCountRef.current) {
+        // Trigger logic when count increases
+        if (unreadCount > prevUnreadCountRef.current) {
             playNotificationSound();
+            
+            // Trigger the "Ring" animation
+            setIsRinging(true);
+            const timer = setTimeout(() => setIsRinging(false), 1000); // Stop after 1s
+            
+            return () => clearTimeout(timer);
         }
 
-        // Update the ref with the new count for the next render.
         prevUnreadCountRef.current = unreadCount;
     }, [unreadCount, isLoading, playNotificationSound]);
 
@@ -108,10 +116,18 @@ export default function AnnouncementBell() {
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                    <Bell className={cn("h-5 w-5", unreadCount > 0 && "animate-pulse text-accent")} />
+                <Button variant="ghost" size="icon" className="relative overflow-visible">
+                    <Bell 
+                        className={cn(
+                            "h-5 w-5 transition-all",
+                            // This class is added when a new notification arrives
+                            isRinging && "animate-bell-ring text-yellow-500",
+                            // Keep the subtle pulse if there are unread items
+                            unreadCount > 0 && !isRinging && "text-accent"
+                        )} 
+                    />
                     {unreadCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white hover:bg-red-500/90">
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white animate-in zoom-in hover:bg-red-500/90">
                             {unreadCount}
                         </Badge>
                     )}
