@@ -49,14 +49,26 @@ export default function AdminDashboardPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   
   const loading = userLoading || profileLoading;
   
+  const navItems = useMemo(() => {
+    if (userIsSupport) {
+      return baseNavItems.filter(item => item.href === '/admin/tickets');
+    }
+    
+    // For Admin and Root
+    let items = [...baseNavItems];
+    if (userIsRoot) {
+      items.push(rootNavItem);
+    }
+    return items;
+  }, [userIsRoot, userIsSupport]);
+
   if (loading) {
       return <div className="flex h-32 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
-
-  const navItems = userIsRoot ? [...baseNavItems, rootNavItem] : baseNavItems;
 
   return (
     <>
