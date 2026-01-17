@@ -9,164 +9,164 @@
  * user's specific document (e.g., /users/{userId}/issues/{issueId}).
  *
  * Key Security Decisions:
- * - Root, Admin & IT Support Roles: To allow privileged users to manage the system, we check their roles.
- *   For the primary "root" user, we use a hardcoded email. For "Admin" and "IT Support", we perform a `get()`
- *   on their user document to check their `role` field. This is secure and allows for flexible role management.
- * - Path-Based Security: Ownership is determined by the document's path. This is the most secure and
- *   performant method, as it avoids costly 'get' calls to other documents for authorization checks.
- * - Relational Integrity: On document creation and updates, rules ensure that internal ownership fields
- *   (e.g., a 'userId' field within an issue document) match the document's path, preventing data
- *   inconsistencies and potential security loopholes.
+ * - Comprehensive Data Validation: Create and Update operations are validated against strict functions
+ *   (e.g., `validateIssueDataOnCreate`) to ensure data integrity, correct types, and proper initial state.
+ *   This prevents malformed or malicious data from entering the database, a key OWASP principle.
+ * - Path-Based Security & Role Checks: Ownership is determined by the document's path (`isOwner`).
+ *   Privileged access for 'Admin', 'it-support', and 'Root' roles is granted via helper functions that
+ *   check the user's role from their own user document, providing a secure and centralized logic.
  *
  * User Roles & Permissions:
- * - Root: Super user (hardcoded email). Has unrestricted access to everything.
- * - Admin: Can manage users and tickets across assigned regions. Has efficient access to collection group queries for reporting.
- * - it-support: Can manage tickets across assigned regions. Lacks permission for efficient collection group queries, so client-side fetching is less performant for full listings.
- * - Branch: Standard user who can only manage their own tickets. Functionally identical to 'User'.
- * - User: Standard user who can only manage their own tickets.
+ * - Root: Super user (hardcoded email). Has unrestricted access.
+ * - Admin: Can manage users and tickets across assigned regions. Has efficient access to collection group queries.
+ * - it-support: Can manage tickets across assigned regions. Lacks permission for efficient collection group queries.
+ * - Branch / User: Standard user who can only manage their own tickets.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for readable and reusable logic
+    // ========== HELPER FUNCTIONS ==========
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user is the owner of the resource
-     * identified by the given userId.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * Checks if the user is the primary root user by checking their email address.
-     */
     function isRoot() {
       return isSignedIn() && request.auth.token.email == 'mustansir133@gmail.com';
     }
     
-    /**
-     * Checks if the user has an 'Admin' role.
-     */
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
     
-    /**
-     * Checks if the user has an 'it-support' role.
-     */
+    function isUserRole(userId, role) {
+      return getUserData(userId).role == role;
+    }
+
+    function isAdmin() {
+      return isUserRole(request.auth.uid, 'Admin');
+    }
+    
     function isSupport() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'it-support';
+      return isUserRole(request.auth.uid, 'it-support');
     }
 
-    /**
-     * Checks if the user has a privileged role (Root, Admin, or IT Support).
-     * IMPORTANT: This function uses get() and cannot be used in collection group list queries
-     * unless the query is only performed by the Root user.
-     */
     function canManageTickets() {
-      return isRoot() || isAdmin() || isSupport();
+      // This checks the role of the currently authenticated user.
+      let userRole = getUserData(request.auth.uid).role;
+      return isRoot() || userRole == 'Admin' || userRole == 'it-support';
     }
 
-    /**
-     * @description Rule for 'issues' collection group queries.
-     * Allows Root and Admin users to query across all 'issues' subcollections for analytics and listings.
-     * This rule is essential for the Admin/Root dashboards to function.
-     * NOTE: `list` is restricted here because collection group queries
-     * cannot use `get()` in their where clauses/rules for roles like 'it-support'.
-     */
+    // ========== DATA VALIDATION FUNCTIONS ==========
+
+    function validateUserDataOnCreate(data) {
+        return data.keys().hasAll(['displayName', 'email', 'role', 'phoneNumber']) &&
+               data.keys().hasAny(['region', 'regions']) &&
+               data.displayName is string && data.displayName.size() > 0 &&
+               data.email is string &&
+               data.role in ['User', 'Branch', 'it-support', 'Admin'];
+    }
+    
+    function validateUserDataOnUpdate(data, existingData) {
+        // A user can only update their own displayName and phoneNumber
+        let selfUpdateAllowed = request.auth.uid == existingData.id &&
+                                data.diff(existingData).affectedKeys().hasOnly(['displayName', 'phoneNumber']);
+
+        // Root can update role and regions
+        let rootUpdateAllowed = isRoot() &&
+                                data.diff(existingData).affectedKeys().hasAny(['displayName', 'role', 'region', 'regions']);
+                                
+        return selfUpdateAllowed || rootUpdateAllowed;
+    }
+    
+    function validateIssueDataOnCreate(data) {
+        let requiredKeys = ["userId", "title", "issueType", "description", "status", "createdAt", "updatedAt", "region", "unreadByAdmin", "unreadByUser"];
+        let optionalKeys = ["customIssueType", "anydesk"];
+        
+        return data.keys().hasAll(requiredKeys) &&
+               data.keys().hasOnly(requiredKeys.concat(optionalKeys)) &&
+               data.userId == request.auth.uid &&
+               data.title is string && data.title.size() > 0 &&
+               data.description is string && data.description.size() > 0 &&
+               data.status == 'Pending' && // Issues must always be created as 'Pending'
+               data.issueType is string &&
+               data.region is string &&
+               data.createdAt == request.time && // Must be server timestamp
+               data.updatedAt == request.time &&
+               data.unreadByAdmin == true &&
+               data.unreadByUser == false;
+    }
+
+    function validateIssueDataOnUpdate(data, existingData) {
+        // Keys a ticket owner is allowed to change (e.g., when they send a new message)
+        let ownerAffectedKeys = ['updatedAt', 'unreadByAdmin'];
+        
+        // Keys a support agent/admin can change
+        let managerAffectedKeys = ['status', 'updatedAt', 'completedAt', 'resolvedBy', 'resolvedByDisplayName', 'unreadByAdmin', 'unreadByUser'];
+
+        return (isOwner(existingData.userId) && data.diff(existingData).affectedKeys().hasOnly(ownerAffectedKeys)) || 
+               (canManageTickets() && data.diff(existingData).affectedKeys().hasAny(managerAffectedKeys));
+    }
+    
+    function validateChatMessageData(data) {
+        let requiredKeys = ["userId", "displayName", "createdAt", "isRead", "type"];
+        let optionalKeys = ["text", "audioUrl", "link"];
+
+        return data.keys().hasAll(requiredKeys) &&
+               data.keys().hasOnly(requiredKeys.concat(optionalKeys)) &&
+               data.userId == request.auth.uid &&
+               data.displayName is string &&
+               (data.type == 'user' || data.type == 'call_request') &&
+               data.createdAt == request.time &&
+               data.isRead == false;
+    }
+
+
+    // ========== COLLECTION GROUP RULES ==========
     match /{path=**}/issues/{issueId} {
       allow get: if canManageTickets();
-      allow list: if isRoot() || isAdmin();
+      // 'list' is restricted for performance. Firestore doesn't allow `get` in `list` rules for non-admin/root users.
+      // The app handles this by fetching tickets iteratively for 'it-support' roles.
+      allow list: if isRoot() || isAdmin(); 
     }
 
-    /**
-     * @description Rules for the 'users' collection.
-     * @path /users/{userId}
-     */
+    // ========== PATH-BASED RULES ==========
     match /users/{userId} {
-      /**
-       * Allow reading a user's own profile or any profile if the requester is privileged.
-       */
       allow get: if isOwner(userId) || canManageTickets();
-
-      /**
-       * Allow privileged users to list all users (needed for filtering tickets).
-       */
       allow list: if canManageTickets();
-
-      /**
-       * Allow a user to create their own profile.
-       * Only a Root user can create other user documents from the dashboard.
-       */
-      allow create: if isOwner(userId) || isRoot();
-
-      /**
-       * Allow a user to update their own profile.
-       * Only a Root user can update other user profiles from the dashboard.
-       */
-      allow update: if isOwner(userId) || isRoot();
-
-      /**
-       * Allow a user to delete their own profile.
-       * Only a Root user can delete other user profiles from the dashboard.
-       */
-      allow delete: if isOwner(userId) || isRoot();
+      allow create: if (isOwner(userId) || isRoot()) && validateUserDataOnCreate(request.resource.data);
+      allow update: if validateUserDataOnUpdate(request.resource.data, resource.data);
+      allow delete: if isOwner(userId) || isRoot(); // Deletion should be rare, restricted to owner or root.
       
-      
-        /**
-         * @description Rules for announcements/notifications within a user's profile.
-         * @path /users/{userId}/notifications/{notificationId}
-         */
         match /notifications/{notificationId} {
-            // Owner can see their notifications. Admin/Support can see anyone's.
             allow get, list: if isOwner(userId) || canManageTickets();
-            // Only Admin/Root can create notifications. This is handled by the server action which runs as the logged-in user.
-            allow create: if canManageTickets();
-            // Only the owner can mark their own notification as read.
+            allow create: if canManageTickets(); // Only privileged users can send notifications
             allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-            // Only Admin/Root can delete.
             allow delete: if canManageTickets();
         }
 
-        /**
-         * @description Rules for issues, which are owned by a specific user.
-         * @path /users/{userId}/issues/{issueId}
-         */
         match /issues/{issueId} {
           allow get, list: if isOwner(userId) || canManageTickets();
-          allow create: if isOwner(userId);
-          allow update, delete: if isOwner(userId) || canManageTickets();
+          allow create: if isOwner(userId) && validateIssueDataOnCreate(request.resource.data);
+          allow update: if validateIssueDataOnUpdate(request.resource.data, resource.data);
+          allow delete: if isOwner(userId) || canManageTickets();
 
-            /**
-             * @description Rules for chat messages within an issue.
-             * @path /users/{userId}/issues/{issueId}/messages/{messageId}
-             */
             match /messages/{messageId} {
                 allow list, get: if isOwner(userId) || canManageTickets();
-                // We validate that the userId in the message matches the sender's UID.
-                allow create: if (isOwner(userId) || canManageTickets())
-                            && request.resource.data.userId == request.auth.uid;
-                // Allow users involved in the ticket to update the 'isRead' status.
+                allow create: if (isOwner(userId) || canManageTickets()) && validateChatMessageData(request.resource.data);
                 allow update: if (isOwner(userId) || canManageTickets())
                             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
             }
         }
     }
     
-    /**
-     * @description Rules for system-wide settings.
-     * @path /system_settings/{settingId}
-     */
     match /system_settings/{settingId} {
-      // Allow any signed-in admin/support/root user to read settings (e.g., for forms)
-      allow get: if canManageTickets(); 
-      // Only allow the Root user to change settings.
-      allow write: if isRoot();
+      allow get, list: if canManageTickets(); 
+      allow write: if isRoot(); // Only root can change global settings like regions
     }
   }
 }

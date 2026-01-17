@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { doc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -68,46 +69,57 @@ export default function TicketDetailPage() {
     
     const backLink = canManageTicket && ownerId ? '/admin/tickets' : '/dashboard';
 
-    const handleStatusChange = async (newStatus: TicketStatus) => {
+    const handleStatusChange = (newStatus: TicketStatus) => {
         if (!ticketRef || !user) return;
-        try {
-            const updateData: {
-                status: TicketStatus;
-                updatedAt: any;
-                completedAt?: any;
-                resolvedBy?: string;
-                resolvedByDisplayName?: string;
-            } = {
-                status: newStatus,
-                updatedAt: serverTimestamp(),
-            };
+        const updateData: {
+            status: TicketStatus;
+            updatedAt: any;
+            completedAt?: any;
+            resolvedBy?: string;
+            resolvedByDisplayName?: string;
+        } = {
+            status: newStatus,
+            updatedAt: serverTimestamp(),
+        };
 
-            if (newStatus === 'Resolved') {
-                updateData.completedAt = serverTimestamp();
-                updateData.resolvedBy = user.uid;
-                updateData.resolvedByDisplayName = user.displayName || 'N/A';
-            }
-            
-            await updateDoc(ticketRef, updateData);
-            toast({ title: 'Status Updated', description: `Ticket status changed to ${newStatus}` });
-        } catch (error: any) {
-            console.error("Failed to update status:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update status. You may not have permission.' });
+        if (newStatus === 'Resolved') {
+            updateData.completedAt = serverTimestamp();
+            updateData.resolvedBy = user.uid;
+            updateData.resolvedByDisplayName = user.displayName || 'N/A';
         }
+        
+        updateDoc(ticketRef, updateData)
+            .then(() => {
+                toast({ title: 'Status Updated', description: `Ticket status changed to ${newStatus}` });
+            })
+            .catch(async (error: any) => {
+              const permissionError = new FirestorePermissionError({
+                  path: ticketRef.path,
+                  operation: 'update',
+                  requestResourceData: updateData,
+              });
+              errorEmitter.emit('permission-error', permissionError);
+              toast({ variant: 'destructive', title: 'Error', description: 'Failed to update status. You may not have permission.' });
+          });
     };
 
-    const handleDeleteTicket = async () => {
+    const handleDeleteTicket = () => {
         if (!ticketRef) return;
-        try {
-            await deleteDoc(ticketRef);
-            toast({ title: 'Ticket Deleted', description: 'The ticket has been successfully deleted.' });
-            router.push(backLink);
-        } catch (error: any) {
-            console.error("Failed to delete ticket:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete ticket. You may not have permission.' });
-        } finally {
-            setIsDeleteDialogOpen(false);
-        }
+        setIsDeleteDialogOpen(false);
+
+        deleteDoc(ticketRef)
+            .then(() => {
+                toast({ title: 'Ticket Deleted', description: 'The ticket has been successfully deleted.' });
+                router.push(backLink);
+            })
+            .catch(async (error: any) => {
+                const permissionError = new FirestorePermissionError({
+                    path: ticketRef.path,
+                    operation: 'delete',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete ticket. You may not have permission.' });
+            });
     };
 
     if (userLoading || ticketLoading || profileLoading || !effectiveUserId) {

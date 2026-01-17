@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -76,18 +77,24 @@ export default function UpdateProfileForm({
         if (auth.currentUser.displayName !== data.displayName) {
           await updateProfile(auth.currentUser, { displayName: data.displayName });
         }
-        await setDoc(userDocRef, updateData, { merge: true });
-        toast({ title: 'Success!', description: 'Your profile has been updated.' });
+
+        setDoc(userDocRef, updateData, { merge: true })
+            .then(() => {
+                toast({ title: 'Success!', description: 'Your profile has been updated.' });
+            })
+            .catch(async (error: any) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'write',
+                    requestResourceData: updateData
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({ variant: 'destructive', title: 'Database Error', description: 'Could not save profile changes. You may not have permission.' });
+            });
+
     } catch (error: any) {
-        console.error("Error updating profile:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile. You may not have permission.' });
-        
-        const contextualError = new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'write',
-            requestResourceData: updateData
-        });
-        errorEmitter.emit('permission-error', contextualError);
+        console.error("Error updating profile auth:", error);
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'Failed to update your main display name.' });
     } finally {
         setIsSubmitting(false);
     }
