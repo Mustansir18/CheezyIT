@@ -200,7 +200,7 @@ export default function AdminAnalytics() {
   }, [filteredTickets]);
   
   const userCreatedTickets = useMemo(() => {
-    return filteredTickets.filter(ticket => userRolesMap[ticket.userId] === 'User');
+    return filteredTickets.filter(ticket => userRolesMap[ticket.userId] === 'User' || userRolesMap[ticket.userId] === 'Branch');
   }, [filteredTickets, userRolesMap]);
 
   const resolvedSupportTickets = useMemo(() => {
@@ -221,6 +221,32 @@ export default function AdminAnalytics() {
         .map(([region, tickets]) => ({ region, tickets }))
         .sort((a, b) => b.tickets - a.tickets);
   }, [filteredTickets]);
+
+  const userCreatedData = useMemo(() => {
+    const counts = userCreatedTickets.reduce((acc, ticket) => {
+        const userName = usersMap[ticket.userId] || 'Unknown User';
+        acc[userName] = (acc[userName] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+  }, [userCreatedTickets, usersMap]);
+
+  const supportResolvedData = useMemo(() => {
+    const counts = resolvedSupportTickets.reduce((acc, ticket) => {
+        const resolverName = ticket.resolvedByDisplayName || 'N/A';
+        if (resolverName !== 'N/A') {
+            acc[resolverName] = (acc[resolverName] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+  }, [resolvedSupportTickets]);
 
 
   if (loading) {
@@ -317,32 +343,26 @@ export default function AdminAnalytics() {
             <TabsContent value="user_tickets">
                  <Card>
                     <CardHeader>
-                        <CardTitle>Standard User Tickets</CardTitle>
-                        <CardDescription>Tickets created by standard users in the selected period.</CardDescription>
+                        <CardTitle>Tickets Created by User</CardTitle>
+                        <CardDescription>Total tickets created by each user in the selected period.</CardDescription>
                     </CardHeader>
                     <CardContent>
                          <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Ticket Title</TableHead>
-                                    <TableHead>Created By</TableHead>
-                                    <TableHead>Region</TableHead>
-                                    <TableHead>Date Created</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead>User Name</TableHead>
+                                    <TableHead className="text-right">Tickets Created</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {userCreatedTickets.length > 0 ? userCreatedTickets.map(ticket => (
-                                    <TableRow key={ticket.id}>
-                                        <TableCell>{ticket.title}</TableCell>
-                                        <TableCell>{usersMap[ticket.userId] || 'Unknown User'}</TableCell>
-                                        <TableCell>{ticket.region}</TableCell>
-                                        <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : 'N/A'}</TableCell>
-                                        <TableCell>{ticket.status}</TableCell>
+                                {userCreatedData.length > 0 ? userCreatedData.map(item => (
+                                    <TableRow key={item.name}>
+                                        <TableCell>{item.name}</TableCell>
+                                        <TableCell className="text-right">{item.count}</TableCell>
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">No tickets found for this period.</TableCell>
+                                        <TableCell colSpan={2} className="h-24 text-center">No user-created tickets found for this period.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -363,8 +383,36 @@ export default function AdminAnalytics() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Resolved Tickets Report</CardTitle>
-                            <CardDescription>Tickets resolved by Admin & IT Support in the selected period.</CardDescription>
+                            <CardTitle>Tickets Resolved by Agent</CardTitle>
+                            <CardDescription>Total tickets resolved by each agent in the selected period.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Agent Name</TableHead>
+                                        <TableHead className="text-right">Tickets Resolved</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {supportResolvedData.length > 0 ? supportResolvedData.map(item => (
+                                        <TableRow key={item.name}>
+                                            <TableCell>{item.name}</TableCell>
+                                            <TableCell className="text-right">{item.count}</TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="h-24 text-center">No resolved tickets found for this period.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Resolution Details</CardTitle>
+                            <CardDescription>Details for each ticket resolved by Admin & IT Support in the selected period.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Table>
