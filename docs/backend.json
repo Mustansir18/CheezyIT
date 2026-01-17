@@ -178,6 +178,29 @@
         "createdAt"
       ]
     },
+    "Announcement": {
+      "title": "Announcement",
+      "type": "object",
+      "description": "Represents a single master announcement sent by an admin. This serves as a central log.",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the announcement." },
+        "message": { "type": "string", "description": "The message content of the announcement." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the announcement was created." },
+        "createdByUid": { "type": "string", "description": "The UID of the admin who sent the announcement." },
+        "createdByDisplayName": { "type": "string", "description": "The display name of the admin who sent the announcement." },
+        "target": {
+          "type": "object",
+          "description": "The targeting criteria for the announcement.",
+          "properties": {
+            "roles": { "type": "array", "items": { "type": "string" } },
+            "regions": { "type": "array", "items": { "type": "string" } },
+            "users": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "recipientCount": { "type": "number", "description": "The number of users the announcement was sent to." }
+      },
+      "required": ["title", "message", "createdAt", "createdByUid", "createdByDisplayName", "target", "recipientCount"]
+    },
     "UserNotification": {
       "title": "User Notification",
       "type": "object",
@@ -186,7 +209,8 @@
         "title": { "type": "string", "description": "The title of the notification." },
         "message": { "type": "string", "description": "The message content of the notification." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the notification was created." },
-        "isRead": { "type": "boolean", "description": "True if the user has read the notification." }
+        "isRead": { "type": "boolean", "description": "True if the user has read the notification." },
+        "announcementId": { "type": "string", "description": "A reference to the master announcement document, if applicable." }
       },
       "required": ["title", "message", "createdAt", "isRead"]
     },
@@ -245,6 +269,12 @@
         "$ref": "#/backend/entities/UserNotification"
       },
       "description": "Stores notifications and announcements for a specific user."
+    },
+    "/announcements/{announcementId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Announcement"
+      },
+      "description": "Stores a central log of all announcements sent. Only accessible by Admin/Root users."
     },
     "/system_settings/{settingId}": {
       "schema": {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
@@ -5,8 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId } from '@/firebase';
-import { doc, collection, getDocs, query, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, useUser } from '@/firebase';
+import { doc, collection, getDocs, query, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ type User = {
 export default function AnnouncementForm() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user: currentUser } = useUser();
   const [isPending, startTransition] = useTransition();
 
   const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
@@ -74,22 +76,21 @@ export default function AnnouncementForm() {
         if (!usersData) {
             throw new Error("User data not loaded yet.");
         }
+        if (!currentUser) {
+            throw new Error("Admin user not authenticated.");
+        }
 
         let targetUsers: WithId<User>[] = [];
         
-        // Priority 1: Target specific user IDs if provided
         if (data.targetUsers && data.targetUsers.length > 0) {
             targetUsers = usersData.filter(user => data.targetUsers.includes(user.id));
         } else {
-            // Priority 2: Progressively filter by roles and regions with AND logic.
             let filteredUsers = usersData;
 
-            // Filter by roles if any are selected
             if (data.targetRoles.length > 0) {
                 filteredUsers = filteredUsers.filter(user => user.role && data.targetRoles.includes(user.role));
             }
 
-            // Further filter by regions if any are selected
             if (data.targetRegions.length > 0) {
                 filteredUsers = filteredUsers.filter(user => {
                     const userRegions = (Array.isArray(user.regions) && user.regions.length > 0)
@@ -110,18 +111,35 @@ export default function AnnouncementForm() {
             });
             return;
         }
+        
+        // 1. Create the master announcement document
+        const announcementRef = await addDoc(collection(firestore, 'announcements'), {
+            title: data.title,
+            message: data.message,
+            createdAt: serverTimestamp(),
+            createdByUid: currentUser.uid,
+            createdByDisplayName: currentUser.displayName || 'N/A',
+            target: {
+                roles: data.targetRoles,
+                regions: data.targetRegions,
+                users: data.targetUsers,
+            },
+            recipientCount: targetUsers.length,
+        });
 
+        // 2. Fan-out the notifications to individual users
         const batch = writeBatch(firestore);
         const notificationData = {
-        title: data.title,
-        message: data.message,
-        createdAt: serverTimestamp(),
-        isRead: false,
+            title: data.title,
+            message: data.message,
+            createdAt: serverTimestamp(),
+            isRead: false,
+            announcementId: announcementRef.id, // Link to the master announcement
         };
 
         targetUsers.forEach(user => {
-            const notificationRef = doc(collection(firestore, 'users', user.id, 'notifications'));
-            batch.set(notificationRef, notificationData);
+            const userNotificationRef = doc(collection(firestore, 'users', user.id, 'notifications'));
+            batch.set(userNotificationRef, notificationData);
         });
 
         await batch.commit();

@@ -134,6 +134,12 @@ service cloud.firestore {
       allow list: if isRoot() || isAdmin(); 
     }
 
+    match /{path=**}/notifications/{notificationId} {
+      // Allow admins to query all notifications to check read status for announcements.
+      allow list, get: if isRoot() || isAdmin();
+    }
+
+
     // ========== PATH-BASED RULES ==========
     match /users/{userId} {
       allow get: if isOwner(userId) || canManageTickets();
@@ -164,6 +170,12 @@ service cloud.firestore {
         }
     }
     
+    match /announcements/{announcementId} {
+      allow get, list, create: if canManageTickets();
+      // Updates are not expected from the client.
+      allow update, delete: if isRoot(); 
+    }
+
     match /system_settings/{settingId} {
       allow get, list: if canManageTickets(); 
       allow write: if isRoot(); // Only root can change global settings like regions
