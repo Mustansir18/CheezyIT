@@ -40,7 +40,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
     const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
     const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
     
-    const playMessageSound = useSound('/message.mp3');
+    const playMessageSound = useSound('/sounds/new-message.mp3');
     const prevMessagesCountRef = useRef<number | undefined>(undefined);
 
     useLayoutEffect(() => {

@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { useSound } from '@/hooks/use-sound';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
 
@@ -57,6 +58,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const playNewTicketSound = useSound('/sounds/new-ticket.mp3');
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
@@ -116,6 +118,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         await addDoc(ticketsCollectionRef, ticketData);
         
         toast({ title: 'Success!', description: 'Ticket created successfully!' });
+        playNewTicketSound();
         resetFormState();
         closeButtonRef.current?.click();
 

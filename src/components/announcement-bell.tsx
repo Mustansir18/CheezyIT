@@ -31,7 +31,7 @@ export default function AnnouncementBell() {
     const [isOpen, setIsOpen] = useState(false);
     const [isRinging, setIsRinging] = useState(false); // Track animation state
     
-    const playNotificationSound = useSound('/notification.mp3');
+    const playNotificationSound = useSound('/sounds/new-announcement.mp3');
     const prevUnreadCountRef = useRef<number | undefined>(undefined);
 
     const notificationsQuery = useMemoFirebase(
