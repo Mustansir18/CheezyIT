@@ -28,7 +28,7 @@ export async function chatBot(input: ChatBotInput): Promise<ChatBotOutput> {
 
 const prompt = ai.definePrompt({
   name: 'chatBotPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: ChatBotInputSchema},
   output: {schema: ChatBotOutputSchema},
   prompt: `You are a friendly and helpful IT support chatbot for Cheezious. Your goal is to assist users with their IT-related questions. Keep your responses concise, helpful, and professional.
