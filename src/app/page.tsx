@@ -75,10 +75,14 @@ export default function LoginPage() {
     <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-950 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
+          <div className="mb-4 flex flex-col items-center justify-center gap-2">
             <Image src="/logo.png" alt="Cheezious IT Support Logo" width={72} height={72} />
+            <div className="flex flex-col leading-tight">
+                <span className="font-bold text-xl font-headline">Cheezious</span>
+                <span className="text-sm">IT Support</span>
+            </div>
           </div>
-          <CardTitle className="text-3xl font-headline">Welcome Back</CardTitle>
+          <CardTitle className="text-3xl font-headline pt-2">Welcome Back</CardTitle>
           <CardDescription>
             Please sign in to continue
           </CardDescription>
