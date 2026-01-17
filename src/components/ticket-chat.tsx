@@ -127,9 +127,9 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
 
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
+        <div className="flex flex-col h-screen w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
             
-            <header className="flex-none w-full flex items-center justify-between gap-2 px-4 py-2 z-[100] border-b border-white/5 shadow-md" 
+            <header className="flex-none w-full flex items-center justify-between gap-2 px-4 py-2 z-20 border-b border-white/5 shadow-md" 
                     style={{ backgroundColor: WA_COLORS.header }}>
                 <div className="flex items-center gap-3">
                     <Link href={backLink} className="text-[#aebac1] hover:text-white transition-colors">
@@ -183,91 +183,92 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     backgroundBlendMode: 'overlay', 
                     backgroundColor: 'rgba(11, 20, 26, 0.98)',
                     backgroundSize: '400px',
-                    backgroundAttachment: 'local'
                 }}
             >
-                {messagesWithDateSeparators.map((item, idx) => {
-                    if (item.type === 'date-separator') {
-                        return (
-                            <div key={item.id} className="flex justify-center my-4 sticky top-0 z-10">
-                                <span className="text-[12.5px] bg-[#182229] text-[#8696a0] px-3 py-1.5 rounded-[7.5px] shadow-sm uppercase">{item.date}</span>
-                            </div>
-                        );
-                    }
-
-                    const msg = item as WithId<ChatMessage>;
-                    const isSender = msg.userId === user?.uid;
-                    const prevItem = messagesWithDateSeparators[idx - 1];
-                    const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
-
-                    const messageContent = () => {
-                        if (msg.audioUrl) {
-                            return <AudioPlayer src={msg.audioUrl} />;
-                        }
-                        if (msg.type === 'call_request' && msg.link) {
+                <div className="max-w-[1200px] mx-auto flex flex-col w-full">
+                    {messagesWithDateSeparators.map((item, idx) => {
+                        if (item.type === 'date-separator') {
                             return (
-                                <div className="flex flex-col items-start gap-3">
-                                    <div className='flex items-center gap-2'>
-                                        <div className='w-10 h-10 rounded-full bg-green-500/80 flex items-center justify-center'>
-                                            <Phone className="h-5 w-5 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-white/90">Voice call</p>
-                                            <p className="text-sm text-white/70">WhatsApp call</p>
-                                        </div>
-                                    </div>
-                                    <div className='w-full border-t border-white/10 my-1'></div>
-                                    <Button asChild size="sm" variant="ghost" className="w-full justify-center text-center !text-blue-400 hover:!text-blue-300 !p-0 h-auto hover:bg-white/10">
-                                        <Link href={msg.link} target="_blank" rel="noopener noreferrer">
-                                            Join Call
-                                        </Link>
-                                    </Button>
+                                <div key={item.id} className="flex justify-center my-4 sticky top-0 z-10">
+                                    <span className="text-[12.5px] bg-[#182229] text-[#8696a0] px-3 py-1.5 rounded-[7.5px] shadow-sm uppercase">{item.date}</span>
                                 </div>
                             );
                         }
-                        if (msg.text) {
-                             return <p className="whitespace-pre-wrap break-words leading-[19px] max-w-[500px]">{msg.text}</p>;
-                        }
-                        return null;
-                    };
 
-                    return (
-                        <div key={msg.id} className={cn("flex w-full relative", isSender ? "justify-end" : "justify-start", isFirstInBlock ? "mt-2" : "mt-0")}>
-                            {isFirstInBlock && (
-                                <span className={cn("absolute top-0 z-[1]", isSender ? "-right-[7px]" : "-left-[7px]")}>
-                                    <svg width="8" height="13" viewBox="0 0 8 13">
-                                        <path d={isSender ? "M0,0 C3,0 8,0 8,0 L8,13 Z" : "M8,0 C5,0 0,0 0,0 L0,13 Z"} fill={isSender ? WA_COLORS.outgoing : WA_COLORS.incoming} />
-                                    </svg>
-                                </span>
-                            )}
+                        const msg = item as WithId<ChatMessage>;
+                        const isSender = msg.userId === user?.uid;
+                        const prevItem = messagesWithDateSeparators[idx - 1];
+                        const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
 
-                            <div 
-                                className={cn(
-                                    "relative px-2 pt-1.5 pb-1 shadow-sm text-[14.2px] z-[2] inline-flex items-end gap-x-2 min-w-20",
-                                    isSender ? "bg-[#005c4b] text-[#e9edef]" : "bg-[#202c33] text-[#e9edef]",
-                                    isSender 
-                                        ? (isFirstInBlock ? "rounded-l-[8px] rounded-br-[8px] rounded-tr-none" : "rounded-[8px]")
-                                        : (isFirstInBlock ? "rounded-r-[8px] rounded-bl-[8px] rounded-tl-none" : "rounded-[8px]"),
-                                    (msg.type === 'call_request' || msg.audioUrl) && '!w-52'
-                                )}
-                            >
-                                <div className="flex-1">
-                                    {messageContent()}
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0 mb-[-2px] self-end">
-                                    <span className="text-[10px] text-[#8696a0] whitespace-nowrap uppercase">
-                                        {msg.createdAt ? format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'h:mm a') : ''}
+                        const messageContent = () => {
+                            if (msg.audioUrl) {
+                                return <AudioPlayer src={msg.audioUrl} />;
+                            }
+                            if (msg.type === 'call_request' && msg.link) {
+                                return (
+                                    <div className="flex flex-col items-start gap-3">
+                                        <div className='flex items-center gap-2'>
+                                            <div className='w-10 h-10 rounded-full bg-green-500/80 flex items-center justify-center'>
+                                                <Phone className="h-5 w-5 text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-white/90">Voice call</p>
+                                                <p className="text-sm text-white/70">WhatsApp call</p>
+                                            </div>
+                                        </div>
+                                        <div className='w-full border-t border-white/10 my-1'></div>
+                                        <Button asChild size="sm" variant="ghost" className="w-full justify-center text-center !text-blue-400 hover:!text-blue-300 !p-0 h-auto hover:bg-white/10">
+                                            <Link href={msg.link} target="_blank" rel="noopener noreferrer">
+                                                Join Call
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                );
+                            }
+                            if (msg.text) {
+                                 return <p className="whitespace-pre-wrap break-words leading-[19px] max-w-[500px]">{msg.text}</p>;
+                            }
+                            return null;
+                        };
+
+                        return (
+                            <div key={msg.id} className={cn("flex w-full relative", isSender ? "justify-end" : "justify-start", isFirstInBlock ? "mt-2" : "mt-0")}>
+                                {isFirstInBlock && (
+                                    <span className={cn("absolute top-0 z-[1]", isSender ? "-right-[7px]" : "-left-[7px]")}>
+                                        <svg width="8" height="13" viewBox="0 0 8 13">
+                                            <path d={isSender ? "M0,0 C3,0 8,0 8,0 L8,13 Z" : "M8,0 C5,0 0,0 0,0 L0,13 Z"} fill={isSender ? WA_COLORS.outgoing : WA_COLORS.incoming} />
+                                        </svg>
                                     </span>
-                                    {isSender && <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-[#53bdeb]" : "text-[#8696a0]")} />}
+                                )}
+
+                                <div 
+                                    className={cn(
+                                        "relative px-2 pt-1.5 pb-1 shadow-sm text-[14.2px] z-[2] inline-flex items-end gap-x-2 min-w-20",
+                                        isSender ? "bg-[#005c4b] text-[#e9edef]" : "bg-[#202c33] text-[#e9edef]",
+                                        isSender 
+                                            ? (isFirstInBlock ? "rounded-l-[8px] rounded-br-[8px] rounded-tr-none" : "rounded-[8px]")
+                                            : (isFirstInBlock ? "rounded-r-[8px] rounded-bl-[8px] rounded-tl-none" : "rounded-[8px]"),
+                                        (msg.type === 'call_request' || msg.audioUrl) && '!w-52'
+                                    )}
+                                >
+                                    <div className="flex-1">
+                                        {messageContent()}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 mb-[-2px] self-end">
+                                        <span className="text-[10px] text-[#8696a0] whitespace-nowrap uppercase">
+                                            {msg.createdAt ? format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'h:mm a') : ''}
+                                        </span>
+                                        {isSender && <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-[#53bdeb]" : "text-[#8696a0]")} />}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </main>
 
-            <footer className="flex-none p-2 bg-[#202c33] flex items-center gap-2 z-[100] border-t border-white/5">
-                <Button variant="ghost" size="icon" className="text-[#8696a0] rounded-full h-10 w-10 hover:bg-white/5">
+            <footer className="flex-none p-2 bg-[#202c33] flex items-center gap-2 z-20 border-t border-white/5">
+                <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5">
                     <Smile className="h-6 w-6" />
                 </Button>
                 <div className="flex-1 bg-[#2a3942] rounded-[8px] px-4 py-2 flex items-center min-h-[42px]">
@@ -283,6 +284,18 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     <Send className="h-5 w-5 text-[#111b21] ml-0.5" fill="currentColor" />
                 </Button>
             </footer>
+            
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background-color: rgba(255, 255, 255, 0.1);
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+            `}</style>
         </div>
     );
 }
