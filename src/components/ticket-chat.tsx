@@ -131,15 +131,10 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                              <span className="text-white font-medium text-[16px]">{ticketOwnerProfile?.displayName || 'User'}</span>
                              {ticketOwnerProfile?.phoneNumber && (
                                 <div 
-                                    className="flex items-center gap-1 text-[12px] text-[#8696a0] cursor-pointer hover:text-white transition-colors"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(ticketOwnerProfile.phoneNumber);
-                                        toast({ title: 'Copied!', description: 'Phone number copied to clipboard.' });
-                                    }}
-                                    title="Copy phone number"
+                                    className="flex items-center gap-1 text-[12px] text-[#8696a0]"
+                                    title="Phone number"
                                 >
                                     <span>{ticketOwnerProfile.phoneNumber}</span>
-                                    <Copy className="h-3 w-3" />
                                 </div>
                             )}
                         </div>
