@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Ticket } from '@/lib/data';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const COLORS = {
   Pending: 'hsl(var(--chart-3))',
@@ -87,6 +88,7 @@ export default function AdminAnalytics() {
   const isUserRoot = useMemo(() => user && isRoot(user.email), [user]);
   const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchTicketsAndUsers = async () => {
@@ -278,14 +280,16 @@ export default function AdminAnalytics() {
     <div className="space-y-4">
         <Card>
             <CardHeader>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle>Ticket Reports</CardTitle>
                         <CardDescription>Analyze ticket data for different periods.</CardDescription>
                     </div>
-                    <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-                        <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
-                        <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
+                            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
+                        </div>
                         <Popover>
                         <PopoverTrigger asChild>
                             <Button
@@ -318,7 +322,7 @@ export default function AdminAnalytics() {
                             defaultMonth={date?.from}
                             selected={date}
                             onSelect={setDate}
-                            numberOfMonths={1}
+                            numberOfMonths={isMobile ? 1 : 2}
                             />
                         </PopoverContent>
                         </Popover>
