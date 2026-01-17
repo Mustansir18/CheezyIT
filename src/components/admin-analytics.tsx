@@ -287,8 +287,8 @@ export default function AdminAnalytics() {
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
-                            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
+                            <Button variant="outline" size="sm" className="border-transparent bg-sky-100 hover:bg-sky-200 text-sky-800" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
+                            <Button variant="outline" size="sm" className="border-transparent bg-sky-100 hover:bg-sky-200 text-sky-800" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
                         </div>
                         <Popover>
                         <PopoverTrigger asChild>
@@ -560,6 +560,8 @@ export default function AdminAnalytics() {
     </div>
   );
 }
+
+    
 
     
 

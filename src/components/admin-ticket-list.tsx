@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -318,9 +319,9 @@ export default function AdminTicketList() {
                 />
             </PopoverContent>
             </Popover>
-            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfDay(new Date()), to: endOfDay(new Date())})}>Today</Button>
-            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
-            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
+            <Button variant="outline" size="sm" className="border-transparent bg-sky-100 hover:bg-sky-200 text-sky-800" onClick={() => setDate({from: startOfDay(new Date()), to: endOfDay(new Date())})}>Today</Button>
+            <Button variant="outline" size="sm" className="border-transparent bg-sky-100 hover:bg-sky-200 text-sky-800" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
+            <Button variant="outline" size="sm" className="border-transparent bg-sky-100 hover:bg-sky-200 text-sky-800" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
@@ -578,3 +579,5 @@ export default function AdminTicketList() {
     </>
   );
 }
+
+    
