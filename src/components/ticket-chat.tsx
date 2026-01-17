@@ -4,8 +4,8 @@
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, where, getDocs } from 'firebase/firestore';
-import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Copy, Phone } from 'lucide-react';
+import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch } from 'firebase/firestore';
+import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,15 +43,24 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
     // Auto-read logic
     useEffect(() => {
         if (!messages || !user || !ticketId || !userId) return;
-        const markAsRead = async () => {
-            const unreadQuery = query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), where('userId', '!=', user.uid), where('isRead', '==', false));
-            const querySnapshot = await getDocs(unreadQuery);
-            if (querySnapshot.empty) return;
-            const batch = writeBatch(firestore);
-            querySnapshot.docs.forEach((msgDoc) => batch.update(msgDoc.ref, { isRead: true }));
-            await batch.commit();
-        };
-        markAsRead();
+
+        const unreadMessagesFromOthers = messages.filter(
+            (msg) => msg.userId !== user.uid && !msg.isRead
+        );
+
+        if (unreadMessagesFromOthers.length === 0) return;
+
+        const batch = writeBatch(firestore);
+        unreadMessagesFromOthers.forEach((msg) => {
+            const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
+            batch.update(msgRef, { isRead: true });
+        });
+
+        batch.commit().catch(err => {
+            console.error("Failed to automatically mark messages as read:", err);
+            // We don't toast here as it could be noisy, but we log the error.
+        });
+
     }, [messages, user, firestore, ticketId, userId]);
 
     useLayoutEffect(() => {
