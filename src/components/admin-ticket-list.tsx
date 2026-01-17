@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, formatDistanceStrict } from 'date-fns';
+import { addDays, format, formatDistanceStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
 import { Loader2, Filter, Circle, CircleDot, CircleCheck } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup } from 'firebase/firestore';
@@ -278,6 +278,9 @@ export default function AdminTicketList() {
                 />
             </PopoverContent>
             </Popover>
+            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfDay(new Date()), to: endOfDay(new Date())})}>Today</Button>
+            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
+            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
         </div>
       </div>
 
@@ -402,7 +405,7 @@ export default function AdminTicketList() {
                             className={cn(
                               {
                                 'bg-green-600 text-white border-transparent hover:bg-green-600/80': ticket.status === 'Resolved',
-                                'bg-primary text-primary-foreground hover:bg-primary/90': ticket.status === 'In Progress',
+                                'bg-orange-500 text-white border-transparent hover:bg-orange-500/80': ticket.status === 'In Progress',
                               }
                             )}
                           >
