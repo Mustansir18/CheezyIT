@@ -70,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <UserNav />
         </div>
       </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <main className="flex flex-1 flex-col gap-4 px-4 pb-4 md:gap-8 md:px-8 md:pb-8">
         {children}
       </main>
     </div>

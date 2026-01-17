@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             <main className={cn(
                 "flex flex-1 flex-col",
-                isTicketPage ? "min-h-0" : "gap-4 p-4 md:gap-8 md:p-8 bg-white text-black"
+                isTicketPage ? "min-h-0" : "gap-4 px-4 pb-4 md:gap-8 md:px-8 md:pb-8 bg-white text-black"
             )}>
                 {children}
             </main>

@@ -33,9 +33,8 @@ export default function DashboardPage() {
 
   return (
     <>
-        <div className="flex flex-col items-center justify-between space-y-2">
+        <div className="flex flex-col items-center justify-between">
           <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
-          <h1 className="text-2xl font-bold tracking-tight pt-2 text-orange-500">{user.displayName}'s Dashboard</h1>
         </div>
         <DashboardClient tickets={tickets} stats={stats} />
     </>

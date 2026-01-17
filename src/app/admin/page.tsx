@@ -73,11 +73,10 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <div className="flex flex-col items-center justify-between space-y-2">
+      <div className="flex flex-col items-center justify-between">
         <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
-        <h1 className="text-2xl font-bold tracking-tight pt-2 text-orange-500">{dashboardTitle}</h1>
       </div>
-      <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
           <Link href={item.href} key={item.href} className="group">
             <Card className="h-full shadow-md transition-all hover:shadow-xl hover:-translate-y-1 duration-200 group-hover:border-primary">
