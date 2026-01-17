@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { doc, collection, getDocs, query, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
+import { doc, collection, getDocs, query, writeBatch, serverTimestamp, addDoc, collectionGroup } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,6 +70,11 @@ export default function AnnouncementForm() {
   });
 
   const onSubmit = (data: FormData) => {
+    let announcementPayload: any;
+    let notificationData: any;
+    let targetUsers: WithId<User>[] = [];
+    const announcementsCollection = collection(firestore, 'announcements');
+
     startTransition(async () => {
         if (!usersData) {
             toast({ variant: 'destructive', title: 'Error', description: 'User data not loaded yet.' });
@@ -80,8 +84,6 @@ export default function AnnouncementForm() {
             toast({ variant: 'destructive', title: 'Error', description: 'Admin user not authenticated.' });
             return;
         }
-
-        let targetUsers: WithId<User>[] = [];
         
         if (data.targetUsers && data.targetUsers.length > 0) {
             targetUsers = usersData.filter(user => data.targetUsers.includes(user.id));
@@ -113,27 +115,27 @@ export default function AnnouncementForm() {
             return;
         }
         
+        // 1. Create the master announcement document
+        announcementPayload = {
+            title: data.title,
+            message: data.message,
+            createdAt: serverTimestamp(),
+            createdByUid: currentUser.uid,
+            createdByDisplayName: currentUser.displayName || 'N/A',
+            target: {
+                roles: data.targetRoles,
+                regions: data.targetRegions,
+                users: data.targetUsers,
+            },
+            recipientCount: targetUsers.length,
+        };
+
         try {
-            // 1. Create the master announcement document
-            const announcementPayload = {
-                title: data.title,
-                message: data.message,
-                createdAt: serverTimestamp(),
-                createdByUid: currentUser.uid,
-                createdByDisplayName: currentUser.displayName || 'N/A',
-                target: {
-                    roles: data.targetRoles,
-                    regions: data.targetRegions,
-                    users: data.targetUsers,
-                },
-                recipientCount: targetUsers.length,
-            };
-            const announcementsCollection = collection(firestore, 'announcements');
             const announcementRef = await addDoc(announcementsCollection, announcementPayload);
 
             // 2. Fan-out the notifications to individual users
             const batch = writeBatch(firestore);
-            const notificationData = {
+            notificationData = {
                 title: data.title,
                 message: data.message,
                 createdAt: serverTimestamp(),
@@ -158,18 +160,19 @@ export default function AnnouncementForm() {
             const isBatchError = error.message.includes('batch');
             let permissionError;
 
+            // This creates a detailed error object for debugging security rules.
             if (isBatchError) {
                 const firstUser = targetUsers[0];
                  permissionError = new FirestorePermissionError({
                     path: `users/${firstUser.id}/notifications`,
                     operation: 'create',
-                    requestResourceData: { title: data.title, message: data.message, isRead: false },
+                    requestResourceData: notificationData, // Use the full data payload
                 });
             } else {
                  permissionError = new FirestorePermissionError({
-                    path: 'announcements',
+                    path: announcementsCollection.path,
                     operation: 'create',
-                    requestResourceData: { title: data.title, message: data.message, recipientCount: targetUsers.length },
+                    requestResourceData: announcementPayload, // Use the full data payload
                 });
             }
             
