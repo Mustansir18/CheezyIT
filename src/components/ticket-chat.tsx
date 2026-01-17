@@ -7,7 +7,6 @@ import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch } 
 import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -127,9 +126,9 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
 
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
+        <div className="flex flex-col h-screen w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
             
-            <header className="flex-none w-full flex items-center justify-between gap-2 px-4 py-2 z-20 border-b border-white/5 shadow-md" 
+            <header className="flex-none w-full flex items-center justify-between px-4 py-2 z-20 border-b border-white/5" 
                     style={{ backgroundColor: WA_COLORS.header }}>
                 <div className="flex items-center gap-3">
                     <Link href={backLink} className="text-[#aebac1] hover:text-white transition-colors">
@@ -177,15 +176,16 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
             <main 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto custom-scrollbar" 
+                className="flex-1 overflow-y-auto p-4 space-y-[2px] custom-scrollbar" 
                 style={{ 
                     backgroundImage: `url('/bg.png')`, 
                     backgroundBlendMode: 'overlay', 
                     backgroundColor: 'rgba(11, 20, 26, 0.98)',
                     backgroundSize: '400px',
+                    backgroundAttachment: 'local'
                 }}
             >
-                <div className="max-w-[1200px] mx-auto flex flex-col w-full p-4 space-y-[2px]">
+                <div className="max-w-[1000px] mx-auto flex flex-col">
                     {messagesWithDateSeparators.map((item, idx) => {
                         if (item.type === 'date-separator') {
                             return (
@@ -284,17 +284,21 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     <Send className="h-5 w-5 text-[#111b21] ml-0.5" fill="currentColor" />
                 </Button>
             </footer>
-            
+
             <style jsx global>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 6px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: rgba(255, 255, 255, 0.2);
-                    border-radius: 3px;
+                    background-color: rgba(255, 255, 255, 0.15);
+                    border-radius: 10px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
                     background: transparent;
+                }
+                .custom-scrollbar {
+                    scrollbar-width: thin;
+                    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
                 }
             `}</style>
         </div>
