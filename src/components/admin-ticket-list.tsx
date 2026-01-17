@@ -396,12 +396,17 @@ export default function AdminTicketList() {
                            {usersMap[ticket.userId] || 'Unknown User'}
                         </TableCell>
                         <TableCell>
-                           <Badge variant={ticket.status === 'Resolved' ? 'default' : 'outline'} className={cn(
-                             ticket.status === 'Resolved' && 'bg-chart-2 hover:bg-chart-2/80 text-white',
-                             ticket.status === 'In Progress' && 'text-accent border-accent'
-                           )}>
-                             {ticket.status}
-                           </Badge>
+                          <Badge
+                            variant={ticket.status === 'Pending' ? 'outline' : 'default'}
+                            className={cn(
+                              {
+                                'bg-yellow-400 text-yellow-950 border-transparent hover:bg-yellow-400/80': ticket.status === 'Resolved',
+                                'bg-accent text-accent-foreground border-transparent hover:bg-accent/80': ticket.status === 'In Progress',
+                              }
+                            )}
+                          >
+                            {ticket.status}
+                          </Badge>
                         </TableCell>
                         <TableCell>{ticket.region}</TableCell>
                         <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
