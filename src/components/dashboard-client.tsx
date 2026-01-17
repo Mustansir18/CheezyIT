@@ -1,9 +1,8 @@
 
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { Ticket, TicketStatus } from '@/lib/data';
-import { summarizeTicketsAction } from '@/lib/actions';
 import { getStats } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
@@ -18,11 +17,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lightbulb, Loader2, Circle, CircleDot, CircleCheck, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Circle, CircleDot, CircleCheck, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import ChatBot from '@/components/chatbot';
 
 
 type Stats = {
@@ -58,9 +57,6 @@ export default function DashboardClient({}: DashboardClientProps) {
   const { data: tickets, isLoading: ticketsLoading } = useCollection<Ticket>(issuesQuery);
   const allTickets = tickets || [];
 
-  const [summary, setSummary] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
     to: new Date(),
@@ -79,29 +75,6 @@ export default function DashboardClient({}: DashboardClientProps) {
   }, [allTickets, date]);
 
   const stats = useMemo(() => getStats(filteredByDateTickets), [filteredByDateTickets]);
-
-  const handleSummarize = () => {
-    startTransition(async () => {
-      const openTickets = filteredByDateTickets.filter(t => t.status !== 'Resolved');
-      const ticketsForAI = openTickets.map(({id: ticketId, title, description, status}) => ({
-          ticketId,
-          title,
-          description,
-          status,
-      }));
-
-      const result = await summarizeTicketsAction(ticketsForAI);
-      if (result.error) {
-        toast({
-          variant: 'destructive',
-          title: 'Uh oh! Something went wrong.',
-          description: result.error,
-        });
-      } else if (result.summary) {
-        setSummary(result.summary);
-      }
-    });
-  };
 
   const filteredTickets = useMemo(() => {
     return {
@@ -152,31 +125,7 @@ export default function DashboardClient({}: DashboardClientProps) {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-               <Lightbulb className="h-5 w-5 text-accent" />
-               <CardTitle>Smart Summary</CardTitle>
-            </div>
-            <Button onClick={handleSummarize} disabled={isPending || ticketsLoading}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Generate Summary
-            </Button>
-          </div>
-          <CardDescription>Get an AI-powered summary of your open tickets.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isPending && (
-             <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-             </div>
-          )}
-          {summary && !isPending && <p className="text-sm text-muted-foreground">{summary}</p>}
-        </CardContent>
-      </Card>
+      <ChatBot />
       
       <Tabs defaultValue="all">
         <div className="flex justify-between items-center mb-4">
