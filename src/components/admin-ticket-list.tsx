@@ -195,7 +195,7 @@ export default function AdminTicketList() {
     <div className="flex items-center gap-2">
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className={cn("h-9 border-transparent", ticketIdFilter ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                     Ticket
                     <Filter className="ml-2 h-3 w-3" />
                 </Button>
@@ -212,7 +212,7 @@ export default function AdminTicketList() {
 
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className={cn("h-9 border-transparent", userFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                     User
                     <Filter className="ml-2 h-3 w-3" />
                 </Button>
@@ -232,7 +232,7 @@ export default function AdminTicketList() {
 
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className={cn("h-9 border-transparent", statusFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                     Status
                     <Filter className="ml-2 h-3 w-3" />
                 </Button>
@@ -250,7 +250,7 @@ export default function AdminTicketList() {
         
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className={cn("h-9 border-transparent", regionFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                     Region
                     <Filter className="ml-2 h-3 w-3" />
                 </Button>
@@ -381,7 +381,7 @@ export default function AdminTicketList() {
                             <TableHead className="w-[250px]">
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                        <Button variant="ghost" size="sm" className={cn("-ml-3 px-3", ticketIdFilter ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                                             Ticket
                                             <Filter className="ml-2 h-3 w-3" />
                                         </Button>
@@ -399,7 +399,7 @@ export default function AdminTicketList() {
                             <TableHead className="w-[180px]">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                        <Button variant="ghost" size="sm" className={cn("-ml-3 px-3", userFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                                             User
                                             <Filter className="ml-2 h-3 w-3" />
                                         </Button>
@@ -420,7 +420,7 @@ export default function AdminTicketList() {
                             <TableHead>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                        <Button variant="ghost" size="sm" className={cn("-ml-3 px-3", statusFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                                             Status
                                             <Filter className="ml-2 h-3 w-3" />
                                         </Button>
@@ -439,7 +439,7 @@ export default function AdminTicketList() {
                             <TableHead>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                        <Button variant="ghost" size="sm" className={cn("-ml-3 px-3", regionFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
                                             Region
                                             <Filter className="ml-2 h-3 w-3" />
                                         </Button>
