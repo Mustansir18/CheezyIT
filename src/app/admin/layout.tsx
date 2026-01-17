@@ -56,21 +56,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4 text-card-foreground sm:px-6">
+    <div className="flex min-h-screen w-full flex-col bg-gray-100 dark:bg-gray-950">
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-white px-4 text-card-foreground sm:px-6">
         <Link
           href="/admin"
-          className="flex items-center gap-2 font-semibold font-headline"
+          className="flex items-center gap-2 font-headline"
         >
           <Image src="/logo.png" alt="Cheezious IT Support Logo" width={40} height={40} />
-          <span>Cheezious IT Support</span>
+          <div className="flex flex-col leading-tight">
+              <span className="font-bold text-base">Cheezious</span>
+              <span className="text-xs">IT Support</span>
+          </div>
         </Link>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-2">
           <AnnouncementBell />
           <UserNav />
         </div>
       </header>
-      <main className="flex flex-1 flex-col gap-4 px-4 pb-4 md:gap-8 md:px-8 md:pb-8">
+      <main className="flex flex-1 flex-col px-4 pb-4 md:px-8 md:pb-8">
         {children}
       </main>
     </div>
