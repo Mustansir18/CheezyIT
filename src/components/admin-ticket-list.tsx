@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -192,6 +191,85 @@ export default function AdminTicketList() {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 
+  const filterControls = (
+    <div className="flex items-center gap-2">
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                    Ticket
+                    <Filter className="ml-2 h-3 w-3" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-2 w-60" align="start">
+                <Input
+                    placeholder="Filter by ID or title..."
+                    value={ticketIdFilter}
+                    onChange={(e) => setTicketIdFilter(e.target.value)}
+                    className="h-9"
+                />
+            </PopoverContent>
+        </Popover>
+
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                    User
+                    <Filter className="ml-2 h-3 w-3" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
+                    <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {allUsers.sort((a, b) => a.displayName.localeCompare(b.displayName)).map(user => (
+                        <DropdownMenuRadioItem key={user.id} value={user.id}>
+                            {user.displayName}
+                        </DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                    Status
+                    <Filter className="ml-2 h-3 w-3" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                    <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                    Region
+                    <Filter className="ml-2 h-3 w-3" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
+                    <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {availableRegions.map(region => (
+                        <DropdownMenuRadioItem key={region} value={region}>
+                            {region}
+                        </DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    </div>
+  );
+
   if (loading && allTickets.length === 0) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
@@ -230,7 +308,7 @@ export default function AdminTicketList() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Resolved Issues</CardTitle>
-            <CircleCheck className="h-4 w-4 text-chart-2" />
+            <CircleCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
              {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.resolved}</div>}
@@ -290,142 +368,211 @@ export default function AdminTicketList() {
             <CardDescription>A list of all support tickets. Use the filters to narrow your search.</CardDescription>
         </CardHeader>
         <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[250px]">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="-ml-3">
-                                        Ticket
-                                        <Filter className="ml-2 h-3 w-3" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="p-2 w-60" align="start">
-                                    <Input
-                                        placeholder="Filter by ID or title..."
-                                        value={ticketIdFilter}
-                                        onChange={(e) => setTicketIdFilter(e.target.value)}
-                                        className="h-9"
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                        </TableHead>
-                        <TableHead className="w-[180px]">
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="-ml-3">
-                                        User
-                                        <Filter className="ml-2 h-3 w-3" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                    <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
-                                        <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem>
-                                        <DropdownMenuSeparator />
-                                        {allUsers.sort((a, b) => a.displayName.localeCompare(b.displayName)).map(user => (
-                                            <DropdownMenuRadioItem key={user.id} value={user.id}>
-                                                {user.displayName}
-                                            </DropdownMenuRadioItem>
-                                        ))}
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableHead>
-                        <TableHead>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="-ml-3">
-                                        Status
-                                        <Filter className="ml-2 h-3 w-3" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                    <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
-                                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableHead>
-                        <TableHead>
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="-ml-3">
-                                        Region
-                                        <Filter className="ml-2 h-3 w-3" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                    <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
-                                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                        <DropdownMenuSeparator />
-                                        {availableRegions.map(region => (
-                                            <DropdownMenuRadioItem key={region} value={region}>
-                                                {region}
-                                            </DropdownMenuRadioItem>
-                                        ))}
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Completed</TableHead>
-                        <TableHead>Resolved By</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading ? (
-                    <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                            <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                        </TableCell>
-                    </TableRow>
-                    ) : filteredTickets.length > 0 ? (
-                    filteredTickets.map((ticket) => (
-                    <TableRow key={ticket.id} className="cursor-pointer" onClick={() => handleTicketClick(ticket)}>
-                        <TableCell>
-                           <div className="font-medium flex items-center gap-2">
-                            {ticket.title}
-                            {ticket.unreadByAdmin && <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />}
+            {/* Mobile Filters */}
+            <div className="grid grid-cols-2 gap-2 mb-4 md:hidden">
+                {filterControls}
+            </div>
+            
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[250px]">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                            Ticket
+                                            <Filter className="ml-2 h-3 w-3" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-2 w-60" align="start">
+                                        <Input
+                                            placeholder="Filter by ID or title..."
+                                            value={ticketIdFilter}
+                                            onChange={(e) => setTicketIdFilter(e.target.value)}
+                                            className="h-9"
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </TableHead>
+                            <TableHead className="w-[180px]">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                            User
+                                            <Filter className="ml-2 h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
+                                            <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem>
+                                            <DropdownMenuSeparator />
+                                            {allUsers.sort((a, b) => a.displayName.localeCompare(b.displayName)).map(user => (
+                                                <DropdownMenuRadioItem key={user.id} value={user.id}>
+                                                    {user.displayName}
+                                                </DropdownMenuRadioItem>
+                                            ))}
+                                        </DropdownMenuRadioGroup>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableHead>
+                            <TableHead>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                            Status
+                                            <Filter className="ml-2 h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
+                                            <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
+                                            <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
+                                        </DropdownMenuRadioGroup>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableHead>
+                            <TableHead>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="-ml-3">
+                                            Region
+                                            <Filter className="ml-2 h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
+                                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                                            <DropdownMenuSeparator />
+                                            {availableRegions.map(region => (
+                                                <DropdownMenuRadioItem key={region} value={region}>
+                                                    {region}
+                                                </DropdownMenuRadioItem>
+                                            ))}
+                                        </DropdownMenuRadioGroup>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Completed</TableHead>
+                            <TableHead>Resolved By</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                        <TableRow>
+                            <TableCell colSpan={7} className="h-24 text-center">
+                                <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                            </TableCell>
+                        </TableRow>
+                        ) : filteredTickets.length > 0 ? (
+                        filteredTickets.map((ticket) => (
+                        <TableRow key={ticket.id} className="cursor-pointer" onClick={() => handleTicketClick(ticket)}>
+                            <TableCell>
+                            <div className="font-medium flex items-center gap-2">
+                                {ticket.title}
+                                {ticket.unreadByAdmin && <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />}
+                                </div>
+                            <div className="hidden text-sm text-muted-foreground md:inline">
+                                {ticket.id}
                             </div>
-                           <div className="hidden text-sm text-muted-foreground md:inline">
-                            {ticket.id}
-                           </div>
-                        </TableCell>
-                        <TableCell>
-                           {usersMap[ticket.userId] || 'Unknown User'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
+                            </TableCell>
+                            <TableCell>
+                            {usersMap[ticket.userId] || 'Unknown User'}
+                            </TableCell>
+                            <TableCell>
+                            <Badge
+                                variant={ticket.status === 'Pending' ? 'outline' : 'default'}
+                                className={cn(
+                                {
+                                    'bg-green-600 text-white border-transparent hover:bg-green-600/80': ticket.status === 'Resolved',
+                                    'bg-orange-500 text-white border-transparent hover:bg-orange-500/80': ticket.status === 'In Progress',
+                                }
+                                )}
+                            >
+                                {ticket.status}
+                            </Badge>
+                            </TableCell>
+                            <TableCell>{ticket.region}</TableCell>
+                            <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
+                            <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
+                            <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
+                        </TableRow>
+                        ))) : (
+                        <TableRow>
+                            <TableCell colSpan={7} className="h-24 text-center">
+                            No tickets found matching your filters.
+                            </TableCell>
+                        </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            {/* Mobile List */}
+            <div className="md:hidden space-y-3">
+              {loading ? (
+                [...Array(5)].map((_, i) => <Skeleton key={i} className="h-36 w-full" />)
+              ) : filteredTickets.length > 0 ? (
+                filteredTickets.map((ticket) => (
+                  <div key={ticket.id} className="border rounded-lg p-3 cursor-pointer" onClick={() => handleTicketClick(ticket)}>
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-medium">{ticket.title}</span>
+                        <Badge
                             variant={ticket.status === 'Pending' ? 'outline' : 'default'}
-                            className={cn(
-                              {
+                            className={cn('shrink-0',
+                                {
                                 'bg-green-600 text-white border-transparent hover:bg-green-600/80': ticket.status === 'Resolved',
                                 'bg-orange-500 text-white border-transparent hover:bg-orange-500/80': ticket.status === 'In Progress',
-                              }
+                                }
                             )}
-                          >
+                        >
                             {ticket.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{ticket.region}</TableCell>
-                        <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
-                        <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
-                        <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
-                      </TableRow>
-                    ))) : (
-                    <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                        No tickets found matching your filters.
-                        </TableCell>
-                    </TableRow>
+                        </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">ID: {ticket.id}</div>
+                    
+                    <div className="text-sm mt-2 space-y-1">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">User:</span>
+                            <span>{usersMap[ticket.userId] || 'Unknown User'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Region:</span>
+                            <span>{ticket.region || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Created:</span>
+                            <span>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PP') : 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Completed:</span>
+                            <span>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PP') : 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Resolved By:</span>
+                            <span>{ticket.resolvedByDisplayName || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    {ticket.unreadByAdmin && (
+                        <div className="flex items-center gap-2 mt-2 text-accent text-xs font-semibold">
+                            <span className="h-2 w-2 rounded-full bg-accent" />
+                            <span>New updates</span>
+                        </div>
                     )}
-                </TableBody>
-            </Table>
+                  </div>
+                ))
+              ) : (
+                <div className="h-24 text-center flex items-center justify-center">
+                  <p>No tickets found matching your filters.</p>
+                </div>
+              )}
+            </div>
         </CardContent>
       </Card>
     </>

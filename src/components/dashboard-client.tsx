@@ -116,7 +116,7 @@ export default function DashboardClient({}: DashboardClientProps) {
   const statusFilterDropdown = (
       <DropdownMenu>
           <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 border-orange-500 text-orange-500">
+              <Button variant="outline" size="sm" className="h-9">
                   Status
                   <Filter className="ml-2 h-3 w-3" />
               </Button>
@@ -374,7 +374,7 @@ export default function DashboardClient({}: DashboardClientProps) {
             {/* Mobile List */}
             <div className="md:hidden space-y-3">
               {ticketsLoading ? (
-                [...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
+                [...Array(3)].map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
               ) : filteredTickets.length > 0 ? (
                 filteredTickets.map((ticket) => (
                   <div key={ticket.id} className="border rounded-lg p-3 cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
@@ -392,13 +392,33 @@ export default function DashboardClient({}: DashboardClientProps) {
                             {ticket.status}
                           </Badge>
                       </div>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground mt-2">
-                        <span>{ticket.region}</span>
-                        <div className="flex items-center gap-2">
-                          <span>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PP') : 'N/A'}</span>
-                          {ticket.unreadByUser && <span className="h-2 w-2 rounded-full bg-accent" />}
-                        </div>
+                      <div className="text-xs text-muted-foreground mt-1">ID: {ticket.id}</div>
+                      
+                      <div className="text-sm mt-2 space-y-1">
+                          <div className="flex justify-between">
+                              <span className="text-muted-foreground">Region:</span>
+                              <span>{ticket.region || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                              <span className="text-muted-foreground">Created:</span>
+                              <span>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PP') : 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                              <span className="text-muted-foreground">Completed:</span>
+                              <span>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PP') : 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                              <span className="text-muted-foreground">Resolved By:</span>
+                              <span>{ticket.resolvedByDisplayName || 'N/A'}</span>
+                          </div>
                       </div>
+
+                      {ticket.unreadByUser && (
+                          <div className="flex items-center gap-2 mt-2 text-accent text-xs font-semibold">
+                              <span className="h-2 w-2 rounded-full bg-accent" />
+                              <span>New updates</span>
+                          </div>
+                      )}
                   </div>
                 ))
               ) : (
