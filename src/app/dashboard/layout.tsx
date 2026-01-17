@@ -51,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
         <div className="flex min-h-screen w-full flex-col">
             {!isTicketPage && (
-                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-gray-600 bg-gray-800 px-4 text-gray-100 sm:px-6">
+                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-gray-700 bg-gray-800 px-4 text-gray-100 sm:px-6">
                     <Link
                     href='/dashboard'
                     className="flex items-center gap-2 font-semibold font-headline"
