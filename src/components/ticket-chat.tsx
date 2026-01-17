@@ -177,7 +177,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
             <main 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto p-4 space-y-[2px] custom-scrollbar" 
+                className="flex-1 overflow-y-auto custom-scrollbar" 
                 style={{ 
                     backgroundImage: `url('/bg.png')`, 
                     backgroundBlendMode: 'overlay', 
@@ -185,7 +185,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     backgroundSize: '400px',
                 }}
             >
-                <div className="max-w-[1200px] mx-auto flex flex-col w-full">
+                <div className="max-w-[1200px] mx-auto flex flex-col w-full p-4 space-y-[2px]">
                     {messagesWithDateSeparators.map((item, idx) => {
                         if (item.type === 'date-separator') {
                             return (
@@ -290,7 +290,8 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     width: 6px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: rgba(255, 255, 255, 0.1);
+                    background-color: rgba(255, 255, 255, 0.2);
+                    border-radius: 3px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
                     background: transparent;
