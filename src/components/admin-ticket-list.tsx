@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceStrict } from 'date-fns';
-import { Loader2, Trash2, Filter, Circle, CircleDot, CircleCheck } from 'lucide-react';
+import { Loader2, Filter, Circle, CircleDot, CircleCheck } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collection, query, doc, deleteDoc, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, doc, getDocs, collectionGroup } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -18,7 +18,6 @@ import type { Ticket } from '@/lib/data';
 import { getStats } from '@/lib/data';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -57,8 +56,6 @@ export default function AdminTicketList() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, loading: userLoading } = useUser();
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
   const [allUsers, setAllUsers] = useState<WithId<UserWithDisplayName>[]>([]);
@@ -195,36 +192,6 @@ export default function AdminTicketList() {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 
-  const handleDeleteAllPending = async () => {
-    setIsDeleting(true);
-    const pendingTickets = (allTickets || []).filter(t => t.status === 'Pending');
-    
-    if (pendingTickets.length === 0) {
-        toast({ title: 'No pending tickets to delete.' });
-        setIsDeleting(false);
-        setIsDeleteDialogOpen(false);
-        return;
-    }
-
-    const deletePromises = pendingTickets.map(ticket => {
-        const ticketRef = doc(firestore, 'users', ticket.userId, 'issues', ticket.id);
-        return deleteDoc(ticketRef);
-    });
-
-    try {
-        await Promise.all(deletePromises);
-        toast({ title: 'Success', description: `${pendingTickets.length} pending tickets deleted.` });
-        setAllTickets(currentTickets => currentTickets.filter(t => t.status !== 'Pending'));
-    } catch (error: any) {
-        console.error("Failed to delete pending tickets:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete pending tickets.' });
-    } finally {
-        setIsDeleting(false);
-        setIsDeleteDialogOpen(false);
-    }
-  };
-
-
   if (loading && allTickets.length === 0) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
@@ -275,10 +242,6 @@ export default function AdminTicketList() {
       </div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-            <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear Pending
-            </Button>
             <Popover>
             <PopoverTrigger asChild>
                 <Button
@@ -462,24 +425,6 @@ export default function AdminTicketList() {
             </Table>
         </CardContent>
       </Card>
-      
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete all tickets with the status "Pending".
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAllPending} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Delete All Pending
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
     </>
   );
 }
