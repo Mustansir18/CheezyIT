@@ -1,14 +1,15 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
 import { collection, query, collectionGroup, where } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type User = {
     id: string;
@@ -39,12 +40,13 @@ export default function ReadStatusList({ announcementId }: { announcementId: str
     const { data: notifications, isLoading: notificationsLoading, error: notificationsError } = useCollection<UserNotification>(notificationsQuery);
     
     // Show a toast if a permission error occurs on the collection group query
-    useMemo(() => {
+    useEffect(() => {
         if (notificationsError?.message.includes('permission-denied')) {
             toast({
                 variant: 'destructive',
                 title: 'Permission Denied',
-                description: 'You may be missing a required Firestore index for this query. Check the browser console for a link to create it.'
+                description: 'A required Firestore index is missing. Check the browser console for a link to create it.',
+                duration: 10000
             });
         }
     }, [notificationsError, toast]);
@@ -65,8 +67,20 @@ export default function ReadStatusList({ announcementId }: { announcementId: str
         );
     }
     
-    if (usersError || notificationsError) {
-        return <p className="text-destructive text-sm">Error loading read status. You might be missing a required Firestore index. Check the console.</p>
+    if (usersError) {
+       return <p className="text-destructive text-sm">Error loading user list.</p>
+    }
+
+    if (notificationsError) {
+        return (
+             <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Index Required</AlertTitle>
+                <AlertDescription>
+                    To view read statuses, a composite index must be created in Firestore. Please open your browser's developer console. You should find an error message with a direct link to create the required index.
+                </AlertDescription>
+            </Alert>
+        )
     }
 
     if (!allUsers || allUsers.length === 0) {
@@ -78,6 +92,7 @@ export default function ReadStatusList({ announcementId }: { announcementId: str
             <div className="p-4">
                 <div className="space-y-2">
                     {allUsers
+                        .filter(user => readStatusMap.has(user.id)) // Only show users who were recipients
                         .sort((a,b) => a.displayName.localeCompare(b.displayName))
                         .map(user => {
                             const isRead = readStatusMap.get(user.id) || false;

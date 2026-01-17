@@ -1,12 +1,11 @@
 
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { useMemo, useState } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, query, orderBy, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Bell, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { isRoot } from '@/lib/admins';
 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
@@ -25,23 +24,11 @@ type UserNotification = {
     isRead: boolean;
 };
 
-type UserProfile = {
-  role: string;
-};
-
 export default function AnnouncementBell() {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
-
-    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-    const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-
-    const isPrivilegedUser = useMemo(() => {
-        if (!user || !userProfile) return false;
-        return isRoot(user.email) || userProfile.role === 'it-support' || userProfile.role === 'Admin';
-    }, [user, userProfile]);
 
     const notificationsQuery = useMemoFirebase(
         () => user ? query(collection(firestore, 'users', user.uid, 'notifications'), orderBy('createdAt', 'desc')) : null,
@@ -136,17 +123,15 @@ export default function AnnouncementBell() {
                                         {n.createdAt ? formatDistanceToNow(n.createdAt.toDate(), { addSuffix: true }) : ''}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        {isPrivilegedUser && (
-                                            <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs text-red-500 hover:bg-red-500/5 hover:text-red-400" onClick={() => handleDeleteNotification(n.id)}>
-                                                <Trash2 className="h-3 w-3 mr-1" />
-                                                Delete
-                                            </Button>
-                                        )}
-                                        {!isPrivilegedUser && !n.isRead && (
+                                        {!n.isRead && (
                                             <Button variant="outline" size="sm" className="h-auto px-2 py-1 text-xs" onClick={() => handleMarkAsRead(n.id)}>
                                                 Mark as Read
                                             </Button>
                                         )}
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteNotification(n.id)}>
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">Delete Notification</span>
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
