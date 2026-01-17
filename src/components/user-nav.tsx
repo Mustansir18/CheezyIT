@@ -49,7 +49,7 @@ export function UserNav() {
   };
 
   if (userLoading || profileLoading) {
-    return <Skeleton className="h-10 w-24 rounded-none" />;
+    return <Skeleton className="h-10 w-24" />;
   }
 
   if (!user) {
@@ -59,7 +59,7 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="default" className="rounded-none bg-yellow-400 text-black hover:bg-yellow-500">
+        <Button variant="default" className="bg-yellow-400 text-black hover:bg-yellow-500">
           Profile
         </Button>
       </DropdownMenuTrigger>
