@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     
     if (userLoading || profileLoading || !user || (isPrivilegedUser && !isTicketPage)) {
       return (
-        <div className="flex h-screen w-full items-center justify-center bg-gray-700">
+        <div className="flex h-screen w-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       );
@@ -51,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
         <div className="flex min-h-screen w-full flex-col">
             {!isTicketPage && (
-                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-gray-700 bg-gray-800 px-4 text-gray-100 sm:px-6">
+                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4 text-card-foreground sm:px-6">
                     <Link
                     href='/dashboard'
                     className="flex items-center gap-2 font-semibold font-headline"
@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             <main className={cn(
                 "flex flex-1 flex-col",
-                isTicketPage ? "min-h-0" : "gap-4 px-4 pb-4 md:gap-8 md:px-8 md:pb-8 bg-white text-black"
+                isTicketPage ? "min-h-0" : "gap-4 px-4 pb-4 md:gap-8 md:px-8 md:pb-8"
             )}>
                 {children}
             </main>
