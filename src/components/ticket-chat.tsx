@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import AudioPlayer from '@/components/audio-player';
 
 const WA_COLORS = {
     bg: '#0b141a',
@@ -178,6 +179,9 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
 
                     const messageContent = () => {
+                        if (msg.audioUrl) {
+                            return <AudioPlayer src={msg.audioUrl} />;
+                        }
                         if (msg.type === 'call_request' && msg.link) {
                             return (
                                 <div className="flex flex-col items-start gap-3">
@@ -222,7 +226,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                                     isSender 
                                         ? (isFirstInBlock ? "rounded-l-[8px] rounded-br-[8px] rounded-tr-none" : "rounded-[8px]")
                                         : (isFirstInBlock ? "rounded-r-[8px] rounded-bl-[8px] rounded-tl-none" : "rounded-[8px]"),
-                                    msg.type === 'call_request' && '!w-52'
+                                    (msg.type === 'call_request' || msg.audioUrl) && '!w-52'
                                 )}
                             >
                                 <div className="flex-1">
