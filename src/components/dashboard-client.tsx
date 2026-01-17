@@ -19,7 +19,6 @@ import { Loader2, Circle, CircleDot, CircleCheck, Calendar as CalendarIcon, Filt
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import ChatBot from '@/components/chatbot';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -157,7 +156,7 @@ export default function DashboardClient({}: DashboardClientProps) {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Issues</CardTitle>
@@ -195,8 +194,6 @@ export default function DashboardClient({}: DashboardClientProps) {
           </CardContent>
         </Card>
       </div>
-
-      <ChatBot />
       
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div className="flex items-center gap-2 flex-wrap">
