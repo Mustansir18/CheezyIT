@@ -8,7 +8,7 @@ export default function AdminTicketsPage() {
   return (
     <div className="space-y-4">
         <div className="flex items-center gap-4">
-            <Button asChild variant="ghost" className="bg-foreground text-background hover:bg-foreground/90" size="icon">
+            <Button asChild variant="outline" size="icon">
                 <Link href="/admin">
                     <ArrowLeft className="h-4 w-4" />
                     <span className="sr-only">Back to Dashboard</span>
