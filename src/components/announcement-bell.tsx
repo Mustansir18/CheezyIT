@@ -9,21 +9,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { isRoot } from '@/lib/admins';
 
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '@/lib/utils';
-
-function usePrevious<T>(value: T) {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
 
 type UserNotification = {
     id: string;
@@ -61,15 +53,6 @@ export default function AnnouncementBell() {
         if (!notifications) return 0;
         return notifications.filter(n => !n.isRead).length;
     }, [notifications]);
-
-    const prevUnreadCount = usePrevious(unreadCount);
-
-    useEffect(() => {
-        if (typeof prevUnreadCount !== 'undefined' && unreadCount > prevUnreadCount) {
-            const audio = new Audio('/sounds/new-announcement.mp3');
-            audio.play().catch(e => console.error("Failed to play new announcement sound:", e));
-        }
-    }, [unreadCount, prevUnreadCount]);
 
     const handleMarkAsRead = async (notificationId: string) => {
         if (!user) return;

@@ -28,14 +28,6 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
-function usePrevious<T>(value: T) {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
 type UserProfile = {
   role: string;
   regions?: string[];
@@ -83,17 +75,6 @@ export default function AdminTicketList() {
   const isUserRoot = useMemo(() => user && isRoot(user.email), [user]);
   const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
-
-    const prevTickets = usePrevious(allTickets);
-    useEffect(() => {
-        if (prevTickets && allTickets.length > prevTickets.length) {
-            const newTickets = allTickets.filter(t => !prevTickets.find(pt => pt.id === t.id));
-            if (newTickets.some(t => t.status === 'Pending')) {
-                const audio = new Audio('/sounds/new-ticket.mp3');
-                audio.play().catch(e => console.error("Failed to play new ticket sound:", e));
-            }
-        }
-    }, [allTickets, prevTickets]);
 
   useEffect(() => {
     const fetchTicketsAndUsers = async () => {

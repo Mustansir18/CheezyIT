@@ -27,14 +27,6 @@ const WA_COLORS = {
     blue: '#53bdeb'
 };
 
-function usePrevious<T>(value: T) {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
 export default function TicketChat({ ticket, canManageTicket, backLink, onStatusChange, onDeleteClick }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -47,18 +39,6 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
     const { data: ticketOwnerProfile } = useDoc<any>(userProfileRef);
     const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
     const { data: messages } = useCollection<ChatMessage>(messagesQuery);
-
-    const prevMessages = usePrevious(messages);
-
-    useEffect(() => {
-        if (prevMessages && messages && messages.length > prevMessages.length) {
-            const latestMessage = messages[messages.length - 1];
-            if (latestMessage && user && latestMessage.userId !== user.uid) {
-                const audio = new Audio('/sounds/new-message.mp3');
-                audio.play().catch(e => console.error("Failed to play new message sound:", e));
-            }
-        }
-    }, [messages, prevMessages, user]);
 
     // Auto-read logic
     useEffect(() => {
