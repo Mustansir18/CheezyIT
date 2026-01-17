@@ -74,21 +74,18 @@ export default function LoginPage() {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-950 px-4">
       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex flex-col items-center justify-center gap-2">
-            <Image src="/logo.png" alt="Cheezious IT Support Logo" width={72} height={72} />
-            <div>
-                <span className="font-extrabold text-4xl font-headline text-primary whitespace-nowrap">Cheezious IT Support</span>
-            </div>
+        <CardHeader className="text-center items-center p-6 pb-4">
+          <Image src="/logo.png" alt="Cheezious IT Support Logo" width={60} height={60} />
+          <div className="pt-2">
+            <CardTitle className="text-2xl font-headline font-bold text-primary">Cheezious IT Support</CardTitle>
+            <CardDescription className="pt-1 text-sm">
+              Sign in to continue
+            </CardDescription>
           </div>
-          <CardTitle className="text-3xl font-headline pt-2">Welcome</CardTitle>
-          <CardDescription>
-            Please sign in to continue
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAuthAction} className="space-y-4">
-            <div className="space-y-2">
+          <form onSubmit={handleAuthAction} className="space-y-3">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -99,7 +96,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -109,12 +106,12 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full !mt-5">
               Sign In
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
+        <CardFooter className="flex flex-col pt-2 pb-4">
            <p className="text-xs text-center text-muted-foreground">
             Contact an administrator if you have trouble signing in.
           </p>
