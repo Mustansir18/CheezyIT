@@ -54,22 +54,18 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
             return;
         }
 
-        // On initial load, set the ref to the current count without playing a sound.
         if (prevMessagesCountRef.current === undefined) {
             prevMessagesCountRef.current = messages.length;
             return;
         }
 
-        // Check if a new message has been added
         if (messages.length > prevMessagesCountRef.current) {
             const lastMessage = messages[messages.length - 1];
-            // Play sound if the last message is not from the current user
             if (lastMessage && user && lastMessage.userId !== user.uid) {
                 playMessageSound();
             }
         }
 
-        // Update the ref with the new message count for the next render
         prevMessagesCountRef.current = messages.length;
     }, [messages, messagesLoading, user, playMessageSound]);
 
@@ -109,7 +105,6 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
             toast({ variant: 'destructive', title: 'Error', description: 'User does not have a phone number.' });
             return;
         }
-        // Assuming PK number format '03xxxxxxxxx' -> '923xxxxxxxxx'
         const whatsappNumber = '92' + ticketOwnerProfile.phoneNumber.substring(1);
         const callLink = `https://wa.me/${whatsappNumber}`;
 
@@ -176,7 +171,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
 
             <main 
                 ref={messagesContainerRef} 
-                className="flex-1 overflow-y-auto p-4 space-y-[2px] custom-scrollbar" 
+                className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar" 
                 style={{ 
                     backgroundImage: `url('/bg.png')`, 
                     backgroundBlendMode: 'overlay', 
@@ -185,7 +180,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     backgroundAttachment: 'local'
                 }}
             >
-                <div className="max-w-[1000px] mx-auto flex flex-col">
+                <div className="flex flex-col py-4">
                     {messagesWithDateSeparators.map((item, idx) => {
                         if (item.type === 'date-separator') {
                             return (
@@ -198,8 +193,9 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                         const msg = item as WithId<ChatMessage>;
                         const isSender = msg.userId === user?.uid;
                         const prevItem = messagesWithDateSeparators[idx - 1];
-                        const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
 
+                        const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
+                        
                         const messageContent = () => {
                             if (msg.audioUrl) {
                                 return <AudioPlayer src={msg.audioUrl} />;
@@ -230,35 +226,38 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                             }
                             return null;
                         };
-
+                        
                         return (
-                            <div key={msg.id} className={cn("flex w-full relative", isSender ? "justify-end" : "justify-start", isFirstInBlock ? "mt-2" : "mt-0")}>
-                                {isFirstInBlock && (
-                                    <span className={cn("absolute top-0 z-[1]", isSender ? "-right-[7px]" : "-left-[7px]")}>
-                                        <svg width="8" height="13" viewBox="0 0 8 13">
-                                            <path d={isSender ? "M0,0 C3,0 8,0 8,0 L8,13 Z" : "M8,0 C5,0 0,0 0,0 L0,13 Z"} fill={isSender ? WA_COLORS.outgoing : WA_COLORS.incoming} />
-                                        </svg>
-                                    </span>
+                            <div 
+                                key={msg.id} 
+                                className={cn(
+                                    "flex w-full relative px-4",
+                                    isSender ? "justify-end" : "justify-start", 
+                                    isFirstInBlock ? "mt-3" : "mt-[2px]"
                                 )}
-
+                            >
                                 <div 
                                     className={cn(
-                                        "relative px-2 pt-1.5 pb-1 shadow-sm text-[14.2px] z-[2] inline-flex items-end gap-x-2 min-w-20",
+                                        "relative px-3 pt-1.5 pb-1 shadow-sm text-[14.2px] z-[2] inline-flex items-end gap-x-2",
                                         isSender ? "bg-[#005c4b] text-[#e9edef]" : "bg-[#202c33] text-[#e9edef]",
+                                        "rounded-[8px]",
                                         isSender 
-                                            ? (isFirstInBlock ? "rounded-l-[8px] rounded-br-[8px] rounded-tr-none" : "rounded-[8px]")
-                                            : (isFirstInBlock ? "rounded-r-[8px] rounded-bl-[8px] rounded-tl-none" : "rounded-[8px]"),
-                                        (msg.type === 'call_request' || msg.audioUrl) && '!w-52'
+                                            ? (isFirstInBlock ? "rounded-tr-none" : "") 
+                                            : (isFirstInBlock ? "rounded-tl-none" : ""),
+                                        "max-w-[65%] md:max-w-[45%]", 
+                                        (msg.type === 'call_request' || msg.audioUrl) && 'w-64'
                                     )}
                                 >
-                                    <div className="flex-1">
+                                    <div className="flex-1 overflow-hidden">
                                         {messageContent()}
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 mb-[-2px] self-end">
                                         <span className="text-[10px] text-[#8696a0] whitespace-nowrap uppercase">
                                             {msg.createdAt ? format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'h:mm a') : ''}
                                         </span>
-                                        {isSender && <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-[#53bdeb]" : "text-[#8696a0]")} />}
+                                        {isSender && (
+                                            <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-[#53bdeb]" : "text-[#8696a0]")} />
+                                        )}
                                     </div>
                                 </div>
                             </div>
