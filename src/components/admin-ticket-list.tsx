@@ -280,44 +280,6 @@ export default function AdminTicketList() {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Issues</CardTitle>
-            <Circle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.pending}</div>}
-            <p className="text-xs text-muted-foreground">
-              Tickets awaiting response
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <CircleDot className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.inProgress}</div>}
-             <p className="text-xs text-muted-foreground">
-              Tickets actively being worked on
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolved Issues</CardTitle>
-            <CircleCheck className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-             {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.resolved}</div>}
-            <p className="text-xs text-muted-foreground">
-              Completed and closed tickets
-            </p>
-          </CardContent>
-        </Card>
-      </div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
             <Popover>
@@ -360,6 +322,44 @@ export default function AdminTicketList() {
             <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
             <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
         </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Issues</CardTitle>
+            <Circle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.pending}</div>}
+            <p className="text-xs text-muted-foreground">
+              Tickets awaiting response
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <CircleDot className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.inProgress}</div>}
+             <p className="text-xs text-muted-foreground">
+              Tickets actively being worked on
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Resolved Issues</CardTitle>
+            <CircleCheck className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+             {loading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.resolved}</div>}
+            <p className="text-xs text-muted-foreground">
+              Completed and closed tickets
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
