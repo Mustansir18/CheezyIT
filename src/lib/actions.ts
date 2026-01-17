@@ -15,9 +15,9 @@ export async function chatBotAction(message: string) {
   try {
     const result = await chatBot({ message });
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI ChatBot Error:', error);
-    return { error: 'We had trouble getting a response. Please try again.' };
+    return { error: `Sorry, there was an issue with the AI service: ${error.message}` };
   }
 }
 
