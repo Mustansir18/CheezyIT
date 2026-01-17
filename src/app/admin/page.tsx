@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
           <Link href={item.href} key={item.href} className="group">
-            <Card className="h-full shadow-sm transition-all hover:shadow-lg hover:-translate-y-1 duration-200 group-hover:border-primary">
+            <Card className="h-full shadow-md transition-all hover:shadow-xl hover:-translate-y-1 duration-200 group-hover:border-primary">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-lg font-bold font-headline">{item.title}</CardTitle>
                 <item.icon className="h-6 w-6 text-muted-foreground" />
