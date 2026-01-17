@@ -278,23 +278,21 @@ export default function AdminAnalytics() {
     <div className="space-y-4">
         <Card>
             <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle>Ticket Reports</CardTitle>
                         <CardDescription>Analyze ticket data for different periods.</CardDescription>
                     </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
-                            <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
-                        </div>
+                    <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())})}>This Month</Button>
+                        <Button variant="outline" size="sm" onClick={() => setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))})}>Last Month</Button>
                         <Popover>
                         <PopoverTrigger asChild>
                             <Button
                             id="date"
                             variant={"outline"}
                             className={cn(
-                                "w-full sm:w-[300px] justify-start text-left font-normal",
+                                "w-full justify-start text-left font-normal sm:w-auto sm:min-w-[240px]",
                                 !date && "text-muted-foreground"
                             )}
                             >
@@ -320,7 +318,7 @@ export default function AdminAnalytics() {
                             defaultMonth={date?.from}
                             selected={date}
                             onSelect={setDate}
-                            numberOfMonths={2}
+                            numberOfMonths={1}
                             />
                         </PopoverContent>
                         </Popover>
@@ -432,7 +430,7 @@ export default function AdminAnalytics() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Resolution Details</CardTitle>
-                            <CardDescription>Details for each ticket resolved by Admin & IT Support in the selected period.</CardDescription>
+                            <CardDescription>Details for each ticket resolved by Admin &amp; IT Support in the selected period.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -558,5 +556,7 @@ export default function AdminAnalytics() {
     </div>
   );
 }
+
+    
 
     
