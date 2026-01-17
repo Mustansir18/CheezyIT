@@ -75,7 +75,7 @@ export default function DashboardClient({}: DashboardClientProps) {
     if (ticketIdFilter) {
         const lowerCaseFilter = ticketIdFilter.toLowerCase();
         tickets = tickets.filter(ticket =>
-            ticket.id.toLowerCase().includes(lowerCaseFilter) ||
+            (ticket.id && ticket.id.toLowerCase().includes(lowerCaseFilter)) ||
             (ticket.title && ticket.title.toLowerCase().includes(lowerCaseFilter))
         );
     }
@@ -94,6 +94,66 @@ export default function DashboardClient({}: DashboardClientProps) {
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
 
+  const ticketFilterPopover = (
+      <Popover>
+          <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                  Ticket
+                  <Filter className="ml-2 h-3 w-3" />
+              </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-2 w-60" align="start">
+              <Input
+                  placeholder="Filter by ID or title..."
+                  value={ticketIdFilter}
+                  onChange={(e) => setTicketIdFilter(e.target.value)}
+                  className="h-9"
+              />
+          </PopoverContent>
+      </Popover>
+  );
+
+  const statusFilterDropdown = (
+      <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 border-orange-500 text-orange-500">
+                  Status
+                  <Filter className="ml-2 h-3 w-3" />
+              </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+              <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                  <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+      </DropdownMenu>
+  );
+
+  const regionFilterDropdown = (
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9">
+                Region
+                <Filter className="ml-2 h-3 w-3" />
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+            <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
+                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                <DropdownMenuSeparator />
+                {availableRegions.map(region => (
+                    <DropdownMenuRadioItem key={region} value={region}>
+                        {region}
+                    </DropdownMenuRadioItem>
+                ))}
+            </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <>
@@ -125,7 +185,7 @@ export default function DashboardClient({}: DashboardClientProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Resolved Issues</CardTitle>
-            <CircleCheck className="h-4 w-4 text-chart-2" />
+            <CircleCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
              {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.resolved}</div>}
@@ -139,14 +199,14 @@ export default function DashboardClient({}: DashboardClientProps) {
       <ChatBot />
       
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
             <Popover>
             <PopoverTrigger asChild>
                 <Button
                 id="date"
                 variant={"outline"}
                 className={cn(
-                    "w-full sm:w-[300px] justify-start text-left font-normal",
+                    "w-full sm:w-[260px] justify-start text-left font-normal",
                     !date && "text-muted-foreground"
                 )}
                 >
@@ -165,7 +225,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                 )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                 initialFocus
                 mode="range"
@@ -188,121 +248,167 @@ export default function DashboardClient({}: DashboardClientProps) {
             <CardDescription>A list of your support tickets. Use the filters to narrow your search.</CardDescription>
         </CardHeader>
         <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[250px]">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="-ml-3">
-                                        Ticket
-                                        <Filter className="ml-2 h-3 w-3" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="p-2 w-60" align="start">
-                                    <Input
-                                        placeholder="Filter by ID or title..."
-                                        value={ticketIdFilter}
-                                        onChange={(e) => setTicketIdFilter(e.target.value)}
-                                        className="h-9"
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                        </TableHead>
-                        <TableHead>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="-ml-3">
-                                        Status
-                                        <Filter className="ml-2 h-3 w-3" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                    <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
-                                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableHead>
-                        <TableHead>
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="-ml-3">
-                                        Region
-                                        <Filter className="ml-2 h-3 w-3" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                    <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
-                                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                        <DropdownMenuSeparator />
-                                        {availableRegions.map(region => (
-                                            <DropdownMenuRadioItem key={region} value={region}>
-                                                {region}
-                                            </DropdownMenuRadioItem>
-                                        ))}
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Completed</TableHead>
-                        <TableHead>Resolved By</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {ticketsLoading ? (
-                    <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                            <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                        </TableCell>
-                    </TableRow>
-                    ) : filteredTickets.length > 0 ? (
-                    filteredTickets.map((ticket) => (
-                    <TableRow key={ticket.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
-                        <TableCell>
-                           <div className="font-medium flex items-center gap-2">
-                            {ticket.title}
-                            {ticket.unreadByUser && <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />}
+            {/* Mobile Filters */}
+            <div className="flex items-center gap-2 mb-4 md:hidden">
+              {ticketFilterPopover}
+              {statusFilterDropdown}
+              {regionFilterDropdown}
+            </div>
+            
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead className="w-[250px]">
+                              <Popover>
+                                  <PopoverTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="-ml-3 h-8">
+                                          Ticket
+                                          <Filter className="ml-2 h-3 w-3" />
+                                      </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="p-2 w-60" align="start">
+                                      <Input
+                                          placeholder="Filter by ID or title..."
+                                          value={ticketIdFilter}
+                                          onChange={(e) => setTicketIdFilter(e.target.value)}
+                                          className="h-9"
+                                      />
+                                  </PopoverContent>
+                              </Popover>
+                          </TableHead>
+                          <TableHead>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="-ml-3 h-8">
+                                          Status
+                                          <Filter className="ml-2 h-3 w-3" />
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start">
+                                      <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                                          <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
+                                          <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
+                                          <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
+                                      </DropdownMenuRadioGroup>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                          </TableHead>
+                          <TableHead>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="-ml-3 h-8">
+                                          Region
+                                          <Filter className="ml-2 h-3 w-3" />
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start">
+                                      <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
+                                          <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                                          <DropdownMenuSeparator />
+                                          {availableRegions.map(region => (
+                                              <DropdownMenuRadioItem key={region} value={region}>
+                                                  {region}
+                                              </DropdownMenuRadioItem>
+                                          ))}
+                                      </DropdownMenuRadioGroup>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                          </TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead>Completed</TableHead>
+                          <TableHead>Resolved By</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {ticketsLoading ? (
+                      <TableRow>
+                          <TableCell colSpan={6} className="h-24 text-center">
+                              <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                          </TableCell>
+                      </TableRow>
+                      ) : filteredTickets.length > 0 ? (
+                      filteredTickets.map((ticket) => (
+                      <TableRow key={ticket.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
+                          <TableCell>
+                            <div className="font-medium flex items-center gap-2">
+                              {ticket.title}
+                              {ticket.unreadByUser && <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />}
+                              </div>
+                            <div className="text-sm text-muted-foreground">
+                              {ticket.id}
                             </div>
-                           <div className="hidden text-sm text-muted-foreground md:inline">
-                            {ticket.id}
-                           </div>
-                        </TableCell>
-                        <TableCell>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={ticket.status === 'Pending' ? 'outline' : 'default'}
+                              className={cn(
+                                {
+                                  'bg-green-600 text-white border-transparent hover:bg-green-700': ticket.status === 'Resolved',
+                                  'bg-orange-500 text-white border-transparent hover:bg-orange-600': ticket.status === 'In Progress',
+                                }
+                              )}
+                            >
+                              {ticket.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{ticket.region}</TableCell>
+                          <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
+                          <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
+                          <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
+                        </TableRow>
+                      ))) : (
+                      <TableRow>
+                          <TableCell colSpan={6} className="h-24 text-center">
+                          No tickets found matching your filters.
+                          </TableCell>
+                      </TableRow>
+                      )}
+                  </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile List */}
+            <div className="md:hidden space-y-3">
+              {ticketsLoading ? (
+                [...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
+              ) : filteredTickets.length > 0 ? (
+                filteredTickets.map((ticket) => (
+                  <div key={ticket.id} className="border rounded-lg p-3 cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
+                      <div className="flex justify-between items-start gap-2">
+                          <span className="font-semibold">{ticket.title}</span>
                           <Badge
                             variant={ticket.status === 'Pending' ? 'outline' : 'default'}
-                            className={cn(
+                            className={cn('shrink-0',
                               {
-                                'bg-green-600 text-white border-transparent hover:bg-green-600/80': ticket.status === 'Resolved',
-                                'bg-orange-500 text-white border-transparent hover:bg-orange-500/80': ticket.status === 'In Progress',
+                                'bg-green-600 text-white border-transparent hover:bg-green-700': ticket.status === 'Resolved',
+                                'bg-orange-500 text-white border-transparent hover:bg-orange-600': ticket.status === 'In Progress',
                               }
                             )}
                           >
                             {ticket.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell>{ticket.region}</TableCell>
-                        <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
-                        <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
-                        <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
-                      </TableRow>
-                    ))) : (
-                    <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                        No tickets found matching your filters.
-                        </TableCell>
-                    </TableRow>
-                    )}
-                </TableBody>
-            </Table>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground mt-2">
+                        <span>{ticket.region}</span>
+                        <div className="flex items-center gap-2">
+                          <span>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PP') : 'N/A'}</span>
+                          {ticket.unreadByUser && <span className="h-2 w-2 rounded-full bg-accent" />}
+                        </div>
+                      </div>
+                  </div>
+                ))
+              ) : (
+                <div className="h-24 text-center flex items-center justify-center">
+                  <p>No tickets found matching your filters.</p>
+                </div>
+              )}
+            </div>
         </CardContent>
       </Card>
     </>
   );
 }
-    
