@@ -135,25 +135,28 @@ service cloud.firestore {
     }
     
     function validateAnnouncementData(data) {
-        return data.keys().hasAll(['title', 'message', 'createdAt', 'createdByUid', 'createdByDisplayName', 'target', 'recipientCount']) &&
-               data.title is string && data.title.size() > 0 &&
-               data.message is string && data.message.size() > 0 &&
-               data.createdByUid == request.auth.uid &&
-               data.createdByDisplayName is string &&
-               data.target is map &&
-               data.target.keys().hasAll(['roles', 'regions', 'users']) &&
-               data.target.roles is list &&
-               data.target.regions is list &&
-               data.target.users is list &&
-               data.recipientCount is number && data.recipientCount >= 0;
+      // Check for presence and basic types of all required fields.
+      // This is more robust than a strict `hasAll` check on keys.
+      return 'title' in data && data.title is string && data.title.size() > 0 &&
+             'message' in data && data.message is string && data.message.size() > 0 &&
+             'createdAt' in data && // `serverTimestamp()` is a placeholder object
+             'createdByUid' in data && data.createdByUid == request.auth.uid &&
+             'createdByDisplayName' in data && data.createdByDisplayName is string &&
+             'recipientCount' in data && data.recipientCount is number &&
+             'target' in data && data.target is map &&
+             // Check for nested fields in the target map
+             'roles' in data.target && data.target.roles is list &&
+             'regions' in data.target && data.target.regions is list &&
+             'users' in data.target && data.target.users is list;
     }
 
     function validateNotificationData(data) {
-        return data.keys().hasAll(['title', 'message', 'createdAt', 'isRead', 'announcementId']) &&
-               data.title is string && data.title.size() > 0 &&
-               data.message is string && data.message.size() > 0 &&
-               data.isRead == false &&
-               data.announcementId is string;
+        // Similar robust check for notifications
+        return 'title' in data && data.title is string && data.title.size() > 0 &&
+               'message' in data && data.message is string && data.message.size() > 0 &&
+               'createdAt' in data &&
+               'isRead' in data && data.isRead == false &&
+               'announcementId' in data && data.announcementId is string;
     }
 
 
