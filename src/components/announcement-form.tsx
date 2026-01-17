@@ -6,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
-import { sendAnnouncementAction } from '@/lib/actions';
+import { doc, collection, getDocs, query, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,9 @@ type FormData = z.infer<typeof announcementSchema>;
 type User = {
     displayName: string;
     email: string;
+    role?: string;
+    region?: string;
+    regions?: string[];
 }
 
 export default function AnnouncementForm() {
@@ -68,19 +70,75 @@ export default function AnnouncementForm() {
 
   const onSubmit = (data: FormData) => {
     startTransition(async () => {
-      const result = await sendAnnouncementAction(data);
-      if (result.error) {
+      try {
+        if (!usersData) {
+            throw new Error("User data not loaded yet.");
+        }
+
+        let targetUsers: WithId<User>[] = [];
+        
+        // Priority 1: Target specific user IDs if provided
+        if (data.targetUsers && data.targetUsers.length > 0) {
+            targetUsers = usersData.filter(user => data.targetUsers.includes(user.id));
+        } else {
+            // Priority 2: Progressively filter by roles and regions with AND logic.
+            let filteredUsers = usersData;
+
+            // Filter by roles if any are selected
+            if (data.targetRoles.length > 0) {
+                filteredUsers = filteredUsers.filter(user => user.role && data.targetRoles.includes(user.role));
+            }
+
+            // Further filter by regions if any are selected
+            if (data.targetRegions.length > 0) {
+                filteredUsers = filteredUsers.filter(user => {
+                    const userRegions = (Array.isArray(user.regions) && user.regions.length > 0)
+                        ? user.regions
+                        : (user.region ? [user.region] : []);
+                    return userRegions.some((r: string) => data.targetRegions.includes(r));
+                });
+            }
+            
+            targetUsers = filteredUsers;
+        }
+
+        if (targetUsers.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'No Recipients',
+                description: 'No users found matching the selected criteria.',
+            });
+            return;
+        }
+
+        const batch = writeBatch(firestore);
+        const notificationData = {
+        title: data.title,
+        message: data.message,
+        createdAt: serverTimestamp(),
+        isRead: false,
+        };
+
+        targetUsers.forEach(user => {
+            const notificationRef = doc(collection(firestore, 'users', user.id, 'notifications'));
+            batch.set(notificationRef, notificationData);
+        });
+
+        await batch.commit();
+
+        toast({
+            title: 'Announcement Sent!',
+            description: `Message sent to ${targetUsers.length} user(s).`,
+        });
+        form.reset();
+
+      } catch (error: any) {
+        console.error("Error sending announcement:", error);
         toast({
           variant: 'destructive',
           title: 'Error Sending Announcement',
-          description: result.error,
+          description: 'Failed to send announcement. You may not have the required permissions.',
         });
-      } else if (result.success) {
-        toast({
-          title: 'Announcement Sent!',
-          description: result.success,
-        });
-        form.reset();
       }
     });
   };
