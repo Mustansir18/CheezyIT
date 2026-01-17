@@ -40,29 +40,6 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
     const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
     const { data: messages } = useCollection<ChatMessage>(messagesQuery);
 
-    // Auto-read logic
-    useEffect(() => {
-        if (!messages || !user || !ticketId || !userId) return;
-
-        const unreadMessagesFromOthers = messages.filter(
-            (msg) => msg.userId !== user.uid && !msg.isRead
-        );
-
-        if (unreadMessagesFromOthers.length === 0) return;
-
-        const batch = writeBatch(firestore);
-        unreadMessagesFromOthers.forEach((msg) => {
-            const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
-            batch.update(msgRef, { isRead: true });
-        });
-
-        batch.commit().catch(err => {
-            console.error("Failed to automatically mark messages as read:", err);
-            // We don't toast here as it could be noisy, but we log the error.
-        });
-
-    }, [messages, user, firestore, ticketId, userId]);
-
     useLayoutEffect(() => {
         if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
@@ -282,3 +259,5 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
         </div>
     );
 }
+
+    
