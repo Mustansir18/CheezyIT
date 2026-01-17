@@ -3,6 +3,7 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 import { type Ticket } from '@/lib/data';
 import DashboardClient from '@/components/dashboard-client';
@@ -33,9 +34,7 @@ export default function DashboardPage() {
   return (
     <>
         <div className="flex items-center justify-between space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight font-headline">
-            {user.displayName ? `${user.displayName}'s Dashboard` : 'Dashboard'}
-          </h1>
+          <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
         </div>
         <DashboardClient tickets={tickets} stats={stats} />
     </>

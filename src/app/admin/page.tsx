@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Loader2, Megaphone } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -73,9 +74,7 @@ export default function AdminDashboardPage() {
   return (
     <>
       <div className="flex items-center justify-between space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">
-          {dashboardTitle}
-        </h1>
+        <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
       </div>
       <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
