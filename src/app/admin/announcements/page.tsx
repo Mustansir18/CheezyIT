@@ -26,8 +26,9 @@ export default function AdminAnnouncementsPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const isAuthorized = useMemo(() => {
-    if (!userProfile) return false;
-    return userIsRoot || userProfile.role === 'Admin';
+    if (userIsRoot) return true;
+    if (userProfile && userProfile.role === 'Admin') return true;
+    return false;
   }, [userIsRoot, userProfile]);
 
   useEffect(() => {
