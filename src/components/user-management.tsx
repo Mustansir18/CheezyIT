@@ -191,17 +191,6 @@ function RegionManagement() {
   const settingsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
   const { data: settingsData, isLoading } = useDoc<{ list: string[] }>(settingsRef);
 
-  useEffect(() => {
-    // If not loading and the document doesn't exist, create it with defaults.
-    if (!isLoading && !settingsData) {
-      const defaultRegions = ['ISL', 'LHR', 'South', 'Sug'];
-      setDoc(settingsRef, { list: defaultRegions }).catch(err => {
-        console.error("Failed to set default regions:", err);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not set default regions.' });
-      });
-    }
-  }, [isLoading, settingsData, settingsRef, toast]);
-
   const handleAddItem = async () => {
     if (!newItem.trim()) return;
     setIsSubmitting(true);
@@ -403,7 +392,7 @@ export default function UserManagement() {
                                         >
                                             <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
                                             <SelectContent>
-                                                {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                                {regions.map(r => ({ value: r, label: r }))}
                                             </SelectContent>
                                         </Select>
                                     ) : (
@@ -493,3 +482,5 @@ export default function UserManagement() {
     </>
   );
 }
+
+    
