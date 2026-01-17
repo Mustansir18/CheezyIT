@@ -2,9 +2,10 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Loader2, Megaphone } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { useMemo } from 'react';
+import { doc } from 'firebase/firestore';
 
 const baseNavItems = [
   {
@@ -34,9 +35,34 @@ const rootNavItem = {
     description: 'Manage user accounts and roles.',
 };
 
+type UserProfile = {
+  role?: string;
+};
+
 export default function AdminDashboardPage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
   const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  
+  const loading = userLoading || profileLoading;
+
+  const dashboardTitle = useMemo(() => {
+    if (!user) return '';
+    if (userIsRoot) return 'Root Dashboard';
+    
+    switch (userProfile?.role) {
+      case 'Admin':
+        return 'Admin Dashboard';
+      case 'it-support':
+        return 'IT Support Dashboard';
+      default:
+        return `${user.displayName}'s Dashboard`;
+    }
+  }, [user, userIsRoot, userProfile]);
   
   if (loading) {
       return <div className="flex h-32 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -48,7 +74,7 @@ export default function AdminDashboardPage() {
     <>
       <div className="flex items-center justify-between space-y-2">
         <h1 className="text-3xl font-bold tracking-tight font-headline">
-          Cheezious IT Support
+          {dashboardTitle}
         </h1>
       </div>
       <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-3">

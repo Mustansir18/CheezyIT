@@ -34,7 +34,7 @@ export default function DashboardPage() {
     <>
         <div className="flex items-center justify-between space-y-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline">
-            Dashboard
+            {user.displayName ? `${user.displayName}'s Dashboard` : 'Dashboard'}
           </h1>
         </div>
         <DashboardClient tickets={tickets} stats={stats} />
