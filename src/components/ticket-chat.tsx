@@ -129,8 +129,8 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
     return (
         <div className="flex flex-col h-full w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
             
-            {/* 1. FIXED HEADER - Stays at the top */}
-            <header className="flex-none w-full flex items-center justify-between gap-2 px-4 py-2 z-[100] border-b border-white/5" style={{ backgroundColor: WA_COLORS.header }}>
+            <header className="flex-none w-full flex items-center justify-between gap-2 px-4 py-2 z-[100] border-b border-white/5 shadow-md" 
+                    style={{ backgroundColor: WA_COLORS.header }}>
                 <div className="flex items-center gap-3">
                     <Link href={backLink} className="text-[#aebac1] hover:text-white transition-colors">
                         <ArrowLeft className="h-6 w-6" />
@@ -144,15 +144,10 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                         <div className="flex items-center gap-2">
                              <span className="text-white font-medium text-[16px]">{ticketOwnerProfile?.displayName || 'User'}</span>
                              {ticketOwnerProfile?.phoneNumber && (
-                                <div 
-                                    className="flex items-center gap-1 text-[12px] text-[#8696a0]"
-                                    title="Phone number"
-                                >
-                                    <span>{ticketOwnerProfile.phoneNumber}</span>
-                                </div>
+                                <span className="text-[12px] text-[#8696a0]">{ticketOwnerProfile.phoneNumber}</span>
                             )}
                         </div>
-                        <span className="text-[13px] text-[#8696a0]">{ticket.title}</span>
+                        <span className="text-[13px] text-[#8696a0] truncate max-w-[200px]">{ticket.title}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -180,7 +175,6 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                 </div>
             </header>
 
-            {/* 2. SCROLLABLE AREA - This is the only part that scrolls */}
             <main 
                 ref={messagesContainerRef} 
                 className="flex-1 overflow-y-auto p-4 space-y-[2px] custom-scrollbar" 
@@ -188,7 +182,8 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     backgroundImage: `url('/bg.png')`, 
                     backgroundBlendMode: 'overlay', 
                     backgroundColor: 'rgba(11, 20, 26, 0.98)',
-                    backgroundSize: '400px'
+                    backgroundSize: '400px',
+                    backgroundAttachment: 'local'
                 }}
             >
                 {messagesWithDateSeparators.map((item, idx) => {
@@ -271,19 +266,20 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                 })}
             </main>
 
-            {/* 3. FIXED FOOTER - Stays at the bottom */}
-            <footer className="flex-none p-2 bg-[#202c33] flex items-center gap-2 z-[100]">
-                <Button variant="ghost" size="icon" className="text-[#8696a0] rounded-full h-10 w-10 hover:bg-white/5"><Smile className="h-6 w-6" /></Button>
+            <footer className="flex-none p-2 bg-[#202c33] flex items-center gap-2 z-[100] border-t border-white/5">
+                <Button variant="ghost" size="icon" className="text-[#8696a0] rounded-full h-10 w-10 hover:bg-white/5">
+                    <Smile className="h-6 w-6" />
+                </Button>
                 <div className="flex-1 bg-[#2a3942] rounded-[8px] px-4 py-2 flex items-center min-h-[42px]">
                     <Textarea
                         placeholder="Type a message"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                        className="bg-transparent border-none focus-visible:ring-0 focus-visible:outline-none focus:outline-none focus:ring-0 text-[#e9edef] min-h-[24px] max-h-[120px] resize-none p-0 text-[18px] placeholder:text-[#8696a0] placeholder:text-[18px] w-full shadow-none outline-none ring-0 overflow-hidden"
+                        className="bg-transparent border-none focus-visible:ring-0 text-[#e9edef] min-h-[24px] max-h-[120px] resize-none p-0 text-[16px] w-full"
                     />
                 </div>
-                <Button onClick={handleSendMessage} disabled={!message.trim()} className="h-11 w-11 rounded-full bg-[#00a884] hover:bg-[#06cf9c] shrink-0 p-0 shadow-md flex items-center justify-center transition-all active:scale-95">
+                <Button onClick={handleSendMessage} disabled={!message.trim()} className="h-11 w-11 rounded-full bg-[#00a884] hover:bg-[#06cf9c] shrink-0 p-0 shadow-md">
                     <Send className="h-5 w-5 text-[#111b21] ml-0.5" fill="currentColor" />
                 </Button>
             </footer>
