@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     
     return (
-        <div className="flex min-h-screen w-full flex-col bg-gray-700">
+        <div className="flex min-h-screen w-full flex-col">
             {!isTicketPage && (
                 <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-gray-600 bg-gray-800 px-4 text-gray-100 sm:px-6">
                     <Link
@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             <main className={cn(
                 "flex flex-1 flex-col",
-                isTicketPage ? "min-h-0" : "gap-4 p-4 md:gap-8 md:p-8"
+                isTicketPage ? "min-h-0" : "gap-4 p-4 md:gap-8 md:p-8 bg-[#FFFDD0] text-black"
             )}>
                 {children}
             </main>

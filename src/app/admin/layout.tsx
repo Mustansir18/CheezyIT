@@ -56,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-gray-700">
+    <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-gray-600 bg-gray-800 px-4 text-gray-100 sm:px-6">
         <Link
           href="/admin"
@@ -70,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <UserNav />
         </div>
       </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 bg-[#FFFDD0] text-black">
         {children}
       </main>
     </div>
