@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div className="ml-auto flex items-center gap-4">
                         <AnnouncementBell />
                         <ReportIssueForm>
-                            <Button className="bg-green-500 hover:bg-green-600">Report an Issue</Button>
+                            <Button className="bg-green-500 hover:bg-green-600 rounded-md">Report an Issue</Button>
                         </ReportIssueForm>
                         <UserNav />
                     </div>
@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             <main className={cn(
                 "flex flex-1 flex-col",
-                isTicketPage ? "min-h-0" : "gap-4 p-4 md:gap-8 md:p-8 bg-white text-black"
+                isTicketPage ? "min-h-0" : "gap-4 p-4 md:gap-8 md:p-8 bg-slate-50 text-black"
             )}>
                 {children}
             </main>
