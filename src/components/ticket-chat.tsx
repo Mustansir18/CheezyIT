@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -27,7 +27,7 @@ const WA_COLORS = {
     blue: '#53bdeb'
 };
 
-export default function TicketChat({ ticket, canManageTicket, backLink, onStatusChange, onDeleteClick }: any) {
+export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -70,6 +70,46 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
     }, [messages, messagesLoading, user, playMessageSound]);
 
 
+    // Effect to mark messages as read and clear ticket-level unread flags
+    useEffect(() => {
+        if (!messages || messagesLoading || !user || !firestore || !ticket) return;
+
+        // --- Part 1: Mark individual messages as read ---
+        const messageUpdateBatch = writeBatch(firestore);
+        let messagesToMarkAsRead = 0;
+
+        messages.forEach(msg => {
+            // Find unread messages sent by the *other* user
+            if (!msg.isRead && msg.userId !== user.uid) {
+                const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
+                messageUpdateBatch.update(msgRef, { isRead: true });
+                messagesToMarkAsRead++;
+            }
+        });
+
+        // Commit the batch only if there are updates to be made
+        if (messagesToMarkAsRead > 0) {
+            messageUpdateBatch.commit().catch(err => {
+                console.error("Failed to mark messages as read:", err);
+            });
+        }
+
+        // --- Part 2: Update the ticket-level unread flag ---
+        const ticketRef = doc(firestore, 'users', userId, 'issues', ticketId);
+
+        // If the current viewer is an admin/support and the ticket has an unread flag for them
+        if (canManageTicket && ticket.unreadByAdmin) {
+            updateDoc(ticketRef, { unreadByAdmin: false });
+        }
+        
+        // If the current viewer is the ticket owner and the ticket has an unread flag for them
+        if (isOwner && ticket.unreadByUser) {
+            updateDoc(ticketRef, { unreadByUser: false });
+        }
+
+    }, [messages, messagesLoading, user, firestore, ticketId, userId, ticket, canManageTicket, isOwner]);
+
+
     const messagesWithDateSeparators = useMemo(() => {
         const items: any[] = [];
         let lastDate: string | null = null;
@@ -86,18 +126,42 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
         return items;
     }, [messages]);
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!message.trim() || !user) return;
         const msgText = message;
         setMessage('');
-        addDoc(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), {
-            userId: user.uid,
-            displayName: user.displayName || 'User',
-            text: msgText,
-            createdAt: serverTimestamp(),
-            isRead: false,
-            type: 'user',
-        });
+
+        const ticketRef = doc(firestore, 'users', userId, 'issues', ticketId);
+        // Create a ref for the new message doc with a new ID
+        const newMessageRef = doc(collection(ticketRef, 'messages'));
+
+        // Determine which unread flag to set based on who is sending
+        const unreadUpdate = canManageTicket ? { unreadByUser: true } : { unreadByAdmin: true };
+
+        try {
+            const batch = writeBatch(firestore);
+
+            // 1. Set the data for the new message
+            batch.set(newMessageRef, {
+                userId: user.uid,
+                displayName: user.displayName || 'User',
+                text: msgText,
+                createdAt: serverTimestamp(),
+                isRead: false,
+                type: 'user',
+            });
+
+            // 2. Update the parent ticket's unread status and updatedAt timestamp
+            batch.update(ticketRef, {
+                ...unreadUpdate,
+                updatedAt: serverTimestamp(),
+            });
+
+            await batch.commit();
+        } catch (error) {
+            console.error("Error sending message:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to send message.' });
+        }
     };
 
     const handleStartCall = async () => {
@@ -184,7 +248,7 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
                     {messagesWithDateSeparators.map((item, idx) => {
                         if (item.type === 'date-separator') {
                             return (
-                                <div key={item.id} className="flex justify-center my-4 sticky top-0 z-10">
+                                <div key={item.id} className="flex justify-center my-4 sticky top-2 z-10">
                                     <span className="text-[12.5px] bg-[#182229] text-[#8696a0] px-3 py-1.5 rounded-[7.5px] shadow-sm uppercase">{item.date}</span>
                                 </div>
                             );

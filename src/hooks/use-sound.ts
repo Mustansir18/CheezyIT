@@ -15,7 +15,10 @@ export const useSound = (src: string) => {
 
   // This effect creates the Audio object on the client-side when the component mounts.
   useEffect(() => {
-    audioRef.current = new Audio(src);
+    const audio = new Audio(src);
+    audio.preload = 'auto'; // Explicitly tell the browser to download the whole file
+    audioRef.current = audio;
+
 
     // Cleanup function to run when the component unmounts.
     return () => {
