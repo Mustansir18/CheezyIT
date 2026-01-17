@@ -20,7 +20,6 @@ import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from './ui/calendar';
@@ -68,6 +67,7 @@ export default function AdminTicketList() {
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [regionFilter, setRegionFilter] = useState('all');
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -140,6 +140,10 @@ export default function AdminTicketList() {
     }, {} as Record<string, string>);
   }, [allUsers]);
 
+  const availableRegions = useMemo(() => {
+    return Array.from(new Set(allTickets.map(t => t.region).filter(Boolean))).sort();
+  }, [allTickets]);
+
   const filteredTickets = useMemo(() => {
     let tickets = allTickets;
 
@@ -177,9 +181,13 @@ export default function AdminTicketList() {
     if (statusFilter !== 'all') {
         tickets = tickets.filter(ticket => ticket.status === statusFilter);
     }
+    
+    if (regionFilter !== 'all') {
+        tickets = tickets.filter(ticket => ticket.region === regionFilter);
+    }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
+  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, regionFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
@@ -266,14 +274,6 @@ export default function AdminTicketList() {
         </Card>
       </div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <Tabs defaultValue="all" className="w-auto" onValueChange={setStatusFilter}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="Pending">Pending</TabsTrigger>
-            <TabsTrigger value="In Progress">In Progress</TabsTrigger>
-            <TabsTrigger value="Resolved">Resolved</TabsTrigger>
-          </TabsList>
-        </Tabs>
         <div className="flex items-center gap-2">
             <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -366,8 +366,46 @@ export default function AdminTicketList() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Region</TableHead>
+                        <TableHead>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="-ml-3">
+                                        Status
+                                        <Filter className="ml-2 h-3 w-3" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                    <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableHead>
+                        <TableHead>
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="-ml-3">
+                                        Region
+                                        <Filter className="ml-2 h-3 w-3" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                    <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
+                                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                                        <DropdownMenuSeparator />
+                                        {availableRegions.map(region => (
+                                            <DropdownMenuRadioItem key={region} value={region}>
+                                                {region}
+                                            </DropdownMenuRadioItem>
+                                        ))}
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Completed</TableHead>
                         <TableHead>Resolved By</TableHead>
