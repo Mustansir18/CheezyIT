@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, query, orderBy, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Bell, Trash2 } from 'lucide-react';
@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useSound } from '@/hooks/use-sound';
 
 type UserNotification = {
     id: string;
@@ -29,6 +30,9 @@ export default function AnnouncementBell() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
+    
+    const playNotificationSound = useSound('/notification.mp3');
+    const prevUnreadCountRef = useRef<number | undefined>(undefined);
 
     const notificationsQuery = useMemoFirebase(
         () => user ? query(collection(firestore, 'users', user.uid, 'notifications'), orderBy('createdAt', 'desc')) : null,
@@ -40,6 +44,22 @@ export default function AnnouncementBell() {
         if (!notifications) return 0;
         return notifications.filter(n => !n.isRead).length;
     }, [notifications]);
+
+    useEffect(() => {
+        // On initial load, set the ref to the current count without playing a sound.
+        if (prevUnreadCountRef.current === undefined && !isLoading) {
+            prevUnreadCountRef.current = unreadCount;
+            return;
+        }
+
+        // Play sound only when the unread count increases from its previous state.
+        if (!isLoading && prevUnreadCountRef.current !== undefined && unreadCount > prevUnreadCountRef.current) {
+            playNotificationSound();
+        }
+
+        // Update the ref with the new count for the next render.
+        prevUnreadCountRef.current = unreadCount;
+    }, [unreadCount, isLoading, playNotificationSound]);
 
     const handleMarkAsRead = async (notificationId: string) => {
         if (!user) return;

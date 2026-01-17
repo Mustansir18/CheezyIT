@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import AudioPlayer from '@/components/audio-player';
+import { useSound } from '@/hooks/use-sound';
 
 const WA_COLORS = {
     bg: '#0b141a',
@@ -39,13 +40,41 @@ export default function TicketChat({ ticket, canManageTicket, backLink, onStatus
     const userProfileRef = useMemoFirebase(() => (userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
     const { data: ticketOwnerProfile } = useDoc<any>(userProfileRef);
     const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
-    const { data: messages } = useCollection<ChatMessage>(messagesQuery);
+    const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
+    
+    const playMessageSound = useSound('/message.mp3');
+    const prevMessagesCountRef = useRef<number | undefined>(undefined);
 
     useLayoutEffect(() => {
         if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
     }, [messages]);
+
+    useEffect(() => {
+        if (messagesLoading || !messages) {
+            return;
+        }
+
+        // On initial load, set the ref to the current count without playing a sound.
+        if (prevMessagesCountRef.current === undefined) {
+            prevMessagesCountRef.current = messages.length;
+            return;
+        }
+
+        // Check if a new message has been added
+        if (messages.length > prevMessagesCountRef.current) {
+            const lastMessage = messages[messages.length - 1];
+            // Play sound if the last message is not from the current user
+            if (lastMessage && user && lastMessage.userId !== user.uid) {
+                playMessageSound();
+            }
+        }
+
+        // Update the ref with the new message count for the next render
+        prevMessagesCountRef.current = messages.length;
+    }, [messages, messagesLoading, user, playMessageSound]);
+
 
     const messagesWithDateSeparators = useMemo(() => {
         const items: any[] = [];
