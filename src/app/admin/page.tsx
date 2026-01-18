@@ -79,33 +79,22 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div>
-      <div className="relative h-[200px] -mx-4 md:-mx-8 overflow-hidden">
-        <Image
-            src="/background.png"
-            alt="Dashboard Banner"
-            fill
-            className="object-contain"
-            priority
-        />
-      </div>
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {navItems.map((item) => (
-          <Link href={item.href} key={item.href} className="group">
-            <Card className="h-full shadow-md transition-all hover:shadow-xl hover:-translate-y-1 duration-200 group-hover:border-primary">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg font-bold font-headline">{item.title}</CardTitle>
-                <item.icon className="h-6 w-6 text-accent" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {item.description}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {navItems.map((item) => (
+        <Link href={item.href} key={item.href} className="group">
+          <Card className="h-full shadow-md transition-all hover:shadow-xl hover:-translate-y-1 duration-200 group-hover:border-primary">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-lg font-bold font-headline">{item.title}</CardTitle>
+              <item.icon className="h-6 w-6 text-accent" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {item.description}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      ))}
     </div>
   );
 }

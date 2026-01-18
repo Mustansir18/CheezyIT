@@ -28,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const isPrivilegedUser = user && (isRoot(user.email) || userProfile?.role === 'it-support' || userProfile?.role === 'Admin');
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
+    const isDashboardHomePage = pathname === '/dashboard';
 
     useEffect(() => {
         if (!userLoading && !profileLoading) {
@@ -70,9 +71,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </header>
             )}
+            {isDashboardHomePage && (
+                 <div className="relative h-[200px] w-full overflow-hidden">
+                    <Image
+                        src="/background.png"
+                        alt="Dashboard Banner"
+                        fill
+                        className="object-contain"
+                        priority
+                    />
+                </div>
+            )}
             <main className={cn(
                 "flex flex-1 flex-col",
-                isTicketPage ? "min-h-0" : "px-4 pb-4 md:px-8 md:pb-8"
+                isTicketPage ? "min-h-0" : "px-4 pb-4 md:px-8 md:pb-8 pt-8"
             )}>
                 {children}
             </main>

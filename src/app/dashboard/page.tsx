@@ -31,18 +31,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-       <div className="relative h-[200px] -mx-4 md:-mx-8 overflow-hidden">
-        <Image
-          src="/background.png"
-          alt="Dashboard Banner"
-          fill
-          className="object-contain"
-          priority
-        />
-      </div>
-      <div className="mt-8">
-        <DashboardClient tickets={tickets} stats={stats} />
-      </div>
+      <DashboardClient tickets={tickets} stats={stats} />
     </div>
   );
 }

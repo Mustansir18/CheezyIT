@@ -30,6 +30,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return false;
   }, [user, userProfile]);
 
+  const isAdminHomePage = pathname === '/admin';
+
   useEffect(() => {
     if (!userLoading && !profileLoading) {
       if (!user || !isAuthorized) {
@@ -72,7 +74,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <UserNav />
         </div>
       </header>
-      <main className="flex flex-1 flex-col px-4 pb-4 md:px-8 md:pb-8">
+      {isAdminHomePage && (
+        <div className="relative h-[200px] w-full overflow-hidden">
+            <Image
+                src="/background.png"
+                alt="Dashboard Banner"
+                fill
+                className="object-contain"
+                priority
+            />
+        </div>
+      )}
+      <main className="flex flex-1 flex-col px-4 pb-4 pt-8 md:px-8 md:pb-8">
         {children}
       </main>
     </div>
