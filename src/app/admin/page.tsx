@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <div className="relative h-[200px] -mt-8 -mx-4 md:-mx-8 overflow-hidden">
+      <div className="relative h-[200px] -mx-4 md:-mx-8 overflow-hidden">
         <Image
             src="/background.png"
             alt="Dashboard Banner"
