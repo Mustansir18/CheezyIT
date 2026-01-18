@@ -80,9 +80,9 @@ export default function LoginPage() {
           <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
           <div className="pt-2 text-center">
             <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
-            <CardDescription className="pt-2 text-base">
+            <p className={cn("text-sm text-muted-foreground", "pt-2 text-base")}>
               Welcome
-            </CardDescription>
+            </p>
           </div>
         </CardHeader>
         <CardContent className="p-4">
