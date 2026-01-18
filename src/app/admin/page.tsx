@@ -9,6 +9,7 @@ import { useMemo, useEffect } from 'react';
 import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const baseNavItems = [
   {
@@ -54,6 +55,8 @@ export default function AdminDashboardPage() {
   const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   
   const loading = userLoading || profileLoading;
+
+  const bannerImage = PlaceHolderImages.find(p => p.id === 'dashboard-banner');
   
   useEffect(() => {
     if (!loading && userIsSupport) {
@@ -80,15 +83,19 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-center">
-        <Image
-          src="/logo.png"
-          alt="Dashboard Banner"
-          width={150}
-          height={150}
-          priority
-        />
-      </div>
+      {bannerImage && (
+        <div className="overflow-hidden rounded-lg shadow-md">
+            <Image
+                src={bannerImage.imageUrl}
+                alt={bannerImage.description}
+                width={1200}
+                height={300}
+                className="w-full object-cover"
+                priority
+                data-ai-hint={bannerImage.imageHint}
+            />
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
           <Link href={item.href} key={item.href} className="group">

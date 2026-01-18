@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { type Ticket } from '@/lib/data';
 import DashboardClient from '@/components/dashboard-client';
 import { useUser } from '@/firebase';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function DashboardPage() {
   const { user, loading } = useUser();
@@ -15,6 +16,8 @@ export default function DashboardPage() {
   // In a real app, this would fetch from Firestore.
   const tickets: Ticket[] = []; // Start with empty and fetch inside client
   const stats = { pending: 0, inProgress: 0, resolved: 0};
+
+  const bannerImage = PlaceHolderImages.find(p => p.id === 'dashboard-banner');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,15 +35,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-center">
-        <Image
-          src="/logo.png"
-          alt="Dashboard Banner"
-          width={150}
-          height={150}
-          priority
-        />
-      </div>
+       {bannerImage && (
+        <div className="overflow-hidden rounded-lg shadow-md">
+          <Image
+            src={bannerImage.imageUrl}
+            alt={bannerImage.description}
+            width={1200}
+            height={300}
+            className="w-full object-cover"
+            priority
+            data-ai-hint={bannerImage.imageHint}
+          />
+        </div>
+      )}
       <DashboardClient tickets={tickets} stats={stats} />
     </div>
   );
