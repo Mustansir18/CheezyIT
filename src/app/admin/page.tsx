@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div>
       <div className="relative h-[200px] -mt-8 -mx-4 md:-mx-8 overflow-hidden">
         <Image
             src="/background.png"
@@ -89,7 +89,7 @@ export default function AdminDashboardPage() {
             priority
         />
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
           <Link href={item.href} key={item.href} className="group">
             <Card className="h-full shadow-md transition-all hover:shadow-xl hover:-translate-y-1 duration-200 group-hover:border-primary">

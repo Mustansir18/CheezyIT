@@ -30,7 +30,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div>
        <div className="relative h-[200px] -mt-8 -mx-4 md:-mx-8 overflow-hidden">
         <Image
           src="/background.png"
@@ -40,7 +40,9 @@ export default function DashboardPage() {
           priority
         />
       </div>
-      <DashboardClient tickets={tickets} stats={stats} />
+      <div className="mt-8">
+        <DashboardClient tickets={tickets} stats={stats} />
+      </div>
     </div>
   );
 }
