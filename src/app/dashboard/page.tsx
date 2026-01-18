@@ -31,7 +31,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-       <div className="relative h-[200px] w-full overflow-hidden rounded-lg shadow-md">
+       <div className="relative h-[200px] -mt-8 -mx-4 md:-mx-8 overflow-hidden">
         <Image
           src="/background.png"
           alt="Dashboard Banner"
