@@ -4,7 +4,8 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { doc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import TicketChat from '@/components/ticket-chat';
 import type { Ticket, TicketStatus } from '@/lib/data';
@@ -125,7 +126,7 @@ export default function TicketDetailPage() {
     if (userLoading || ticketLoading || profileLoading || !effectiveUserId) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
+                <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
             </div>
         );
     }

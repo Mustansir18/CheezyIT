@@ -4,7 +4,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
-import { Loader2, Filter, Circle, CircleDot, CircleCheck } from 'lucide-react';
+import { Filter, Circle, CircleDot, CircleCheck } from 'lucide-react';
+import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -275,7 +276,7 @@ export default function AdminTicketList() {
   if (loading && allTickets.length === 0) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
       </Card>
     );
   }
@@ -468,7 +469,7 @@ export default function AdminTicketList() {
                         {loading ? (
                         <TableRow>
                             <TableCell colSpan={7} className="h-24 text-center">
-                                <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                                <Image src="/logo.png" alt="Loading..." width={60} height={60} className="mx-auto animate-spin" />
                             </TableCell>
                         </TableRow>
                         ) : filteredTickets.length > 0 ? (

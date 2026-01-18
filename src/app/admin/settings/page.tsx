@@ -2,7 +2,8 @@
 import UserManagement from '@/components/user-management';
 import { useUser } from '@/firebase';
 import { isRoot } from '@/lib/admins';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,7 @@ export default function AdminSettingsPage() {
   if (loading || !user || !isRoot(user.email)) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
       </div>
     );
   }

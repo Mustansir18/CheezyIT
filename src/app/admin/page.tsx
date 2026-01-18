@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Ticket, BarChart, Settings, Loader2, Megaphone } from 'lucide-react';
+import { Ticket, BarChart, Settings, Megaphone } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { useMemo, useEffect } from 'react';
@@ -73,7 +73,7 @@ export default function AdminDashboardPage() {
   if (loading || userIsSupport) {
       return (
         <div className="flex h-full w-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
       );
   }

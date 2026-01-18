@@ -3,7 +3,6 @@ import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { isRoot } from '@/lib/admins';
@@ -42,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (userLoading || profileLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
       </div>
     );
   }

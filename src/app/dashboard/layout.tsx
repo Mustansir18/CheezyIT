@@ -10,7 +10,6 @@ import { isRoot } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
-import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
 
@@ -43,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (userLoading || profileLoading || !user || (isPrivilegedUser && !isTicketPage)) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
       );
     }

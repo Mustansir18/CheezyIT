@@ -4,7 +4,8 @@ import AnnouncementHistory from '@/components/announcement-history';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { useMemo, useEffect } from 'react';
@@ -18,7 +19,6 @@ type UserProfile = {
 
 export default function AdminAnnouncementsPage() {
   const { user, loading: userLoading } = useUser();
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
   const firestore = useFirestore();
   const router = useRouter();
 
@@ -26,10 +26,10 @@ export default function AdminAnnouncementsPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const isAuthorized = useMemo(() => {
-    if (userIsRoot) return true;
+    if (user && isRoot(user.email)) return true;
     if (userProfile && userProfile.role === 'Admin') return true;
     return false;
-  }, [userIsRoot, userProfile]);
+  }, [user, userProfile]);
 
   useEffect(() => {
     if (!userLoading && !profileLoading && !isAuthorized) {
@@ -40,7 +40,7 @@ export default function AdminAnnouncementsPage() {
   if (userLoading || (!userIsRoot && profileLoading) || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
       </div>
     );
   }

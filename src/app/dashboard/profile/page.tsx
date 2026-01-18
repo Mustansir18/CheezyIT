@@ -3,7 +3,7 @@
 import UpdateProfileForm from '@/components/update-profile-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { doc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 
@@ -21,7 +21,7 @@ export default function ProfilePage() {
     if (userLoading || profileLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
+                <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
             </div>
         );
     }

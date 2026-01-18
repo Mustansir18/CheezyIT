@@ -1,7 +1,7 @@
 'use client';
 import AdminTicketList from '@/components/admin-ticket-list';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -29,7 +29,7 @@ export default function AdminTicketsPage() {
   if (loading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
       );
   }

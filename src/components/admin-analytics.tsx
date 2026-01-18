@@ -5,7 +5,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, Legend, LineChart, Line, CartesianGrid } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
-import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup } from 'firebase/firestore';
 
@@ -272,7 +273,7 @@ export default function AdminAnalytics() {
   if (loading) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
       </Card>
     );
   }
