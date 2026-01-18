@@ -117,7 +117,7 @@ export default function AdminTicketList() {
     if (!userLoading && !profileLoading) {
         fetchTicketsAndUsers();
     }
-  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore]);
+  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
 
   const loading = userLoading || profileLoading || ticketsLoading;
 
@@ -210,7 +210,7 @@ export default function AdminTicketList() {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 
-  const handleExport = async (format: 'pdf' | 'excel') => {
+  const handleExport = async (exportFormat: 'pdf' | 'excel') => {
     if (filteredTickets.length === 0) {
         toast({
             variant: 'destructive',
@@ -234,7 +234,7 @@ export default function AdminTicketList() {
     ]);
 
     try {
-        await exportData(format, title, columns, data);
+        await exportData(exportFormat, title, columns, data);
     } catch (error) {
         console.error("Export failed", error);
         toast({
