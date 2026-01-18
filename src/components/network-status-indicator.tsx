@@ -6,53 +6,46 @@ import { useToast } from '@/hooks/use-toast';
 
 export function NetworkStatusIndicator() {
   const { toast, dismiss } = useToast();
-  const [isOnline, setIsOnline] = useState(true);
+  // Start with `undefined` to avoid hydration mismatch on the server and client.
+  const [isOnline, setIsOnline] = useState<boolean | undefined>(undefined);
   const toastIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Set initial state
-    if (typeof window !== 'undefined' && typeof window.navigator !== 'undefined') {
-      setIsOnline(window.navigator.onLine);
-    }
-
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+    // This effect runs only on the client, after initial hydration.
+    const handleStatusChange = () => {
+      setIsOnline(navigator.onLine);
     };
-  }, []);
+
+    // Set the initial status when the component mounts.
+    handleStatusChange();
+
+    // Listen for changes in the network status.
+    window.addEventListener('online', handleStatusChange);
+    window.addEventListener('offline', handleStatusChange);
+
+    // Cleanup the listeners when the component unmounts.
+    return () => {
+      window.removeEventListener('online', handleStatusChange);
+      window.removeEventListener('offline', handleStatusChange);
+    };
+  }, []); // The empty dependency array ensures this runs only once on mount.
 
   useEffect(() => {
-    if (!isOnline) {
-      // If a toast is already shown, don't show another one.
-      if (toastIdRef.current) {
-        dismiss(toastIdRef.current);
+    // This effect manages showing and hiding the toast.
+    // It does nothing until `isOnline` is a boolean.
+    if (isOnline === false) {
+      // If we are offline and no toast is currently shown, display one.
+      if (!toastIdRef.current) {
+        const { id } = toast({
+          variant: 'destructive',
+          title: 'You Are Offline',
+          description: 'Please check your connection. Some features may not be available.',
+          duration: Infinity,
+        });
+        toastIdRef.current = id;
       }
-
-      const { id } = toast({
-        title: 'Internet not working',
-        description: 'Please check your connection. Some features may not be available.',
-        duration: Infinity,
-        className: `
-          bg-[#DCF8C6]
-          text-black
-          border-none
-          rounded-2xl
-          px-6
-          py-4
-          text-base
-          max-w-[90%]
-          shadow-md
-        `,
-      });
-      toastIdRef.current = id;
-    } else {
-      // If online, dismiss any existing offline toast.
+    } else if (isOnline === true) {
+      // If we are online, dismiss any existing offline notification.
       if (toastIdRef.current) {
         dismiss(toastIdRef.current);
         toastIdRef.current = null;
@@ -60,5 +53,5 @@ export function NetworkStatusIndicator() {
     }
   }, [isOnline, toast, dismiss]);
 
-  return null; // This component does not render any UI directly.
+  return null; // This component does not render any UI.
 }
