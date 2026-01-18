@@ -79,7 +79,16 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <>
+    <div className="space-y-8">
+      <div className="flex justify-center">
+        <Image
+          src="/logo.png"
+          alt="Dashboard Banner"
+          width={150}
+          height={150}
+          priority
+        />
+      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
           <Link href={item.href} key={item.href} className="group">
@@ -97,6 +106,6 @@ export default function AdminDashboardPage() {
           </Link>
         ))}
       </div>
-    </>
+    </div>
   );
 }

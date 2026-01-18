@@ -31,8 +31,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <>
-        <DashboardClient tickets={tickets} stats={stats} />
-    </>
+    <div className="space-y-8">
+      <div className="flex justify-center">
+        <Image
+          src="/logo.png"
+          alt="Dashboard Banner"
+          width={150}
+          height={150}
+          priority
+        />
+      </div>
+      <DashboardClient tickets={tickets} stats={stats} />
+    </div>
   );
 }
