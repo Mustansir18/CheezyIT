@@ -103,19 +103,11 @@ export default function AdminAnalytics() {
 
         // Fetch Tickets
         let fetchedTickets: WithId<Ticket>[] = [];
-        if (isUserRoot || isUserAdminRole) {
-          const issuesCollectionGroup = collectionGroup(firestore, 'issues');
-          const issuesSnapshot = await getDocs(issuesCollectionGroup);
-          fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
-        } else if (isUserSupport) {
-          const ticketPromises = usersData.map(async (userDoc) => {
-            const ownerId = userDoc.id;
-            const issuesCollection = collection(firestore, 'users', ownerId, 'issues');
-            const issuesSnapshot = await getDocs(issuesCollection);
-            return issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
-          });
-          const ticketArrays = await Promise.all(ticketPromises);
-          fetchedTickets = ticketArrays.flat();
+        // Admin, Root, and IT Support will all use the more efficient collectionGroup query.
+        if (isUserRoot || isUserAdminRole || isUserSupport) {
+            const issuesCollectionGroup = collectionGroup(firestore, 'issues');
+            const issuesSnapshot = await getDocs(issuesCollectionGroup);
+            fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
         }
         setAllTickets(fetchedTickets);
       } catch (error: any) {

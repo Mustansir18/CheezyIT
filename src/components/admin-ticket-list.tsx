@@ -90,19 +90,11 @@ export default function AdminTicketList() {
         const usersData = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as WithId<UserWithDisplayName>[];
         setAllUsers(usersData);
 
-        if (isUserRoot || isUserAdminRole) {
-          const issuesCollectionGroup = collectionGroup(firestore, 'issues');
-          const issuesSnapshot = await getDocs(issuesCollectionGroup);
-          fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
-        } else if (isUserSupport) {
-          const ticketPromises = usersData.map(async (userDoc) => {
-            const ownerId = userDoc.id;
-            const issuesCollection = collection(firestore, 'users', ownerId, 'issues');
-            const issuesSnapshot = await getDocs(issuesCollection);
-            return issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
-          });
-          const ticketArrays = await Promise.all(ticketPromises);
-          fetchedTickets = ticketArrays.flat();
+        // Admin, Root, and IT Support will all use the more efficient collectionGroup query.
+        if (isUserRoot || isUserAdminRole || isUserSupport) {
+            const issuesCollectionGroup = collectionGroup(firestore, 'issues');
+            const issuesSnapshot = await getDocs(issuesCollectionGroup);
+            fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
         }
         
         setAllTickets(fetchedTickets);
@@ -585,3 +577,4 @@ export default function AdminTicketList() {
     
 
     
+
