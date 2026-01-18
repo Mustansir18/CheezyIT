@@ -36,11 +36,6 @@ export default function AdminTicketsPage() {
 
   return (
     <div className="space-y-4">
-        {userIsSupport && (
-          <div className="flex flex-col items-center justify-between">
-            <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
-          </div>
-        )}
         <div className="flex items-center gap-4">
             {!userIsSupport && (
                 <Button asChild variant="outline" size="icon">

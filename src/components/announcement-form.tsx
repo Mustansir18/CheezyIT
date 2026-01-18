@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, collection, getDocs, query, writeBatch, serverTimestamp, addDoc, collectionGroup } from 'firebase/firestore';
+import { isRoot } from '@/lib/admins';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -107,7 +108,7 @@ export default function AnnouncementForm() {
         }
         
         const recipientUids = targetUsers.map(user => user.id);
-        const senderDisplayName = currentUser.displayName || 'N/A';
+        const senderDisplayName = isRoot(currentUser.email) ? 'Root' : (currentUser.displayName || 'N/A');
 
         const announcementPayload = {
             title: data.title,

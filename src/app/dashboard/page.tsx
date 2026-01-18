@@ -32,9 +32,6 @@ export default function DashboardPage() {
 
   return (
     <>
-        <div className="flex flex-col items-center justify-between">
-          <Image src="/background.png" alt="Dashboard Banner" width={1200} height={200} className="w-full h-auto rounded-lg" quality={100} />
-        </div>
         <DashboardClient tickets={tickets} stats={stats} />
     </>
   );
