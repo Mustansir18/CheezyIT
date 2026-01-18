@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
@@ -8,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, collection, getDocs, query, writeBatch, serverTimestamp, addDoc, collectionGroup } from 'firebase/firestore';
 import { isRoot } from '@/lib/admins';
+import { format } from 'date-fns';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +18,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+
 
 const AVAILABLE_ROLES = ['User', 'Branch', 'it-support', 'Admin'];
 
@@ -26,6 +32,18 @@ const announcementSchema = z.object({
   targetRoles: z.array(z.string()),
   targetRegions: z.array(z.string()),
   targetUsers: z.array(z.string()),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
+}).refine(data => {
+    if (data.startDate && data.endDate) {
+        const endDate = new Date(data.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        return endDate > data.startDate;
+    }
+    return true;
+}, {
+    message: 'End date must be after the start date.',
+    path: ['endDate'],
 });
 
 type FormData = z.infer<typeof announcementSchema>;
@@ -67,6 +85,8 @@ export default function AnnouncementForm() {
       targetRoles: [],
       targetRegions: [],
       targetUsers: [],
+      startDate: undefined,
+      endDate: undefined,
     },
   });
 
@@ -116,6 +136,8 @@ export default function AnnouncementForm() {
             createdAt: serverTimestamp(),
             createdByUid: currentUser.uid,
             createdByDisplayName: senderDisplayName,
+            startDate: data.startDate || null,
+            endDate: data.endDate || null,
             target: {
                 roles: data.targetRoles,
                 regions: data.targetRegions,
@@ -154,6 +176,8 @@ export default function AnnouncementForm() {
                 isRead: false,
                 announcementId: announcementRef.id,
                 createdByDisplayName: senderDisplayName,
+                startDate: data.startDate || null,
+                endDate: data.endDate || null,
             };
 
             targetUsers.forEach(user => {
@@ -229,6 +253,99 @@ export default function AnnouncementForm() {
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Start Date (Optional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a start date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        The announcement will be visible from this date.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>End Date (Optional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick an end date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={(date) => {
+                                if (date) {
+                                    date.setHours(23, 59, 59, 999);
+                                }
+                                field.onChange(date);
+                            }}
+                            disabled={(date) =>
+                              form.getValues('startDate') ? date < form.getValues('startDate')! : false
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        The announcement will expire after this date.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
 
             <div className='space-y-2 pt-2'>
                 <FormLabel>Targeting Options</FormLabel>

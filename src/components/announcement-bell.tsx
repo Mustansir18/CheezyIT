@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useRef, useEffect } from 'react';
@@ -25,6 +26,8 @@ type UserNotification = {
     isRead: boolean;
     announcementId?: string;
     createdByDisplayName?: string;
+    startDate?: any;
+    endDate?: any;
 };
 
 export default function AnnouncementBell() {
@@ -43,10 +46,24 @@ export default function AnnouncementBell() {
     );
     const { data: notifications, isLoading } = useCollection<UserNotification>(notificationsQuery);
 
-    const unreadCount = useMemo(() => {
-        if (!notifications) return 0;
-        return notifications.filter(n => !n.isRead).length;
+    const visibleNotifications = useMemo(() => {
+        if (!notifications) return [];
+        const now = new Date();
+        return notifications.filter(n => {
+            const start = n.startDate ? n.startDate.toDate() : null;
+            const end = n.endDate ? n.endDate.toDate() : null;
+
+            if (start && now < start) return false; // Not yet started
+            if (end && now > end) return false; // Expired
+            
+            return true;
+        });
     }, [notifications]);
+
+    const unreadCount = useMemo(() => {
+        if (!visibleNotifications) return 0;
+        return visibleNotifications.filter(n => !n.isRead).length;
+    }, [visibleNotifications]);
 
     useEffect(() => {
         if (isLoading) return;
@@ -110,8 +127,8 @@ export default function AnnouncementBell() {
     };
 
     const handleMarkAllAsRead = async () => {
-        if (!user || !notifications) return;
-        const unreadNotifications = notifications.filter(n => !n.isRead);
+        if (!user || !visibleNotifications) return;
+        const unreadNotifications = visibleNotifications.filter(n => !n.isRead);
         if (unreadNotifications.length === 0) return;
 
         const batch = writeBatch(firestore);
@@ -172,21 +189,21 @@ export default function AnnouncementBell() {
                         <div className="px-6 py-4 space-y-2">
                             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
                         </div>
-                    ) : notifications && notifications.length > 0 ? (
+                    ) : visibleNotifications && visibleNotifications.length > 0 ? (
                         <Accordion
                             type="single"
                             collapsible
                             className="w-full px-6 py-4 space-y-2"
                             onValueChange={(value) => {
-                                if (value && notifications) {
-                                    const notificationToRead = notifications.find(n => n.id === value);
+                                if (value && visibleNotifications) {
+                                    const notificationToRead = visibleNotifications.find(n => n.id === value);
                                     if (notificationToRead && !notificationToRead.isRead) {
                                         handleMarkAsRead(notificationToRead);
                                     }
                                 }
                             }}
                         >
-                            {notifications.map(n => (
+                            {visibleNotifications.map(n => (
                                 <AccordionItem value={n.id} key={n.id} className={`border rounded-lg overflow-hidden ${!n.isRead ? 'border-primary/50' : 'border-border'}`}>
                                     <AccordionTrigger className="p-3 hover:no-underline hover:bg-accent/50 data-[state=open]:bg-accent/50">
                                         <div className="flex justify-between items-center w-full">

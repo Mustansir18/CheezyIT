@@ -186,6 +186,8 @@
         "title": { "type": "string", "description": "The title of the announcement." },
         "message": { "type": "string", "description": "The message content of the announcement." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the announcement was created." },
+        "startDate": { "type": "string", "format": "date-time", "description": "The start date and time for the announcement to be visible. Optional." },
+        "endDate": { "type": "string", "format": "date-time", "description": "The end date and time after which the announcement will be hidden. Optional." },
         "createdByUid": { "type": "string", "description": "The UID of the admin who sent the announcement." },
         "createdByDisplayName": { "type": "string", "description": "The display name of the admin who sent the announcement." },
         "target": {
@@ -219,10 +221,13 @@
         "title": { "type": "string", "description": "The title of the notification." },
         "message": { "type": "string", "description": "The message content of the notification." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the notification was created." },
+        "startDate": { "type": "string", "format": "date-time", "description": "The start date and time for the announcement to be visible. Optional." },
+        "endDate": { "type": "string", "format": "date-time", "description": "The end date and time after which the announcement will be hidden. Optional." },
         "isRead": { "type": "boolean", "description": "True if the user has read the notification." },
-        "announcementId": { "type": "string", "description": "A reference to the master announcement document, if applicable." }
+        "announcementId": { "type": "string", "description": "A reference to the master announcement document, if applicable." },
+        "createdByDisplayName": { "type": "string", "description": "The display name of the user who sent the announcement." }
       },
-      "required": ["title", "message", "createdAt", "isRead"]
+      "required": ["title", "message", "createdAt", "isRead", "createdByDisplayName"]
     },
     "RegionSettings": {
         "title": "Region Settings",
@@ -297,4 +302,3 @@
     }
   }
 }
-

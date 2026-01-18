@@ -18,6 +18,8 @@ type Announcement = {
     title: string;
     message: string;
     createdAt: any;
+    startDate?: any;
+    endDate?: any;
     createdByDisplayName: string;
     recipientCount: number;
     recipientUids: string[];
@@ -40,11 +42,23 @@ function AnnouncementDetailsDialog({ announcement }: { announcement: Announcemen
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>{announcement.title}</DialogTitle>
-                    <DialogDescription>
-                        Sent on {format(announcement.createdAt.toDate(), 'PPP p')} by {announcement.createdByDisplayName}
+                     <DialogDescription>
+                        Details about the announcement and its read status.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-6 py-4">
+                    <div>
+                        <h4 className="font-semibold mb-2">Details</h4>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                            <p><strong>Sent:</strong> {format(announcement.createdAt.toDate(), 'PPP p')} by {announcement.createdByDisplayName}</p>
+                            <p>
+                                <strong>Active Period:</strong> 
+                                {announcement.startDate ? format(announcement.startDate.toDate(), 'PP') : 'Always'}
+                                {' to '}
+                                {announcement.endDate ? format(announcement.endDate.toDate(), 'PP') : 'Never'}
+                            </p>
+                        </div>
+                    </div>
                     <div>
                         <h4 className="font-semibold mb-2">Message</h4>
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{announcement.message}</p>
@@ -81,6 +95,7 @@ export default function AnnouncementHistory() {
                         <TableRow>
                             <TableHead>Title</TableHead>
                             <TableHead>Sent Date</TableHead>
+                            <TableHead>Active Period</TableHead>
                             <TableHead>Sent By</TableHead>
                             <TableHead>Recipients</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -90,7 +105,7 @@ export default function AnnouncementHistory() {
                         {isLoading ? (
                             [...Array(3)].map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                                    <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))
                         ) : announcements && announcements.length > 0 ? (
@@ -98,6 +113,11 @@ export default function AnnouncementHistory() {
                                 <TableRow key={announcement.id}>
                                     <TableCell className="font-medium">{announcement.title}</TableCell>
                                     <TableCell>{announcement.createdAt ? format(announcement.createdAt.toDate(), 'PP') : 'N/A'}</TableCell>
+                                    <TableCell>
+                                        {announcement.startDate ? format(announcement.startDate.toDate(), 'PP') : 'From start'}
+                                        {' to '}
+                                        {announcement.endDate ? format(announcement.endDate.toDate(), 'PP') : 'No Expiry'}
+                                    </TableCell>
                                     <TableCell>{announcement.createdByDisplayName}</TableCell>
                                     <TableCell>{announcement.recipientCount}</TableCell>
                                     <TableCell className="text-right">
@@ -107,7 +127,7 @@ export default function AnnouncementHistory() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">No announcements have been sent yet.</TableCell>
+                                <TableCell colSpan={6} className="h-24 text-center">No announcements have been sent yet.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
