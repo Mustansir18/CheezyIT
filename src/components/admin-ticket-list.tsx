@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
-import { Filter, Circle, CircleDot, CircleCheck } from 'lucide-react';
+import { Filter, Circle, CircleDot, CircleCheck, FileDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup } from 'firebase/firestore';
@@ -20,11 +20,12 @@ import { getStats } from '@/lib/data';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { exportData } from '@/lib/export';
 
 
 type UserProfile = {
@@ -67,6 +68,7 @@ export default function AdminTicketList() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -185,6 +187,43 @@ export default function AdminTicketList() {
   const handleTicketClick = (ticket: WithId<Ticket>) => {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
+
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    if (filteredTickets.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'No Data',
+            description: 'There is no data to export.'
+        });
+        return;
+    }
+    setExporting(true);
+    const title = "All Tickets Report";
+    const columns = ['Ticket ID', 'Title', 'User', 'Status', 'Region', 'Created', 'Completed', 'Resolved By'];
+    const data = filteredTickets.map(ticket => [
+        ticket.id,
+        ticket.title,
+        usersMap[ticket.userId] || 'Unknown User',
+        ticket.status,
+        ticket.region || 'N/A',
+        ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A',
+        ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A',
+        ticket.resolvedByDisplayName || 'N/A',
+    ]);
+
+    try {
+        await exportData(format, title, columns, data);
+    } catch (error) {
+        console.error("Export failed", error);
+        toast({
+            variant: 'destructive',
+            title: 'Export Failed',
+            description: 'There was an error while generating the file.'
+        });
+    } finally {
+        setExporting(false);
+    }
+};
 
   const filterControls = (
     <div className="flex items-center gap-2">
@@ -359,8 +398,26 @@ export default function AdminTicketList() {
 
       <Card>
         <CardHeader>
-            <CardTitle>All Tickets</CardTitle>
-            <CardDescription>A list of all support tickets. Use the filters to narrow your search.</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <CardTitle>All Tickets</CardTitle>
+                    <CardDescription>A list of all support tickets. Use the filters to narrow your search.</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button disabled={exporting}>
+                                {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                Download Report
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExport('pdf')}>As PDF</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('excel')}>As Excel</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
         </CardHeader>
         <CardContent>
             {/* Mobile Filters */}

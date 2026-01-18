@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Bar, BarChart, XAxis, YAxis, LineChart, Line, CartesianGrid, Cell } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup } from 'firebase/firestore';
@@ -22,6 +22,8 @@ import type { Ticket } from '@/lib/data';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { exportData } from '@/lib/export';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 type UserProfile = {
   role: string;
@@ -34,6 +36,42 @@ type User = {
     role: 'User' | 'it-support' | 'Admin';
 };
 
+
+function ExportButtons({ title, columns, data }: { title: string, columns: string[], data: any[][] }) {
+    const [exporting, setExporting] = useState(false);
+    const { toast } = useToast();
+
+    const handleExport = async (format: 'pdf' | 'excel') => {
+        setExporting(true);
+        try {
+            await exportData(format, title, columns, data);
+        } catch (error) {
+            console.error("Export failed", error);
+            toast({
+                variant: 'destructive',
+                title: 'Export Failed',
+                description: 'There was an error while generating the file.'
+            });
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button disabled={exporting} size="sm" variant="outline">
+                    {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    Download
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>As PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('excel')}>As Excel</DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
 
 const getResolutionTime = (createdAt: any, completedAt: any): {time: string, minutes: number} => {
     if (!completedAt || !createdAt) return { time: 'N/A', minutes: 0 };
@@ -314,8 +352,19 @@ export default function AdminAnalytics() {
             <TabsContent value="user_tickets">
                  <Card>
                     <CardHeader>
-                        <CardTitle>Tickets Created by User</CardTitle>
-                        <CardDescription>Total tickets created by each user in the selected period.</CardDescription>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Tickets Created by User</CardTitle>
+                                <CardDescription>Total tickets created by each user in the selected period.</CardDescription>
+                            </div>
+                            {userCreatedData.length > 0 && (
+                                <ExportButtons 
+                                    title="Tickets Created by User"
+                                    columns={['User Name', 'Tickets Created']}
+                                    data={userCreatedData.map(item => [item.name, item.count])}
+                                />
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
                          <Table>
@@ -354,8 +403,19 @@ export default function AdminAnalytics() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Tickets Resolved by Agent</CardTitle>
-                            <CardDescription>Total tickets resolved by each agent in the selected period.</CardDescription>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <div>
+                                    <CardTitle>Tickets Resolved by Agent</CardTitle>
+                                    <CardDescription>Total tickets resolved by each agent in the selected period.</CardDescription>
+                                </div>
+                                {supportResolvedData.length > 0 && (
+                                    <ExportButtons
+                                        title="Tickets Resolved by Agent"
+                                        columns={['Agent Name', 'Tickets Resolved']}
+                                        data={supportResolvedData.map(item => [item.name, item.count])}
+                                    />
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -382,8 +442,24 @@ export default function AdminAnalytics() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Resolution Details</CardTitle>
-                            <CardDescription>Details for each ticket resolved by Admin &amp; IT Support in the selected period.</CardDescription>
+                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <div>
+                                    <CardTitle>Resolution Details</CardTitle>
+                                    <CardDescription>Details for each ticket resolved by Admin &amp; IT Support.</CardDescription>
+                                </div>
+                                {resolvedSupportTickets.length > 0 && (
+                                    <ExportButtons
+                                        title="Ticket Resolution Details"
+                                        columns={['Ticket Title', 'Resolved By', 'Original User', 'Resolution Time']}
+                                        data={resolvedSupportTickets.map(ticket => [
+                                            ticket.title,
+                                            ticket.resolvedByDisplayName || 'N/A',
+                                            usersMap[ticket.userId] || 'Unknown',
+                                            getResolutionTime(ticket.createdAt, ticket.completedAt).time
+                                        ])}
+                                    />
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -417,8 +493,19 @@ export default function AdminAnalytics() {
             <TabsContent value="region_report">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Tickets by Region</CardTitle>
-                        <CardDescription>Total number of tickets created per region in the selected period.</CardDescription>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Tickets by Region</CardTitle>
+                                <CardDescription>Total number of tickets created per region in the selected period.</CardDescription>
+                            </div>
+                            {regionData.length > 0 && (
+                                <ExportButtons
+                                    title="Tickets by Region"
+                                    columns={['Region', 'Number of Tickets']}
+                                    data={regionData.map(item => [item.region, item.tickets])}
+                                />
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {regionData.length > 0 ? (
@@ -455,8 +542,19 @@ export default function AdminAnalytics() {
             <TabsContent value="hourly_report">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Hourly Ticket Volume</CardTitle>
-                        <CardDescription>Number of tickets created each hour within the selected date range.</CardDescription>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Hourly Ticket Volume</CardTitle>
+                                <CardDescription>Number of tickets created each hour within the selected date range.</CardDescription>
+                            </div>
+                            {hourlyData.reduce((acc, curr) => acc + curr.tickets, 0) > 0 && (
+                                <ExportButtons
+                                    title="Hourly Ticket Volume"
+                                    columns={['Hour', 'Number of Tickets']}
+                                    data={hourlyData.map(item => [item.name, item.tickets])}
+                                />
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {hourlyData.reduce((acc, curr) => acc + curr.tickets, 0) > 0 ? (
