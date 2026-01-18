@@ -13,6 +13,8 @@ import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { isRoot } from '@/lib/admins';
+import { cn } from '@/lib/utils';
+
 
 type UserProfile = {
   role: string;
@@ -66,7 +68,7 @@ export default function LoginPage() {
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-950">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
       </div>
     );
   }
@@ -74,16 +76,16 @@ export default function LoginPage() {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-950 px-4">
       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center items-center p-6 pb-4">
-          <Image src="/logo.png" alt="Cheezious IT Support Logo" width={60} height={60} />
-          <div className="pt-2">
-            <CardTitle className="text-2xl font-headline font-bold text-primary">Cheezious IT Support</CardTitle>
-            <CardDescription className="pt-1 text-sm">
-              Sign in to continue
+        <CardHeader className="text-center items-center p-4 pb-2">
+          <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
+          <div className="pt-2 text-center">
+            <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
+            <CardDescription className="pt-2 text-base">
+              Welcome
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <form onSubmit={handleAuthAction} className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
@@ -113,7 +115,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="flex flex-col pt-2 pb-4">
            <p className="text-xs text-center text-muted-foreground">
-            Contact an administrator if you have trouble signing in.
+            Sign in to continue
           </p>
         </CardFooter>
       </Card>
