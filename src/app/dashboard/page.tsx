@@ -31,12 +31,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-       <div className="relative h-[250px] w-full overflow-hidden rounded-lg shadow-md">
+       <div className="relative h-[200px] w-full overflow-hidden rounded-lg shadow-md">
         <Image
           src="/background.png"
           alt="Dashboard Banner"
           fill
-          className="object-cover"
+          className="object-contain"
           priority
         />
       </div>
