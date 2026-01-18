@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, Legend, LineChart, Line, CartesianGrid } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, LineChart, Line, CartesianGrid, Cell } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -22,12 +22,6 @@ import type { Ticket } from '@/lib/data';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-const COLORS = {
-  Pending: 'hsl(var(--chart-3))',
-  'In Progress': 'hsl(var(--chart-4))',
-  Resolved: 'hsl(var(--chart-2))',
-};
 
 type UserProfile = {
   role: string;
@@ -186,23 +180,6 @@ export default function AdminAnalytics() {
     });
   }, [allTickets, date, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
 
-  const { statusData, chartConfig } = useMemo(() => {
-    const statusCounts: { [key: string]: number } = { Pending: 0, 'In Progress': 0, Resolved: 0 };
-    for (const ticket of filteredTickets) {
-      if (ticket.status) statusCounts[ticket.status]++;
-    }
-
-    const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value, fill: COLORS[name as keyof typeof COLORS] }));
-    
-    const chartConfig = {
-      value: { label: 'Tickets' },
-      Pending: { label: 'Pending', color: COLORS.Pending },
-      'In Progress': { label: 'In Progress', color: COLORS['In Progress'] },
-      Resolved: { label: 'Resolved', color: COLORS.Resolved },
-    };
-    return { statusData, chartConfig };
-  }, [filteredTickets]);
-  
   const userCreatedTickets = useMemo(() => {
     return filteredTickets.filter(ticket => userRolesMap[ticket.userId] === 'User' || userRolesMap[ticket.userId] === 'Branch');
   }, [filteredTickets, userRolesMap]);
@@ -333,37 +310,15 @@ export default function AdminAnalytics() {
             </CardHeader>
         </Card>
       
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue="user_tickets">
             <div className="w-full overflow-x-auto">
                 <TabsList>
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="user_tickets">User Tickets</TabsTrigger>
                     <TabsTrigger value="support_performance">Support Performance</TabsTrigger>
                     <TabsTrigger value="region_report">Region Report</TabsTrigger>
                     <TabsTrigger value="hourly_report">Hourly Report</TabsTrigger>
                 </TabsList>
             </div>
-            <TabsContent value="overview">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Tickets by Status</CardTitle>
-                        <CardDescription>A summary of all tickets in the selected period.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-center">
-                        <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px] max-w-sm">
-                            <PieChart>
-                                <ChartTooltipContent hideLabel />
-                                <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                                {statusData.map((entry) => (
-                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                                ))}
-                                </Pie>
-                                <Legend />
-                            </PieChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-            </TabsContent>
             <TabsContent value="user_tickets">
                  <Card>
                     <CardHeader>
@@ -562,11 +517,3 @@ export default function AdminAnalytics() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    
