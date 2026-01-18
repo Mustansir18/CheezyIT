@@ -127,7 +127,7 @@ export default function AdminAnalytics() {
     if (!userLoading && !profileLoading) {
         fetchTicketsAndUsers();
     }
-  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
+  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore]);
 
   const loading = userLoading || profileLoading || ticketsLoading;
 
@@ -509,3 +509,5 @@ export default function AdminAnalytics() {
     </div>
   );
 }
+
+    
