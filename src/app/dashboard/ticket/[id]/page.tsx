@@ -3,7 +3,7 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { doc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, updateDoc, deleteDoc, deleteField, addDoc, collection } from 'firebase/firestore';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -123,6 +123,68 @@ export default function TicketDetailPage() {
             });
     };
 
+    const handleReopenTicket = () => {
+        if (!ticketRef || !isOwner) return;
+
+        const updateData = {
+            status: 'In Progress',
+            updatedAt: serverTimestamp(),
+            unreadByAdmin: true,
+            unreadByUser: false,
+            completedAt: deleteField(),
+            resolvedBy: deleteField(),
+            resolvedByDisplayName: deleteField(),
+        };
+
+        updateDoc(ticketRef, updateData)
+            .then(() => {
+                toast({ title: 'Ticket Reopened', description: 'Your ticket is now In Progress.' });
+                
+                const messagesColRef = collection(firestore, 'users', effectiveUserId!, 'issues', ticketId, 'messages');
+                addDoc(messagesColRef, {
+                    userId: 'system',
+                    displayName: 'System',
+                    text: 'Ticket was reopened by the user.',
+                    createdAt: serverTimestamp(),
+                    isRead: false,
+                    type: 'user'
+                });
+            })
+            .catch(async (error: any) => {
+                const permissionError = new FirestorePermissionError({
+                    path: ticketRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to reopen ticket.' });
+            });
+    };
+
+    const handleReferTicket = () => {
+        if (!ticketRef || !canManageTicket) return;
+
+        const updateData = {
+            status: 'Pending' as TicketStatus,
+            updatedAt: serverTimestamp(),
+        };
+
+        updateDoc(ticketRef, updateData)
+            .then(() => {
+                toast({ title: 'Ticket Referred', description: 'Ticket status returned to Pending.' });
+                router.push('/admin/tickets');
+            })
+            .catch(async (error: any) => {
+              const permissionError = new FirestorePermissionError({
+                  path: ticketRef.path,
+                  operation: 'update',
+                  requestResourceData: updateData,
+              });
+              errorEmitter.emit('permission-error', permissionError);
+              toast({ variant: 'destructive', title: 'Error', description: 'Failed to refer ticket.' });
+          });
+    };
+
     if (userLoading || ticketLoading || profileLoading || !effectiveUserId) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
@@ -160,6 +222,8 @@ export default function TicketDetailPage() {
                 backLink={backLink}
                 onStatusChange={handleStatusChange}
                 onDeleteClick={() => setIsDeleteDialogOpen(true)}
+                onReopenTicket={handleReopenTicket}
+                onReferTicket={handleReferTicket}
             />
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

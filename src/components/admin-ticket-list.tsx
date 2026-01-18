@@ -7,7 +7,7 @@ import { addDays, format, formatDistanceStrict, startOfMonth, endOfMonth, subMon
 import { Filter, Circle, CircleDot, CircleCheck, FileDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collection, query, doc, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -184,7 +184,29 @@ export default function AdminTicketList() {
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
-  const handleTicketClick = (ticket: WithId<Ticket>) => {
+  const handleTicketClick = async (ticket: WithId<Ticket>) => {
+    if (!user) return;
+
+    if (ticket.status === 'Pending' && (isUserAdminRole || isUserRoot || isUserSupport)) {
+      const ticketRef = doc(firestore, 'users', ticket.userId, 'issues', ticket.id);
+      try {
+        await updateDoc(ticketRef, {
+          status: 'In Progress',
+          updatedAt: serverTimestamp(),
+          unreadByAdmin: false,
+          unreadByUser: true,
+        });
+        toast({ title: 'Ticket In Progress', description: "Status updated automatically." });
+      } catch (error) {
+        console.error("Error updating ticket status:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not update ticket status.',
+        });
+      }
+    }
+
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 
@@ -630,10 +652,3 @@ export default function AdminTicketList() {
     </>
   );
 }
-
-    
-
-    
-
-
-    

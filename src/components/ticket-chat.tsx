@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, updateDoc } from 'firebase/firestore';
-import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone, Users } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,7 @@ const WA_COLORS = {
     blue: '#53bdeb'
 };
 
-export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick }: any) {
+export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick, onReopenTicket, onReferTicket }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -227,6 +228,11 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-[#233138] border-[#424d54] text-white">
+                            {canManageTicket && ticket.status === 'In Progress' && (
+                                <DropdownMenuItem onClick={onReferTicket} className="cursor-pointer">
+                                    <Users className="mr-2 h-4 w-4" /> Refer to Queue
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={onDeleteClick} className="text-red-400 focus:bg-red-400/10 focus:text-red-400 cursor-pointer"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -331,21 +337,35 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             </main>
 
             <footer className="flex-none p-2 bg-[#202c33] flex items-center gap-2 z-20 border-t border-white/5">
-                <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5">
-                    <Smile className="h-6 w-6" />
-                </Button>
-                <div className="flex-1 bg-[#2a3942] rounded-[8px] px-4 py-2 flex items-center min-h-[42px]">
-                    <Textarea
-                        placeholder="Type a message"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                        className="bg-transparent border-none focus-visible:ring-0 text-[#e9edef] min-h-[24px] max-h-[120px] resize-none p-0 text-[16px] w-full"
-                    />
-                </div>
-                <Button onClick={handleSendMessage} disabled={!message.trim()} className="h-11 w-11 rounded-full bg-[#00a884] hover:bg-[#06cf9c] shrink-0 p-0 shadow-md">
-                    <Send className="h-5 w-5 text-[#111b21] ml-0.5" fill="currentColor" />
-                </Button>
+                {ticket.status === 'Resolved' ? (
+                    <div className="w-full text-center p-2">
+                        <p className="text-sm text-white/80">This ticket is marked as resolved.</p>
+                        {isOwner && (
+                            <div className="flex justify-center gap-4 mt-3">
+                                <Button variant="outline" className="bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white">Yes, it's fixed</Button>
+                                <Button onClick={onReopenTicket} className="bg-red-600 hover:bg-red-700 text-white">No, reopen ticket</Button>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5">
+                            <Smile className="h-6 w-6" />
+                        </Button>
+                        <div className="flex-1 bg-[#2a3942] rounded-[8px] px-4 py-2 flex items-center min-h-[42px]">
+                            <Textarea
+                                placeholder="Type a message"
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                                className="bg-transparent border-none focus-visible:ring-0 text-[#e9edef] min-h-[24px] max-h-[120px] resize-none p-0 text-[16px] w-full"
+                            />
+                        </div>
+                        <Button onClick={handleSendMessage} disabled={!message.trim()} className="h-11 w-11 rounded-full bg-[#00a884] hover:bg-[#06cf9c] shrink-0 p-0 shadow-md">
+                            <Send className="h-5 w-5 text-[#111b21] ml-0.5" fill="currentColor" />
+                        </Button>
+                    </>
+                )}
             </footer>
 
             <style jsx global>{`
