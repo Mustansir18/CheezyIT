@@ -107,13 +107,14 @@ export default function AnnouncementForm() {
         }
         
         const recipientUids = targetUsers.map(user => user.id);
+        const senderDisplayName = currentUser.displayName || 'N/A';
 
         const announcementPayload = {
             title: data.title,
             message: data.message,
             createdAt: serverTimestamp(),
             createdByUid: currentUser.uid,
-            createdByDisplayName: currentUser.displayName || 'N/A',
+            createdByDisplayName: senderDisplayName,
             target: {
                 roles: data.targetRoles,
                 regions: data.targetRegions,
@@ -151,6 +152,7 @@ export default function AnnouncementForm() {
                 createdAt: serverTimestamp(),
                 isRead: false,
                 announcementId: announcementRef.id,
+                createdByDisplayName: senderDisplayName,
             };
 
             targetUsers.forEach(user => {
@@ -170,7 +172,7 @@ export default function AnnouncementForm() {
             console.error("Error fanning out notifications:", error);
             const firstUser = targetUsers[0];
             const notificationData = {
-                title: data.title, message: data.message, createdAt: 'SERVER_TIMESTAMP', isRead: false, announcementId: announcementRef.id
+                title: data.title, message: data.message, createdAt: 'SERVER_TIMESTAMP', isRead: false, announcementId: announcementRef.id, createdByDisplayName: senderDisplayName
             };
             const permissionError = new FirestorePermissionError({
                 path: `users/${firstUser?.id || 'some-user'}/notifications`,
