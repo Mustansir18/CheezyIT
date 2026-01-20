@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
 import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
+import WhatsAppFAB from '@/components/whatsapp-fab';
 
 type UserProfile = {
   role: string;
@@ -88,6 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}>
                 {children}
             </main>
+            <WhatsAppFAB />
         </div>
     )
 }
