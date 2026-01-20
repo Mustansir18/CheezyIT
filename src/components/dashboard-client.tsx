@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import type { Ticket, TicketStatus, TicketPriority } from '@/lib/data';
 import { getStats } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
+import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
 import { useUser, useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Info, Clock, ShieldCheck, ShieldX, Calendar as CalendarIcon, Filter, Snowflake, Thermometer, Flame, Bomb, User } from 'lucide-react';
+import { Loader2, Info, Clock, ShieldCheck, ShieldX, Calendar as CalendarIcon, Filter, Snowflake, Thermometer, Flame, Bomb, User, MapPin, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -45,7 +45,8 @@ const priorityConfig: Record<TicketPriority, { icon: React.ElementType, color: s
 
 const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () => void }) => {
     const StatusIcon = statusConfig[ticket.status].icon;
-    const PriorityIcon = priorityConfig[ticket.priority].icon;
+    const priorityInfo = ticket.priority ? priorityConfig[ticket.priority] : undefined;
+    const PriorityIcon = priorityInfo?.icon;
 
     return (
         <Card className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={onClick}>
@@ -61,16 +62,30 @@ const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () =
                     <Clock className="h-4 w-4" /> 
                     <span>{formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true })}</span>
                 </div>
+                {ticket.region && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        <span>{ticket.region}</span>
+                    </div>
+                )}
+                {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <UserCheck className="h-4 w-4" />
+                        <span>Resolved by {ticket.resolvedByDisplayName}</span>
+                    </div>
+                )}
             </CardContent>
             <CardFooter className="flex justify-between items-center pt-4">
                 <Badge variant="secondary" className={cn(statusConfig[ticket.status].color, 'text-white gap-1.5')}>
                     <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
                     {ticket.status}
                 </Badge>
-                <Badge variant="outline" className="gap-1.5 border-dashed">
-                    <PriorityIcon className={cn("h-3.5 w-3.5", priorityConfig[ticket.priority].color)} />
-                    {ticket.priority}
-                </Badge>
+                {priorityInfo && PriorityIcon && ticket.priority && (
+                    <Badge variant="outline" className="gap-1.5 border-dashed">
+                        <PriorityIcon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
+                        {ticket.priority}
+                    </Badge>
+                )}
             </CardFooter>
         </Card>
     )
@@ -220,5 +235,3 @@ export default function DashboardClient({}: DashboardClientProps) {
     </>
   );
 }
-
-    

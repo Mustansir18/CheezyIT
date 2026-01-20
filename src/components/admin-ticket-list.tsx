@@ -4,7 +4,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceToNowStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
-import { Filter, FileDown, Loader2, MoreHorizontal, ShieldAlert, Shield, ShieldCheck, ShieldX, Thermometer, Flame, Bomb, Snowflake, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon } from 'lucide-react';
+import { Filter, FileDown, Loader2, MoreHorizontal, ShieldAlert, Shield, ShieldCheck, ShieldX, Thermometer, Flame, Bomb, Snowflake, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck } from 'lucide-react';
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -77,6 +77,18 @@ const TicketCard = ({ ticket, user, onClick }: { ticket: WithId<Ticket>, user?: 
                     <Clock className="h-4 w-4" /> 
                     <span>{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
                 </div>
+                {ticket.region && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        <span>{ticket.region}</span>
+                    </div>
+                )}
+                {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <UserCheck className="h-4 w-4" />
+                        <span>Resolved by {ticket.resolvedByDisplayName}</span>
+                    </div>
+                )}
             </CardContent>
             <CardFooter className="flex justify-between items-center pt-4">
                 {statusInfo && StatusIcon && (
