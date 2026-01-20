@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged, type User, type AuthError } from 'firebase/auth';
 import { useAuth } from '../provider';
 
 export function useUser() {
@@ -11,10 +11,17 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    const unsubscribe = onAuthStateChanged(auth,
+      (user) => {
+        setUser(user);
+        setLoading(false);
+      },
+      (error: AuthError) => {
+        console.error("useUser auth state error:", error);
+        setUser(null);
+        setLoading(false);
+      }
+    );
     return () => unsubscribe();
   }, [auth]);
 
