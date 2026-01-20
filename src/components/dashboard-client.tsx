@@ -44,12 +44,13 @@ const priorityConfig: Record<TicketPriority, { icon: React.ElementType, color: s
 };
 
 const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () => void }) => {
-    const StatusIcon = statusConfig[ticket.status].icon;
+    const statusInfo = statusConfig[ticket.status];
+    const StatusIcon = statusInfo?.icon;
     const priorityInfo = ticket.priority ? priorityConfig[ticket.priority] : undefined;
     const PriorityIcon = priorityInfo?.icon;
 
     return (
-        <Card className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={onClick}>
+        <Card className="group flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
             <CardHeader className="pb-4">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-base font-bold leading-tight line-clamp-2">{ticket.title}</CardTitle>
@@ -76,10 +77,12 @@ const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () =
                 )}
             </CardContent>
             <CardFooter className="flex justify-between items-center pt-4">
-                <Badge variant="secondary" className={cn(statusConfig[ticket.status].color, 'text-white gap-1.5')}>
-                    <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
-                    {ticket.status}
-                </Badge>
+                {statusInfo && (
+                    <Badge variant="secondary" className={cn(statusInfo.color, 'text-white gap-1.5')}>
+                        <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
+                        {ticket.status}
+                    </Badge>
+                )}
                 {priorityInfo && PriorityIcon && ticket.priority && (
                     <Badge variant="outline" className="gap-1.5 border-dashed">
                         <PriorityIcon className={cn("h-3.5 w-3.5", priorityInfo.color)} />

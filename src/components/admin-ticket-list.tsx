@@ -4,10 +4,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceToNowStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
-import { Filter, FileDown, Loader2, MoreHorizontal, ShieldAlert, Shield, ShieldCheck, ShieldX, Thermometer, Flame, Bomb, Snowflake, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck } from 'lucide-react';
+import { Filter, FileDown, Loader2, MoreHorizontal, ShieldAlert, Shield, ShieldCheck, ShieldX, Thermometer, Flame, Bomb, Snowflake, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
@@ -25,6 +25,8 @@ import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { exportData } from '@/lib/export';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 
 type UserProfile = {
@@ -52,7 +54,7 @@ const priorityConfig: Record<TicketPriority, { icon: React.ElementType, color: s
     'Critical': { icon: Bomb, color: 'bg-red-600' }
 };
 
-const TicketCard = ({ ticket, user, onClick }: { ticket: WithId<Ticket>, user?: UserWithDisplayName, onClick: () => void }) => {
+const TicketCard = ({ ticket, user, onClick, onCommentClick }: { ticket: WithId<Ticket>, user?: UserWithDisplayName, onClick: () => void, onCommentClick: (ticket: WithId<Ticket>) => void }) => {
     const statusInfo = statusConfig[ticket.status];
     const StatusIcon = statusInfo?.icon;
     
@@ -60,7 +62,7 @@ const TicketCard = ({ ticket, user, onClick }: { ticket: WithId<Ticket>, user?: 
     const PriorityIcon = priorityInfo?.icon;
 
     return (
-        <Card className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={onClick}>
+        <Card className="group flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
             <CardHeader className="pb-4">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-base font-bold leading-tight line-clamp-2">{ticket.title}</CardTitle>
@@ -97,12 +99,17 @@ const TicketCard = ({ ticket, user, onClick }: { ticket: WithId<Ticket>, user?: 
                         {ticket.status}
                     </Badge>
                 )}
-                {priorityInfo && PriorityIcon && ticket.priority && (
-                    <Badge variant="outline" className="gap-1.5 border-dashed">
-                        <PriorityIcon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
-                        {ticket.priority}
-                    </Badge>
-                )}
+                <div className="flex items-center gap-1">
+                    {priorityInfo && PriorityIcon && ticket.priority && (
+                        <Badge variant="outline" className="gap-1.5 border-dashed">
+                            <PriorityIcon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
+                            {ticket.priority}
+                        </Badge>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-accent-foreground" onClick={(e) => { e.stopPropagation(); onCommentClick(ticket); }}>
+                        <MessageSquare className="h-4 w-4" />
+                    </Button>
+                </div>
             </CardFooter>
         </Card>
     )
@@ -125,6 +132,10 @@ export default function AdminTicketList() {
   const [regionFilter, setRegionFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const [commentingTicket, setCommentingTicket] = useState<WithId<Ticket> | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -296,6 +307,41 @@ export default function AdminTicketList() {
     }
 };
 
+const handleSendComment = async () => {
+    if (!commentingTicket || !commentText.trim() || !user) return;
+    setIsSubmittingComment(true);
+
+    const ticketRef = doc(firestore, 'users', commentingTicket.userId, 'issues', commentingTicket.id);
+    const newMessageRef = doc(collection(ticketRef, 'messages'));
+    const batch = writeBatch(firestore);
+
+    batch.set(newMessageRef, {
+        userId: user.uid,
+        displayName: user.displayName || 'Admin',
+        text: commentText.trim(),
+        createdAt: serverTimestamp(),
+        isRead: false,
+        type: 'user',
+    });
+
+    batch.update(ticketRef, {
+        unreadByUser: true,
+        updatedAt: serverTimestamp(),
+    });
+
+    try {
+        await batch.commit();
+        toast({ title: 'Comment Sent', description: 'Your comment has been added to the ticket.' });
+        setCommentingTicket(null);
+        setCommentText('');
+    } catch (error) {
+        console.error('Error sending comment:', error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send comment.' });
+    } finally {
+        setIsSubmittingComment(false);
+    }
+};
+
   const statusList: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
   const priorityList: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
@@ -414,7 +460,7 @@ export default function AdminTicketList() {
                 [...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
               ) : filteredTickets.length > 0 ? (
                 filteredTickets.map((ticket) => (
-                    <TicketCard key={ticket.id} ticket={ticket} user={usersMap[ticket.userId]} onClick={() => handleTicketClick(ticket)} />
+                    <TicketCard key={ticket.id} ticket={ticket} user={usersMap[ticket.userId]} onClick={() => handleTicketClick(ticket)} onCommentClick={(t) => setCommentingTicket(t)} />
                 ))
               ) : (
                 <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground">
@@ -424,6 +470,31 @@ export default function AdminTicketList() {
             </div>
         </CardContent>
       </Card>
+      <Dialog open={!!commentingTicket} onOpenChange={(isOpen) => { if (!isOpen) { setCommentingTicket(null); setCommentText(''); } }}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add Comment to {commentingTicket?.ticketId}</DialogTitle>
+                <DialogDescription>
+                    This comment will be added to the ticket chat and will be visible to the user.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Textarea 
+                    placeholder="Type your comment here..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={4}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setCommentingTicket(null)}>Cancel</Button>
+                <Button onClick={handleSendComment} disabled={isSubmittingComment || !commentText.trim()}>
+                    {isSubmittingComment && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send Comment
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
