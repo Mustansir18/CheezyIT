@@ -5,21 +5,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-import { isRoot } from '@/lib/admins';
 import { cn } from '@/lib/utils';
-
-
-type UserProfile = {
-  role: string;
-};
-
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,23 +22,17 @@ export default function LoginPage() {
   const { user, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
-  const firestore = useFirestore();
-
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (loading || profileLoading) {
-      return; // Wait until user and profile are loaded
+    if (loading) {
+      return; // Wait for auth state to be confirmed
     }
     if (user) {
-      if (isRoot(user.email) || userProfile?.role === 'it-support' || userProfile?.role === 'Admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
+      // Redirect to a generic post-login page.
+      // The layout of that page will handle role-based redirection.
+      router.push('/dashboard');
     }
-  }, [user, loading, userProfile, profileLoading, router]);
+  }, [user, loading, router]);
 
   const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +40,7 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Redirect is handled by the useEffect
+      // Redirect is handled by the useEffect hook
     } catch (err: any) {
       setError(err.message);
       toast({
@@ -65,6 +51,7 @@ export default function LoginPage() {
     }
   };
 
+  // While loading auth state, or if user is logged in (and we are waiting for redirect), show spinner.
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-950">
