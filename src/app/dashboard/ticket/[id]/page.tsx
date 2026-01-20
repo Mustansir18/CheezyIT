@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId, FirestorePermissionError, errorEmitter } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId, FirestorePermissionError, errorEmitter, useCollection } from '@/firebase';
 import { doc, serverTimestamp, updateDoc, deleteDoc, deleteField, addDoc, collection } from 'firebase/firestore';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -40,6 +41,15 @@ export default function TicketDetailPage() {
     );
 
     const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(currentUserProfileRef);
+    
+    // Fetch all users to find assignable staff
+    const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const { data: allUsers, isLoading: usersLoading } = useCollection<WithId<{displayName: string; role: string}>>(usersQuery);
+
+    const assignableUsers = useMemo(() => {
+        if (!allUsers) return [];
+        return allUsers.filter(u => u.role === 'Admin' || u.role === 'it-support');
+    }, [allUsers]);
 
     const canManageTicket = useMemo(() => {
         if (!user) return false;
@@ -103,6 +113,22 @@ export default function TicketDetailPage() {
               toast({ variant: 'destructive', title: 'Error', description: 'Failed to update status. You may not have permission.' });
           });
     };
+    
+    const handleAssignment = (assigneeId: string) => {
+        if (!ticketRef || !user) return;
+        
+        const assignee = allUsers?.find(u => u.id === assigneeId);
+
+        updateDoc(ticketRef, { assignedTo: assigneeId, assignedToDisplayName: assignee?.displayName || 'Unknown' })
+            .then(() => {
+                toast({ title: 'Ticket Assigned', description: `Ticket assigned to ${assignee?.displayName}` });
+            })
+            .catch(async (error: any) => {
+              const permissionError = new FirestorePermissionError({ path: ticketRef.path, operation: 'update' });
+              errorEmitter.emit('permission-error', permissionError);
+              toast({ variant: 'destructive', title: 'Error', description: 'Failed to assign ticket.' });
+          });
+    };
 
     const handleDeleteTicket = () => {
         if (!ticketRef) return;
@@ -127,7 +153,7 @@ export default function TicketDetailPage() {
         if (!ticketRef || !isOwner) return;
 
         const updateData = {
-            status: 'In Progress',
+            status: 'In-Progress' as TicketStatus,
             updatedAt: serverTimestamp(),
             unreadByAdmin: true,
             unreadByUser: false,
@@ -138,7 +164,7 @@ export default function TicketDetailPage() {
 
         updateDoc(ticketRef, updateData)
             .then(() => {
-                toast({ title: 'Ticket Reopened', description: 'Your ticket is now In Progress.' });
+                toast({ title: 'Ticket Reopened', description: 'Your ticket is now In-Progress.' });
                 
                 const messagesColRef = collection(firestore, 'users', effectiveUserId!, 'issues', ticketId, 'messages');
                 addDoc(messagesColRef, {
@@ -185,7 +211,7 @@ export default function TicketDetailPage() {
           });
     };
 
-    if (userLoading || ticketLoading || profileLoading || !effectiveUserId) {
+    if (userLoading || ticketLoading || profileLoading || usersLoading || !effectiveUserId) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -220,7 +246,9 @@ export default function TicketDetailPage() {
                 canManageTicket={canManageTicket} 
                 isOwner={isOwner}
                 backLink={backLink}
+                assignableUsers={assignableUsers}
                 onStatusChange={handleStatusChange}
+                onAssignmentChange={handleAssignment}
                 onDeleteClick={() => setIsDeleteDialogOpen(true)}
                 onReopenTicket={handleReopenTicket}
                 onReferTicket={handleReferTicket}
@@ -243,3 +271,5 @@ export default function TicketDetailPage() {
         </div>
     );
 }
+
+    

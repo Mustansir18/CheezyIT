@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from '@/components/ui/dialog';
@@ -17,8 +17,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useSound } from '@/hooks/use-sound';
+import type { TicketPriority } from '@/lib/data';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
+const priorities: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
@@ -26,6 +28,9 @@ const ticketSchema = z.object({
     required_error: "You need to select an issue type.",
   }),
   customIssueType: z.string().optional(),
+  priority: z.enum(priorities, {
+      required_error: "You need to select a priority level."
+  }),
   description: z.string().min(1, 'Description is required.'),
   anydesk: z.string().regex(/^\d*$/, { message: 'AnyDesk ID must be a number.' }).optional(),
 }).refine(data => {
@@ -71,6 +76,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       anydesk: '',
       issueType: undefined,
       customIssueType: '',
+      priority: 'Medium',
     },
   });
 
@@ -98,24 +104,41 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
 
     setIsSubmitting(true);
     try {
-        const ticketData = {
-            userId: user.uid,
-            title: data.title,
-            issueType: data.issueType,
-            customIssueType: data.customIssueType || '',
-            description: data.description,
-            anydesk: data.anydesk || '',
-            attachments: [],
-            status: 'Pending',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            unreadByAdmin: true,
-            unreadByUser: false,
-            region: userProfile.region,
-        };
+        await runTransaction(firestore, async (transaction) => {
+            const counterRef = doc(firestore, 'system_settings', 'ticketCounter');
+            const counterDoc = await transaction.get(counterRef);
 
-        const ticketsCollectionRef = collection(firestore, 'users', user.uid, 'issues');
-        await addDoc(ticketsCollectionRef, ticketData);
+            let newCount = 1;
+            if (counterDoc.exists()) {
+                newCount = counterDoc.data().count + 1;
+            } else {
+                transaction.set(counterRef, { count: 0 });
+            }
+            
+            const ticketId = `TKT-${String(newCount).padStart(6, '0')}`;
+            
+            const newTicketRef = doc(collection(firestore, 'users', user.uid, 'issues'));
+            
+            const ticketData = {
+                userId: user.uid,
+                ticketId,
+                title: data.title,
+                issueType: data.issueType,
+                customIssueType: data.customIssueType || '',
+                description: data.description,
+                anydesk: data.anydesk || '',
+                priority: data.priority,
+                status: 'Open',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                unreadByAdmin: true,
+                unreadByUser: false,
+                region: userProfile.region,
+            };
+
+            transaction.set(newTicketRef, ticketData);
+            transaction.update(counterRef, { count: newCount });
+        });
         
         toast({ title: 'Success!', description: 'Ticket created successfully!' });
         playNewTicketSound();
@@ -155,28 +178,52 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="issueType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Issue Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an issue type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {issueTypes.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="issueType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Issue Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an issue type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {issueTypes.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {priorities.map(p => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             {issueType === 'Other' && (
                  <FormField
                     control={form.control}
@@ -234,3 +281,5 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     </Dialog>
   );
 }
+
+    

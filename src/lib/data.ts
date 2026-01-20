@@ -1,11 +1,16 @@
 
-export type TicketStatus = 'Pending' | 'In Progress' | 'Resolved';
+
+export type TicketStatus = 'Open' | 'In-Progress' | 'Pending' | 'Resolved' | 'Closed';
+export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
 export type Ticket = {
   userId: string;
+  ticketId: string;
   title: string;
   description: string;
   status: TicketStatus;
+  priority: TicketPriority;
+  assignedTo?: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   completedAt?: any; // Firestore Timestamp
@@ -33,12 +38,15 @@ export type ChatMessage = {
 
 export const getStats = (allTickets: (Ticket & { id: string })[]) => {
     if (!allTickets) {
-        return { pending: 0, inProgress: 0, resolved: 0 };
+        return { open: 0, inProgress: 0, pending: 0, resolved: 0, closed: 0 };
     }
     return {
+        open: allTickets.filter(t => t.status === 'Open').length,
+        inProgress: allTickets.filter(t => t.status === 'In-Progress').length,
         pending: allTickets.filter(t => t.status === 'Pending').length,
-        inProgress: allTickets.filter(t => t.status === 'In Progress').length,
         resolved: allTickets.filter(t => t.status === 'Resolved').length,
+        closed: allTickets.filter(t => t.status === 'Closed').length,
     };
 };
 
+    

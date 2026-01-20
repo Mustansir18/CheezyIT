@@ -5,15 +5,15 @@ import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, updateDoc } from 'firebase/firestore';
-import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone, Users } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone, Users, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { ChatMessage, Ticket, TicketStatus } from '@/lib/data';
+import type { ChatMessage, Ticket, TicketStatus, TicketPriority } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import AudioPlayer from '@/components/audio-player';
@@ -28,7 +28,9 @@ const WA_COLORS = {
     blue: '#53bdeb'
 };
 
-export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, onStatusChange, onDeleteClick, onReopenTicket, onReferTicket }: any) {
+const statusOptions: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
+
+export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onReferTicket }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -38,6 +40,10 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
 
     const userProfileRef = useMemoFirebase(() => (userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
     const { data: ticketOwnerProfile } = useDoc<any>(userProfileRef);
+
+    const assignedUserRef = useMemoFirebase(() => (ticket.assignedTo ? doc(firestore, 'users', ticket.assignedTo) : null), [firestore, ticket.assignedTo]);
+    const { data: assignedUserProfile } = useDoc<any>(assignedUserRef);
+
     const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
     const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
     
@@ -75,12 +81,10 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     useEffect(() => {
         if (!messages || messagesLoading || !user || !firestore || !ticket) return;
 
-        // --- Part 1: Mark individual messages as read ---
         const messageUpdateBatch = writeBatch(firestore);
         let messagesToMarkAsRead = 0;
 
         messages.forEach(msg => {
-            // Find unread messages sent by the *other* user
             if (!msg.isRead && msg.userId !== user.uid) {
                 const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
                 messageUpdateBatch.update(msgRef, { isRead: true });
@@ -88,22 +92,18 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             }
         });
 
-        // Commit the batch only if there are updates to be made
         if (messagesToMarkAsRead > 0) {
             messageUpdateBatch.commit().catch(err => {
                 console.error("Failed to mark messages as read:", err);
             });
         }
 
-        // --- Part 2: Update the ticket-level unread flag ---
         const ticketRef = doc(firestore, 'users', userId, 'issues', ticketId);
 
-        // If the current viewer is an admin/support and the ticket has an unread flag for them
         if (canManageTicket && ticket.unreadByAdmin) {
             updateDoc(ticketRef, { unreadByAdmin: false });
         }
         
-        // If the current viewer is the ticket owner and the ticket has an unread flag for them
         if (isOwner && ticket.unreadByUser) {
             updateDoc(ticketRef, { unreadByUser: false });
         }
@@ -133,16 +133,12 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
         setMessage('');
 
         const ticketRef = doc(firestore, 'users', userId, 'issues', ticketId);
-        // Create a ref for the new message doc with a new ID
         const newMessageRef = doc(collection(ticketRef, 'messages'));
 
-        // Determine which unread flag to set based on who is sending
         const unreadUpdate = canManageTicket ? { unreadByUser: true } : { unreadByAdmin: true };
 
         try {
             const batch = writeBatch(firestore);
-
-            // 1. Set the data for the new message
             batch.set(newMessageRef, {
                 userId: user.uid,
                 displayName: user.displayName || 'User',
@@ -151,13 +147,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                 isRead: false,
                 type: 'user',
             });
-
-            // 2. Update the parent ticket's unread status and updatedAt timestamp
-            batch.update(ticketRef, {
-                ...unreadUpdate,
-                updatedAt: serverTimestamp(),
-            });
-
+            batch.update(ticketRef, { ...unreadUpdate, updatedAt: serverTimestamp() });
             await batch.commit();
         } catch (error) {
             console.error("Error sending message:", error);
@@ -202,9 +192,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                              <span className="text-white font-medium text-[16px]">{ticketOwnerProfile?.displayName || 'User'}</span>
-                             {ticketOwnerProfile?.phoneNumber && (
-                                <span className="text-[12px] text-[#8696a0]">{ticketOwnerProfile.phoneNumber}</span>
-                            )}
+                             <span className="text-[12px] text-accent/80 font-semibold">{ticket.ticketId}</span>
                         </div>
                         <span className="text-[13px] text-[#8696a0] truncate max-w-[200px]">{ticket.title}</span>
                     </div>
@@ -216,19 +204,34 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 <Phone className="h-5 w-5" />
                             </Button>
                             <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                                <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs focus:ring-0 shadow-none hover:bg-white/5"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs focus:ring-0 shadow-none hover:bg-white/5 w-auto gap-1"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-[#233138] border-[#424d54] text-white">
-                                    <SelectItem value="Pending">Pending</SelectItem>
-                                    <SelectItem value="In Progress">In Progress</SelectItem>
-                                    <SelectItem value="Resolved">Resolved</SelectItem>
+                                    {statusOptions.map(status => (
+                                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5">
+                                        <UserCheck className="h-5 w-5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-[#233138] border-[#424d54] text-white">
+                                    <DropdownMenuRadioGroup value={ticket.assignedTo} onValueChange={onAssignmentChange}>
+                                        <DropdownMenuRadioItem value="">Unassigned</DropdownMenuRadioItem>
+                                        {assignableUsers.map((u: any) => (
+                                            <DropdownMenuRadioItem key={u.id} value={u.id}>{u.displayName}</DropdownMenuRadioItem>
+                                        ))}
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </>
                     )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-[#233138] border-[#424d54] text-white">
-                            {canManageTicket && ticket.status === 'In Progress' && (
+                            {canManageTicket && ticket.status === 'In-Progress' && (
                                 <DropdownMenuItem onClick={onReferTicket} className="cursor-pointer">
                                     <Users className="mr-2 h-4 w-4" /> Refer to Queue
                                 </DropdownMenuItem>
@@ -337,12 +340,12 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             </main>
 
             <footer className="flex-none p-2 bg-[#202c33] flex items-center gap-2 z-20 border-t border-white/5">
-                {ticket.status === 'Resolved' ? (
+                {ticket.status === 'Resolved' || ticket.status === 'Closed' ? (
                     <div className="w-full text-center p-2">
-                        <p className="text-sm text-white/80">This ticket is marked as resolved.</p>
-                        {isOwner && (
+                        <p className="text-sm text-white/80">This ticket is {ticket.status.toLowerCase()}.</p>
+                        {isOwner && ticket.status === 'Resolved' && (
                             <div className="flex justify-center gap-4 mt-3">
-                                <Button variant="outline" className="bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white">Yes, it's fixed</Button>
+                                <Button variant="outline" className="bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white" onClick={() => onStatusChange('Closed')}>Confirm as Closed</Button>
                                 <Button onClick={onReopenTicket} className="bg-red-600 hover:bg-red-700 text-white">No, reopen ticket</Button>
                             </div>
                         )}
@@ -387,3 +390,5 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
         </div>
     );
 }
+
+    

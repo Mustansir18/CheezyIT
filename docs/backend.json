@@ -11,6 +11,10 @@
           "type": "string",
           "description": "Reference to the User who reported the issue. (Relationship: User 1:N Issue)"
         },
+        "ticketId": {
+          "type": "string",
+          "description": "A user-friendly, sequential ticket identifier, e.g., TKT-000001."
+        },
         "title": {
           "type": "string",
           "description": "Title of the issue."
@@ -34,8 +38,17 @@
         },
         "status": {
           "type": "string",
-          "description": "Current status of the issue (e.g., Open, In Progress, Resolved).",
-          "format": "string"
+          "description": "Current status of the issue.",
+          "enum": ["Open", "In-Progress", "Pending", "Resolved", "Closed"]
+        },
+        "priority": {
+          "type": "string",
+          "description": "The priority level of the issue.",
+          "enum": ["Low", "Medium", "High", "Critical"]
+        },
+        "assignedTo": {
+            "type": "string",
+            "description": "The UID of the user this ticket is assigned to."
         },
         "createdAt": {
           "type": "string",
@@ -75,10 +88,12 @@
       },
       "required": [
         "userId",
+        "ticketId",
         "title",
         "issueType",
         "description",
         "status",
+        "priority",
         "createdAt",
         "updatedAt",
         "region"
@@ -229,6 +244,18 @@
       },
       "required": ["title", "message", "createdAt", "isRead", "createdByDisplayName"]
     },
+    "TicketCounter": {
+        "title": "Ticket Counter",
+        "type": "object",
+        "description": "Stores the current count for generating sequential ticket IDs.",
+        "properties": {
+            "count": {
+                "type": "number",
+                "description": "The last used ticket number."
+            }
+        },
+        "required": ["count"]
+    },
     "RegionSettings": {
         "title": "Region Settings",
         "type": "object",
@@ -295,10 +322,13 @@
       "schema": {
         "oneOf": [
             { "$ref": "#/backend/entities/RegionSettings" },
-            { "$ref": "#/backend/entities/RoleSettings" }
+            { "$ref": "#/backend/entities/RoleSettings" },
+            { "$ref": "#/backend/entities/TicketCounter" }
         ]
       },
-      "description": "Stores global system settings like available regions and roles. Only accessible by Root users."
+      "description": "Stores global system settings like available regions, roles, and counters. Only accessible by Root users."
     }
   }
 }
+
+    

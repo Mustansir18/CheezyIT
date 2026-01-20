@@ -2,21 +2,20 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Ticket } from '@/lib/data';
+import type { Ticket, TicketStatus, TicketPriority } from '@/lib/data';
 import { getStats } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { addDays, format, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
+import { useUser, useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Circle, CircleDot, CircleCheck, Calendar as CalendarIcon, Filter } from 'lucide-react';
+import { Loader2, Info, Clock, ShieldCheck, ShieldX, Calendar as CalendarIcon, Filter, Snowflake, Thermometer, Flame, Bomb, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -25,9 +24,56 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 
 
 interface DashboardClientProps {
-  // We will fetch tickets inside this component now
   tickets: never[];
   stats: never;
+}
+
+const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: string }> = {
+    'Open': { icon: Info, color: 'bg-blue-500' },
+    'In-Progress': { icon: Loader2, color: 'bg-orange-500' },
+    'Pending': { icon: Clock, color: 'bg-yellow-500' },
+    'Resolved': { icon: ShieldCheck, color: 'bg-green-600' },
+    'Closed': { icon: ShieldX, color: 'bg-gray-500' }
+};
+
+const priorityConfig: Record<TicketPriority, { icon: React.ElementType, color: string }> = {
+    'Low': { icon: Snowflake, color: 'bg-blue-400' },
+    'Medium': { icon: Thermometer, color: 'bg-yellow-500' },
+    'High': { icon: Flame, color: 'bg-orange-600' },
+    'Critical': { icon: Bomb, color: 'bg-red-600' }
+};
+
+const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () => void }) => {
+    const StatusIcon = statusConfig[ticket.status].icon;
+    const PriorityIcon = priorityConfig[ticket.priority].icon;
+
+    return (
+        <Card className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={onClick}>
+            <CardHeader className="pb-4">
+                <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-base font-bold leading-tight line-clamp-2">{ticket.title}</CardTitle>
+                     {ticket.unreadByUser && <span className="h-3 w-3 rounded-full bg-accent flex-shrink-0 mt-1" />}
+                </div>
+                <CardDescription className="font-mono text-xs pt-1">{ticket.ticketId}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow space-y-3 text-sm">
+                 <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" /> 
+                    <span>{formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true })}</span>
+                </div>
+            </CardContent>
+            <CardFooter className="flex justify-between items-center pt-4">
+                <Badge variant="secondary" className={cn(statusConfig[ticket.status].color, 'text-white gap-1.5')}>
+                    <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
+                    {ticket.status}
+                </Badge>
+                <Badge variant="outline" className="gap-1.5 border-dashed">
+                    <PriorityIcon className={cn("h-3.5 w-3.5", priorityConfig[ticket.priority].color)} />
+                    {ticket.priority}
+                </Badge>
+            </CardFooter>
+        </Card>
+    )
 }
 
 export default function DashboardClient({}: DashboardClientProps) {
@@ -36,13 +82,10 @@ export default function DashboardClient({}: DashboardClientProps) {
   const router = useRouter();
 
   const issuesQuery = useMemoFirebase(
-    () => 
-      user 
-        ? query(collection(firestore, 'users', user.uid, 'issues'), orderBy('createdAt', 'desc')) 
-        : null,
+    () => user ? query(collection(firestore, 'users', user.uid, 'issues'), orderBy('createdAt', 'desc')) : null,
     [firestore, user]
   );
-  const { data: tickets, isLoading: ticketsLoading } = useCollection<Ticket>(issuesQuery);
+  const { data: tickets, isLoading: ticketsLoading } = useCollection<WithId<Ticket>>(issuesQuery);
   const allTickets = tickets || [];
 
   const [date, setDate] = useState<DateRange | undefined>({
@@ -52,12 +95,8 @@ export default function DashboardClient({}: DashboardClientProps) {
 
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [regionFilter, setRegionFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
-
-  const availableRegions = useMemo(() => {
-    return Array.from(new Set(allTickets.map(t => t.region).filter(Boolean))).sort();
-  }, [allTickets]);
 
   const filteredTickets = useMemo(() => {
     let tickets = allTickets;
@@ -76,85 +115,26 @@ export default function DashboardClient({}: DashboardClientProps) {
     if (ticketIdFilter) {
         const lowerCaseFilter = ticketIdFilter.toLowerCase();
         tickets = tickets.filter(ticket =>
-            (ticket.id && ticket.id.toLowerCase().includes(lowerCaseFilter)) ||
-            (ticket.title && ticket.title.toLowerCase().includes(lowerCaseFilter))
+            (ticket.ticketId && ticket.ticketId.toLowerCase().includes(lowerCaseFilter)) ||
+            (ticket.title && ticket.title.toLowerCase().includes(lowerCaseFilter)) ||
+            (ticket.description && ticket.description.toLowerCase().includes(lowerCaseFilter))
         );
     }
-
     if (statusFilter !== 'all') {
         tickets = tickets.filter(ticket => ticket.status === statusFilter);
     }
-    
-    if (regionFilter !== 'all') {
-        tickets = tickets.filter(ticket => ticket.region === regionFilter);
+     if (priorityFilter !== 'all') {
+        tickets = tickets.filter(ticket => ticket.priority === priorityFilter);
     }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, statusFilter, regionFilter]);
+  }, [allTickets, date, ticketIdFilter, statusFilter, priorityFilter]);
 
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
+  const statusList: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
+  const priorityList: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
-  const ticketFilterPopover = (
-      <Popover>
-          <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn("h-9 border-transparent", ticketIdFilter ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
-                  Ticket
-                  <Filter className="ml-2 h-3 w-3" />
-              </Button>
-          </PopoverTrigger>
-          <PopoverContent className="p-2 w-60" align="start">
-              <Input
-                  placeholder="Filter by ID or title..."
-                  value={ticketIdFilter}
-                  onChange={(e) => setTicketIdFilter(e.target.value)}
-                  className="h-9"
-              />
-          </PopoverContent>
-      </Popover>
-  );
-
-  const statusFilterDropdown = (
-      <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={cn("h-9 border-transparent", statusFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
-                  Status
-                  <Filter className="ml-2 h-3 w-3" />
-              </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-              <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
-                  <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-      </DropdownMenu>
-  );
-
-  const regionFilterDropdown = (
-    <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={cn("h-9 border-transparent", regionFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
-                Region
-                <Filter className="ml-2 h-3 w-3" />
-            </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-            <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
-                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                <DropdownMenuSeparator />
-                {availableRegions.map(region => (
-                    <DropdownMenuRadioItem key={region} value={region}>
-                        {region}
-                    </DropdownMenuRadioItem>
-                ))}
-            </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-    </DropdownMenu>
-  );
 
   return (
     <>
@@ -162,38 +142,13 @@ export default function DashboardClient({}: DashboardClientProps) {
         <div className="flex items-center gap-2 flex-wrap">
             <Popover>
             <PopoverTrigger asChild>
-                <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                    "w-full sm:w-[260px] justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                )}
-                >
+                <Button id="date" variant={"outline"} className={cn("w-full sm:w-[260px] justify-start text-left font-normal",!date && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                    date.to ? (
-                    <>
-                        {format(date.from, "LLL dd, y")} -{" "}
-                        {format(date.to, "LLL dd, y")}
-                    </>
-                    ) : (
-                    format(date.from, "LLL dd, y")
-                    )
-                ) : (
-                    <span>Pick a date</span>
-                )}
+                {date?.from ? (date.to ? (<>{format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}</>) : (format(date.from, "LLL dd, y"))) : (<span>Pick a date</span>)}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={(range) => { setDate(range); setActiveDatePreset(null); }}
-                numberOfMonths={2}
-                />
+                <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={(range) => { setDate(range); setActiveDatePreset(null); }} numberOfMonths={2}/>
             </PopoverContent>
             </Popover>
             <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'today' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfDay(new Date()), to: endOfDay(new Date())}); setActiveDatePreset('today'); }}>Today</Button>
@@ -201,227 +156,62 @@ export default function DashboardClient({}: DashboardClientProps) {
             <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'last_month' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))}); setActiveDatePreset('last_month'); }}>Last Month</Button>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Issues</CardTitle>
-            <Circle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.pending}</div>}
-            <p className="text-xs text-muted-foreground">
-              Tickets awaiting response
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <CircleDot className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.inProgress}</div>}
-             <p className="text-xs text-muted-foreground">
-              Tickets actively being worked on
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolved Issues</CardTitle>
-            <CircleCheck className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-             {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats.resolved}</div>}
-            <p className="text-xs text-muted-foreground">
-              Completed and closed tickets
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5 mb-4">
+        {statusList.map(status => (
+            <Card key={status}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{status}</CardTitle>
+                    {React.createElement(statusConfig[status].icon, { className: "h-4 w-4 text-muted-foreground" })}
+                </CardHeader>
+                <CardContent>
+                    {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats[status.toLowerCase().replace('-', '') as keyof typeof stats]}</div>}
+                </CardContent>
+            </Card>
+        ))}
       </div>
       
       <Card>
         <CardHeader>
             <CardTitle>My Tickets</CardTitle>
             <CardDescription>A list of your support tickets. Use the filters to narrow your search.</CardDescription>
+             <div className="flex items-center gap-2 pt-4">
+                <Input
+                    placeholder="Search by ID, title, or description..."
+                    value={ticketIdFilter}
+                    onChange={(e) => setTicketIdFilter(e.target.value)}
+                    className="h-9 max-w-sm"
+                />
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Status</Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                        <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
+                            {statusList.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Priority</Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                        <DropdownMenuRadioGroup value={priorityFilter} onValueChange={setPriorityFilter}>
+                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
+                            {priorityList.map(p => <DropdownMenuRadioItem key={p} value={p}>{p}</DropdownMenuRadioItem>)}
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </CardHeader>
         <CardContent>
-            {/* Mobile Filters */}
-            <div className="flex items-center gap-2 mb-4 md:hidden">
-              {ticketFilterPopover}
-              {statusFilterDropdown}
-              {regionFilterDropdown}
-            </div>
-            
-            {/* Desktop Table */}
-            <div className="hidden md:block">
-              <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead className="w-[250px]">
-                              <Popover>
-                                  <PopoverTrigger asChild>
-                                      <Button variant="ghost" size="sm" className={cn("-ml-3 h-8 px-3", ticketIdFilter ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
-                                          Ticket
-                                          <Filter className="ml-2 h-3 w-3" />
-                                      </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="p-2 w-60" align="start">
-                                      <Input
-                                          placeholder="Filter by ID or title..."
-                                          value={ticketIdFilter}
-                                          onChange={(e) => setTicketIdFilter(e.target.value)}
-                                          className="h-9"
-                                      />
-                                  </PopoverContent>
-                              </Popover>
-                          </TableHead>
-                          <TableHead>
-                              <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className={cn("-ml-3 h-8 px-3", statusFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
-                                          Status
-                                          <Filter className="ml-2 h-3 w-3" />
-                                      </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start">
-                                      <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
-                                          <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuRadioItem value="Pending">Pending</DropdownMenuRadioItem>
-                                          <DropdownMenuRadioItem value="In Progress">In Progress</DropdownMenuRadioItem>
-                                          <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
-                                      </DropdownMenuRadioGroup>
-                                  </DropdownMenuContent>
-                              </DropdownMenu>
-                          </TableHead>
-                          <TableHead>
-                              <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className={cn("-ml-3 h-8 px-3", regionFilter !== 'all' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")}>
-                                          Region
-                                          <Filter className="ml-2 h-3 w-3" />
-                                      </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start">
-                                      <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
-                                          <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                          <DropdownMenuSeparator />
-                                          {availableRegions.map(region => (
-                                              <DropdownMenuRadioItem key={region} value={region}>
-                                                  {region}
-                                              </DropdownMenuRadioItem>
-                                          ))}
-                                      </DropdownMenuRadioGroup>
-                                  </DropdownMenuContent>
-                              </DropdownMenu>
-                          </TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead>Completed</TableHead>
-                          <TableHead>Resolved By</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {ticketsLoading ? (
-                      <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
-                              <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                          </TableCell>
-                      </TableRow>
-                      ) : filteredTickets.length > 0 ? (
-                      filteredTickets.map((ticket) => (
-                      <TableRow key={ticket.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
-                          <TableCell>
-                            <div className="font-medium flex items-center gap-2">
-                              {ticket.title}
-                              {ticket.unreadByUser && <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />}
-                              </div>
-                            <div className="text-sm text-muted-foreground">
-                              {ticket.id}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={ticket.status === 'Pending' ? 'outline' : 'default'}
-                              className={cn(
-                                {
-                                  'bg-green-600 text-white border-transparent hover:bg-green-700': ticket.status === 'Resolved',
-                                  'bg-orange-500 text-white border-transparent hover:bg-orange-600': ticket.status === 'In Progress',
-                                }
-                              )}
-                            >
-                              {ticket.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{ticket.region}</TableCell>
-                          <TableCell>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A'}</TableCell>
-                          <TableCell>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A'}</TableCell>
-                          <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
-                        </TableRow>
-                      ))) : (
-                      <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
-                          No tickets found matching your filters.
-                          </TableCell>
-                      </TableRow>
-                      )}
-                  </TableBody>
-              </Table>
-            </div>
-
-            {/* Mobile List */}
-            <div className="md:hidden space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {ticketsLoading ? (
-                [...Array(3)].map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
+                [...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
               ) : filteredTickets.length > 0 ? (
                 filteredTickets.map((ticket) => (
-                  <div key={ticket.id} className="border rounded-lg p-3 cursor-pointer" onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)}>
-                      <div className="flex justify-between items-start gap-2">
-                          <span className="font-semibold">{ticket.title}</span>
-                          <Badge
-                            variant={ticket.status === 'Pending' ? 'outline' : 'default'}
-                            className={cn('shrink-0',
-                              {
-                                'bg-green-600 text-white border-transparent hover:bg-green-700': ticket.status === 'Resolved',
-                                'bg-orange-500 text-white border-transparent hover:bg-orange-600': ticket.status === 'In Progress',
-                              }
-                            )}
-                          >
-                            {ticket.status}
-                          </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">ID: {ticket.id}</div>
-                      
-                      <div className="text-sm mt-2 space-y-1">
-                          <div className="flex justify-between">
-                              <span className="text-muted-foreground">Region:</span>
-                              <span>{ticket.region || 'N/A'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                              <span className="text-muted-foreground">Created:</span>
-                              <span>{ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PP') : 'N/A'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                              <span className="text-muted-foreground">Completed:</span>
-                              <span>{ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PP') : 'N/A'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                              <span className="text-muted-foreground">Resolved By:</span>
-                              <span>{ticket.resolvedByDisplayName || 'N/A'}</span>
-                          </div>
-                      </div>
-
-                      {ticket.unreadByUser && (
-                          <div className="flex items-center gap-2 mt-2 text-accent text-xs font-semibold">
-                              <span className="h-2 w-2 rounded-full bg-accent" />
-                              <span>New updates</span>
-                          </div>
-                      )}
-                  </div>
+                  <TicketCard key={ticket.id} ticket={ticket} onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)} />
                 ))
               ) : (
-                <div className="h-24 text-center flex items-center justify-center">
-                  <p>No tickets found matching your filters.</p>
+                <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground">
+                    No tickets found matching your filters.
                 </div>
               )}
             </div>
@@ -430,7 +220,5 @@ export default function DashboardClient({}: DashboardClientProps) {
     </>
   );
 }
-
-    
 
     
