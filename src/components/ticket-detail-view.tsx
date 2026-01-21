@@ -141,7 +141,7 @@ export default function TicketDetailView({
 
                      <Separator />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-2 text-sm">
                         <div className="space-y-1">
                             <p className="text-muted-foreground">Reported By</p>
                             <div className="flex items-center gap-2">
@@ -201,27 +201,30 @@ export default function TicketDetailView({
                         )}
                     </div>
                 </CardContent>
-                <CardFooter className="flex flex-wrap gap-2 justify-between">
-                     <div className="flex flex-wrap gap-2">
+                <CardFooter className="flex items-center justify-between gap-2">
+                     <div className="flex items-center gap-2">
                          <Button onClick={onChatClick}>
                             <MessageSquare className="mr-2 h-4 w-4" />
                             Chat
                          </Button>
+                         {canManageTicket && !isLocked && (ticket.status === 'Open') && !ticket.assignedTo && (
+                            <Button onClick={onTakeOwnership} variant="secondary">
+                                <Check className="mr-2 h-4 w-4" /> Take Ownership
+                            </Button>
+                        )}
+                    </div>
 
+                    <div className="flex items-center gap-2">
                         {canManageTicket && !isLocked && (
                             <>
-                                {(ticket.status === 'Open') && !ticket.assignedTo && (
-                                    <Button onClick={onTakeOwnership} variant="secondary">
-                                        <Check className="mr-2 h-4 w-4" /> Check
-                                    </Button>
-                                )}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="secondary">
-                                            <UserCheck className="mr-2 h-4 w-4" /> Refer
+                                        <Button variant="outline">
+                                            <UserCheck className="mr-2 h-4 w-4" />
+                                            {ticket.assignedToDisplayName || 'Assign'}
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start">
+                                    <DropdownMenuContent align="end">
                                         <DropdownMenuRadioGroup value={ticket.assignedTo} onValueChange={onAssignmentChange}>
                                             <DropdownMenuRadioItem value="">Unassigned</DropdownMenuRadioItem>
                                             {assignableUsers.map((u: any) => (
@@ -230,41 +233,54 @@ export default function TicketDetailView({
                                         </DropdownMenuRadioGroup>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
+
+                                <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
+                                    <SelectTrigger className="w-[160px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TICKET_STATUS_LIST.map(status => (
+                                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </>
                         )}
 
-                        {isOwner && ticket.status === 'Resolved' && (
-                            <>
-                                <Button variant="outline" onClick={() => onStatusChange('Closed')}>Confirm as Closed</Button>
-                                <Button onClick={onReopenTicket} variant="destructive">No, reopen ticket</Button>
-                            </>
-                        )}
-                    </div>
-                     <div className="flex items-center gap-2">
-                        {canManageTicket && (
-                             <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status} disabled={isLocked}>
-                                <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {TICKET_STATUS_LIST.map(status => (
-                                        <SelectItem key={status} value={status}>{status}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {canManageTicket && ticket.assignedTo && (
+                                {isOwner && ticket.status === 'Resolved' && (
+                                    <>
+                                        <DropdownMenuItem onClick={() => onStatusChange('Closed')}>
+                                            Confirm & Close Ticket
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={onReopenTicket} className="text-destructive focus:text-destructive">
+                                            Re-open Ticket
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                {canManageTicket && ticket.assignedTo && !isLocked && (
                                     <DropdownMenuItem onClick={onReturnToQueue}>
                                         <Users className="mr-2 h-4 w-4" /> Return to Queue
                                     </DropdownMenuItem>
                                 )}
-                                 <DropdownMenuItem onClick={onDeleteClick} disabled={isLocked} className="text-red-500 focus:text-red-500">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                 </DropdownMenuItem>
+                                {canManageTicket && (
+                                    <DropdownMenuItem onClick={onDeleteClick} disabled={isLocked} className="text-destructive focus:text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Ticket
+                                    </DropdownMenuItem>
+                                )}
+                                 {/* A message for when no other actions are available */}
+                                {!canManageTicket && !(isOwner && ticket.status === 'Resolved') && (
+                                    <DropdownMenuItem disabled>No other actions</DropdownMenuItem>
+                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
-                     </div>
+                    </div>
                 </CardFooter>
             </Card>
         </div>
