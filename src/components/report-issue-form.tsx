@@ -7,7 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, runTransaction, updateDoc } from 'firebase/firestore';
+import { generateAutoReply } from '@/ai/flows/auto-reply-flow';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from '@/components/ui/dialog';
@@ -98,45 +99,63 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
 
     setIsSubmitting(true);
     try {
-        await runTransaction(firestore, async (transaction) => {
+        const newCount = await runTransaction(firestore, async (transaction) => {
             const counterRef = doc(firestore, 'system_settings', 'ticketCounter');
             const counterDoc = await transaction.get(counterRef);
-
-            let newCount = 1;
+            let count = 1;
             if (counterDoc.exists()) {
-                newCount = counterDoc.data().count + 1;
+                count = counterDoc.data().count + 1;
+                transaction.update(counterRef, { count: count });
             } else {
-                transaction.set(counterRef, { count: 0 });
+                transaction.set(counterRef, { count: 1 });
             }
-            
-            const ticketId = `TKT-${String(newCount).padStart(6, '0')}`;
-            
-            const newTicketRef = doc(collection(firestore, 'users', user.uid, 'issues'));
-            
-            const ticketData = {
-                userId: user.uid,
-                ticketId,
-                title: data.title,
-                issueType: data.issueType,
-                customIssueType: data.customIssueType || '',
-                description: data.description,
-                anydesk: data.anydesk || '',
-                status: 'Open',
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                unreadByAdmin: true,
-                unreadByUser: false,
-                region: userProfile.region,
-            };
-
-            transaction.set(newTicketRef, ticketData);
-            transaction.update(counterRef, { count: newCount });
+            return count;
         });
         
-        toast({ title: 'Success!', description: 'Ticket created successfully!' });
+        const ticketId = `TKT-${String(newCount).padStart(6, '0')}`;
+        
+        const ticketData = {
+            userId: user.uid,
+            ticketId,
+            title: data.title,
+            issueType: data.issueType,
+            customIssueType: data.customIssueType || '',
+            description: data.description,
+            anydesk: data.anydesk || '',
+            status: 'Open' as const,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            unreadByAdmin: true,
+            unreadByUser: false,
+            region: userProfile.region,
+        };
+
+        const newTicketRef = await addDoc(collection(firestore, 'users', user.uid, 'issues'), ticketData);
+
+        toast({ title: 'Success!', description: 'Ticket created successfully! An AI assistant will reply shortly.' });
         playNewTicketSound();
         resetFormState();
         closeButtonRef.current?.click();
+
+        generateAutoReply({
+            title: data.title,
+            description: data.description,
+            issueType: data.issueType,
+        }).then(async (output) => {
+            const messagesColRef = collection(newTicketRef, 'messages');
+            await addDoc(messagesColRef, {
+                userId: 'ai-assistant',
+                displayName: 'AI Assistant',
+                text: output.replyText,
+                createdAt: serverTimestamp(),
+                isRead: false,
+                type: 'user',
+            });
+            await updateDoc(newTicketRef, { unreadByUser: true });
+        }).catch(err => {
+            console.error("Error generating AI reply:", err);
+            // Don't show an error to the user if the AI fails. The main ticket is created.
+        });
 
     } catch (error: any) {
         console.error("Error creating ticket:", error);

@@ -152,11 +152,11 @@
       "properties": {
         "userId": {
           "type": "string",
-          "description": "The ID of the user who sent the message."
+          "description": "The ID of the user who sent the message. Can also be 'ai-assistant' or 'system'."
         },
         "displayName": {
             "type": "string",
-            "description": "The display name of the user who sent the message."
+            "description": "The display name of the user who sent the message. Can be 'AI Assistant' or 'System'."
         },
         "text": {
           "type": "string",
