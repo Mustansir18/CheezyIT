@@ -63,6 +63,9 @@ const TicketCard = ({ ticket, user, onClick, onCommentClick }: { ticket: WithId<
                     <span className="flex items-center gap-1.5"><User className="h-3 w-3" />{user?.displayName || 'Unknown User'}</span>
                     <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
                     {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
+                    {ticket.assignedToDisplayName && (ticket.status === 'In-Progress' || ticket.status === 'Pending') && (
+                        <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Working: {ticket.assignedToDisplayName}</span>
+                    )}
                     {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
                         <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Resolved by {ticket.resolvedByDisplayName}</span>
                     )}

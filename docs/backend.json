@@ -45,6 +45,10 @@
             "type": "string",
             "description": "The UID of the user this ticket is assigned to."
         },
+        "assignedToDisplayName": {
+            "type": "string",
+            "description": "The display name of the user this ticket is assigned to."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the issue was reported.",

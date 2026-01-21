@@ -9,6 +9,7 @@ export type Ticket = {
   description: string;
   status: TicketStatus;
   assignedTo?: string;
+  assignedToDisplayName?: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   completedAt?: any; // Firestore Timestamp
