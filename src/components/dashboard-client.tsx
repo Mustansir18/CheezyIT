@@ -41,40 +41,30 @@ const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () =
     const StatusIcon = statusInfo?.icon;
 
     return (
-        <Card className="group flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
-            <CardHeader className="pb-4">
-                <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-base font-bold leading-tight line-clamp-2">{ticket.title}</CardTitle>
-                     {ticket.unreadByUser && <span className="h-3 w-3 rounded-full bg-accent flex-shrink-0 mt-1" />}
+        <Card className="group flex items-center p-3 cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
+            <div className="flex-1 space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    {ticket.unreadByUser && <span className="h-2.5 w-2.5 rounded-full bg-accent flex-shrink-0" />}
+                    <CardTitle className="text-base font-bold leading-tight truncate">{ticket.title}</CardTitle>
                 </div>
-                <CardDescription className="font-mono text-xs pt-1">{ticket.ticketId}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow space-y-3 text-sm">
-                 <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="h-4 w-4" /> 
-                    <span>{formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true })}</span>
-                </div>
-                {ticket.region && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span>{ticket.region}</span>
-                    </div>
-                )}
-                {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <UserCheck className="h-4 w-4" />
-                        <span>Resolved by {ticket.resolvedByDisplayName}</span>
-                    </div>
-                )}
-            </CardContent>
-            <CardFooter className="flex justify-between items-center pt-4">
-                {statusInfo && (
+                <CardDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-mono">{ticket.ticketId}</span>
+                    <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
+                    {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
+                    {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
+                        <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Resolved by {ticket.resolvedByDisplayName}</span>
+                    )}
+                </CardDescription>
+            </div>
+
+            <div className="flex items-center gap-2 ml-4">
+                {statusInfo && StatusIcon && (
                     <Badge variant="secondary" className={cn(statusInfo.color, 'text-white gap-1.5')}>
                         <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
                         {ticket.status}
                     </Badge>
                 )}
-            </CardFooter>
+            </div>
         </Card>
     )
 }
@@ -191,9 +181,9 @@ export default function DashboardClient({}: DashboardClientProps) {
             </div>
         </CardHeader>
         <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {ticketsLoading ? (
-                [...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
+                [...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
               ) : filteredTickets.length > 0 ? (
                 filteredTickets.map((ticket) => (
                   <TicketCard key={ticket.id} ticket={ticket} onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)} />
