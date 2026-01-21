@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect }from 'react';
@@ -7,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc, runTransaction, updateDoc } from 'firebase/firestore';
-import { generateAutoReply } from '@/ai/flows/auto-reply-flow';
+import { collection, addDoc, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from '@/components/ui/dialog';
@@ -130,32 +128,12 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             region: userProfile.region,
         };
 
-        const newTicketRef = await addDoc(collection(firestore, 'users', user.uid, 'issues'), ticketData);
+        await addDoc(collection(firestore, 'users', user.uid, 'issues'), ticketData);
 
-        toast({ title: 'Success!', description: 'Ticket created successfully! An AI assistant will reply shortly.' });
+        toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
         playNewTicketSound();
         resetFormState();
         closeButtonRef.current?.click();
-
-        generateAutoReply({
-            title: data.title,
-            description: data.description,
-            issueType: data.issueType,
-        }).then(async (output) => {
-            const messagesColRef = collection(newTicketRef, 'messages');
-            await addDoc(messagesColRef, {
-                userId: 'ai-assistant',
-                displayName: 'AI Assistant',
-                text: output.replyText,
-                createdAt: serverTimestamp(),
-                isRead: false,
-                type: 'user',
-            });
-            await updateDoc(newTicketRef, { unreadByUser: true });
-        }).catch(err => {
-            console.error("Error generating AI reply:", err);
-            // Don't show an error to the user if the AI fails. The main ticket is created.
-        });
 
     } catch (error: any) {
         console.error("Error creating ticket:", error);

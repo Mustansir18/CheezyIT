@@ -13,8 +13,6 @@ import ReportIssueForm from '@/components/report-issue-form';
 import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
 import WhatsAppFAB from '@/components/whatsapp-fab';
-import AITicketCreator from '@/components/ai-ticket-creator';
-import { Sparkles } from 'lucide-react';
 
 type UserProfile = {
   role: string;
@@ -67,12 +65,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                     <div className="flex items-center gap-2">
                         <AnnouncementBell />
-                        <AITicketCreator>
-                            <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Create with AI
-                            </Button>
-                        </AITicketCreator>
                         <ReportIssueForm>
                             <Button className="bg-green-500 hover:bg-green-600 rounded-md">Report an Issue</Button>
                         </ReportIssueForm>
