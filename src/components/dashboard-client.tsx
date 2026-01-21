@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { Ticket, TicketStatus } from '@/lib/data';
-import { getStats } from '@/lib/data';
+import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
 import { useUser, useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
@@ -31,7 +31,6 @@ interface DashboardClientProps {
 const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: string }> = {
     'Open': { icon: Info, color: 'bg-blue-500' },
     'In-Progress': { icon: Loader2, color: 'bg-orange-500' },
-    'Pending': { icon: Clock, color: 'bg-yellow-500' },
     'Resolved': { icon: ShieldCheck, color: 'bg-green-600' },
     'Closed': { icon: ShieldX, color: 'bg-gray-500' }
 };
@@ -52,7 +51,7 @@ const TicketCard = ({ ticket }: { ticket: WithId<Ticket> }) => {
                         <span className="font-mono">{ticket.ticketId}</span>
                         <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
                         {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
-                        {ticket.assignedToDisplayName && (ticket.status === 'In-Progress' || ticket.status === 'Pending') && (
+                        {ticket.assignedToDisplayName && (ticket.status === 'In-Progress') && (
                             <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />With: {ticket.assignedToDisplayName}</span>
                         )}
                         {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
@@ -125,7 +124,6 @@ export default function DashboardClient({}: DashboardClientProps) {
 
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
-  const statusList: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
 
 
   return (
@@ -148,8 +146,8 @@ export default function DashboardClient({}: DashboardClientProps) {
             <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'last_month' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))}); setActiveDatePreset('last_month'); }}>Last Month</Button>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5 mb-4">
-        {statusList.map(status => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+        {TICKET_STATUS_LIST.map(status => (
             <Card key={status}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{status}</CardTitle>
@@ -178,7 +176,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                     <DropdownMenuContent align="start">
                         <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
                             <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
-                            {statusList.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
+                            {TICKET_STATUS_LIST.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>

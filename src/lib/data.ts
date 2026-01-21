@@ -1,8 +1,8 @@
 
 
-export type TicketStatus = 'Open' | 'In-Progress' | 'Pending' | 'Resolved' | 'Closed';
+export type TicketStatus = 'Open' | 'In-Progress' | 'Resolved' | 'Closed';
 
-export const TICKET_STATUS_LIST: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
+export const TICKET_STATUS_LIST: TicketStatus[] = ['Open', 'In-Progress', 'Resolved', 'Closed'];
 
 export type Ticket = {
   userId: string;
@@ -39,12 +39,11 @@ export type ChatMessage = {
 
 export const getStats = (allTickets: (Ticket & { id: string })[]) => {
     if (!allTickets) {
-        return { open: 0, inProgress: 0, pending: 0, resolved: 0, closed: 0 };
+        return { open: 0, inProgress: 0, resolved: 0, closed: 0 };
     }
     return {
         open: allTickets.filter(t => t.status === 'Open').length,
         inProgress: allTickets.filter(t => t.status === 'In-Progress').length,
-        pending: allTickets.filter(t => t.status === 'Pending').length,
         resolved: allTickets.filter(t => t.status === 'Resolved').length,
         closed: allTickets.filter(t => t.status === 'Closed').length,
     };

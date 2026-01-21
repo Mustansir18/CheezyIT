@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -203,7 +204,7 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
                                 <Phone className="h-5 w-5" />
                             </Button>
                             
-                            {(ticket.status === 'Open' || ticket.status === 'Pending') && !ticket.assignedTo && (
+                            {(ticket.status === 'Open') && !ticket.assignedTo && (
                                 <Button onClick={onTakeOwnership} size="sm" className="h-8 bg-green-600 hover:bg-green-700 text-white gap-2">
                                    <Check className="h-4 w-4" /> Check
                                 </Button>

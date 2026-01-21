@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -44,7 +45,6 @@ import { WithId } from '@/firebase';
 const statusConfig: Record<TicketStatus, { color: string }> = {
     'Open': { color: 'bg-blue-500' },
     'In-Progress': { color: 'bg-orange-500' },
-    'Pending': { color: 'bg-yellow-500' },
     'Resolved': { color: 'bg-green-600' },
     'Closed': { color: 'bg-gray-500' }
 };
@@ -155,7 +155,7 @@ export default function TicketDetailView({
 
                         {canManageTicket && !isLocked && (
                             <>
-                                {(ticket.status === 'Open' || ticket.status === 'Pending') && !ticket.assignedTo && (
+                                {(ticket.status === 'Open') && !ticket.assignedTo && (
                                     <Button onClick={onTakeOwnership} variant="secondary">
                                         <Check className="mr-2 h-4 w-4" /> Check
                                     </Button>

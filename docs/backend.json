@@ -39,7 +39,7 @@
         "status": {
           "type": "string",
           "description": "Current status of the issue.",
-          "enum": ["Open", "In-Progress", "Pending", "Resolved", "Closed"]
+          "enum": ["Open", "In-Progress", "Resolved", "Closed"]
         },
         "assignedTo": {
             "type": "string",

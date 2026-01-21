@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Ticket, TicketStatus } from '@/lib/data';
-import { getStats } from '@/lib/data';
+import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -42,7 +42,6 @@ type UserWithDisplayName = {
 const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: string }> = {
     'Open': { icon: Info, color: 'bg-blue-500' },
     'In-Progress': { icon: Loader2, color: 'bg-orange-500' },
-    'Pending': { icon: Clock, color: 'bg-yellow-500' },
     'Resolved': { icon: ShieldCheck, color: 'bg-green-600' },
     'Closed': { icon: ShieldX, color: 'bg-gray-500' }
 };
@@ -64,7 +63,7 @@ const TicketCard = ({ ticket, user, onCommentClick }: { ticket: WithId<Ticket>, 
                         <span className="flex items-center gap-1.5"><User className="h-3 w-3" />{user?.displayName || 'Unknown User'}</span>
                         <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
                         {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
-                        {ticket.assignedToDisplayName && (ticket.status === 'In-Progress' || ticket.status === 'Pending') && (
+                        {ticket.assignedToDisplayName && (ticket.status === 'In-Progress') && (
                             <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Working: {ticket.assignedToDisplayName}</span>
                         )}
                         {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
@@ -292,8 +291,6 @@ const handleSendComment = async () => {
     }
 };
 
-  const statusList: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
-
   if (loading && allTickets.length === 0) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
@@ -322,8 +319,8 @@ const handleSendComment = async () => {
             <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'last_month' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))}); setActiveDatePreset('last_month'); }}>Last Month</Button>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5 mb-4">
-        {statusList.map(status => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+        {TICKET_STATUS_LIST.map(status => (
             <Card key={status}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{status}</CardTitle>
@@ -379,7 +376,7 @@ const handleSendComment = async () => {
                     <DropdownMenuContent align="start">
                         <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
                             <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
-                            {statusList.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
+                            {TICKET_STATUS_LIST.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>

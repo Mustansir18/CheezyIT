@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -208,7 +209,7 @@ export default function TicketDetailPage() {
     };
 
     const handleTakeOwnership = () => {
-        if (ticket?.status !== 'Open' && ticket.status !== 'Pending') {
+        if (ticket?.status !== 'Open') {
             toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'This ticket is already in progress or closed.' });
             return;
         }
@@ -244,7 +245,7 @@ export default function TicketDetailPage() {
         if (!ticketRef || !canManageTicket) return;
 
         const updateData = {
-            status: 'Pending' as TicketStatus,
+            status: 'Open' as TicketStatus,
             updatedAt: serverTimestamp(),
             assignedTo: deleteField(),
             assignedToDisplayName: deleteField(),
