@@ -87,17 +87,16 @@ export default function TicketDetailPage() {
     const isInitialLoadComplete = useRef(false);
 
     useEffect(() => {
-        // This effect is designed to play sounds only when the ticket status changes *after* the initial page load.
-        if (!ticket) return; // Wait for the ticket data to be loaded.
+        if (ticketLoading || !ticket) {
+            return;
+        }
 
-        // If this is the first time the effect runs with ticket data, just set the initial state and mark the load as complete.
         if (!isInitialLoadComplete.current) {
             prevStatusRef.current = ticket.status;
             isInitialLoadComplete.current = true;
-            return; // Don't play any sound on the first run.
+            return;
         }
 
-        // For all subsequent runs, if the status has changed from what we last recorded, play a sound.
         if (prevStatusRef.current !== ticket.status) {
             switch (ticket.status) {
                 case 'In-Progress':
@@ -112,9 +111,8 @@ export default function TicketDetailPage() {
             }
         }
 
-        // After every run, update the reference to the current status for the next comparison.
         prevStatusRef.current = ticket.status;
-    }, [ticket, playInProgressSound, playResolvedSound, playClosedSound]);
+    }, [ticket, ticketLoading, playInProgressSound, playResolvedSound, playClosedSound]);
 
 
     const isOwner = useMemo(() => {

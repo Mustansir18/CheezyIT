@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
@@ -21,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useSound } from '@/hooks/use-sound';
 
 
 interface DashboardClientProps {
@@ -83,6 +83,49 @@ export default function DashboardClient({}: DashboardClientProps) {
   );
   const { data: tickets, isLoading: ticketsLoading } = useCollection<WithId<Ticket>>(issuesQuery);
   const allTickets = tickets || [];
+
+  const prevTicketsRef = useRef<WithId<Ticket>[]>([]);
+  const isInitialLoadComplete = useRef(false);
+  const playInProgressSound = useSound('/sounds/new-message.mp3');
+  const playResolvedSound = useSound('/sounds/new-ticket.mp3');
+  const playClosedSound = useSound('/sounds/new-announcement.mp3');
+
+  useEffect(() => {
+    if (ticketsLoading || !tickets) {
+      return;
+    }
+
+    // On first successful load, set the baseline and exit.
+    if (!isInitialLoadComplete.current) {
+        prevTicketsRef.current = tickets;
+        isInitialLoadComplete.current = true;
+        return;
+    }
+
+    // For subsequent updates, compare with the previous state.
+    const prevTicketsMap = new Map(prevTicketsRef.current.map(t => [t.id, t.status]));
+    
+    tickets.forEach(currentTicket => {
+        const prevStatus = prevTicketsMap.get(currentTicket.id);
+        // Check if a ticket existed before and its status has changed
+        if (prevStatus && prevStatus !== currentTicket.status) {
+            switch (currentTicket.status) {
+                case 'In-Progress':
+                    playInProgressSound();
+                    break;
+                case 'Resolved':
+                    playResolvedSound();
+                    break;
+                case 'Closed':
+                    playClosedSound();
+                    break;
+            }
+        }
+    });
+
+    // Update the ref for the next render.
+    prevTicketsRef.current = tickets;
+  }, [tickets, ticketsLoading, playInProgressSound, playResolvedSound, playClosedSound]);
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
