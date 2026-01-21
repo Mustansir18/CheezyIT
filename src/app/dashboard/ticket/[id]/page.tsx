@@ -19,6 +19,8 @@ import { useSound } from '@/hooks/use-sound';
 
 type UserProfile = {
     role: string;
+    phoneNumber?: string;
+    displayName: string;
 }
 
 export default function TicketDetailPage() {
@@ -66,11 +68,11 @@ export default function TicketDetailPage() {
         () => (effectiveUserId ? doc(firestore, 'users', effectiveUserId) : null),
         [firestore, effectiveUserId]
     );
-    const { data: ticketOwnerProfile, isLoading: ownerProfileLoading } = useDoc<any>(ticketOwnerProfileRef);
+    const { data: ticketOwnerProfile, isLoading: ownerProfileLoading } = useDoc<UserProfile>(ticketOwnerProfileRef);
     
     // Fetch all users to find assignable staff
     const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-    const { data: allUsers, isLoading: usersLoading } = useCollection<WithId<{displayName: string; role: string}>>(usersQuery);
+    const { data: allUsers, isLoading: usersLoading } = useCollection<WithId<UserProfile>>(usersQuery);
 
     const assignableUsers = useMemo(() => {
         if (!allUsers) return [];
@@ -82,6 +84,11 @@ export default function TicketDetailPage() {
         [firestore, effectiveUserId, ticketId]
     );
     const { data: ticket, isLoading: ticketLoading } = useDoc<WithId<Ticket>>(ticketRef);
+    
+    const assigneeProfile = useMemo(() => {
+        if (!allUsers || !ticket?.assignedTo) return null;
+        return allUsers.find(u => u.id === ticket.assignedTo);
+    }, [allUsers, ticket]);
 
     const prevStatusRef = useRef<TicketStatus | undefined>();
     const isInitialLoadComplete = useRef(false);
@@ -367,6 +374,7 @@ export default function TicketDetailPage() {
             <TicketDetailView
                 ticket={ticket}
                 ticketOwnerProfile={ticketOwnerProfile}
+                assigneeProfile={assigneeProfile}
                 canManageTicket={canManageTicket}
                 isOwner={isOwner}
                 backLink={backLink}
