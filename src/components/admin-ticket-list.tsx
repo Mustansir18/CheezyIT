@@ -7,7 +7,7 @@ import { addDays, format, formatDistanceToNowStrict, startOfMonth, endOfMonth, s
 import { Filter, FileDown, Loader2, MoreHorizontal, ShieldCheck, ShieldX, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp, writeBatch, onSnapshot } from 'firebase/firestore';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
@@ -126,28 +126,38 @@ export default function AdminTicketList() {
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
 
   useEffect(() => {
-    const fetchTicketsAndUsers = async () => {
-      if (!user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
-        setTicketsLoading(false);
-        return;
-      }
-      setTicketsLoading(true);
+    if (userLoading || profileLoading || !user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
+      setTicketsLoading(false);
+      return;
+    }
+    
+    setTicketsLoading(true);
 
-      try {
-        let fetchedTickets: WithId<Ticket>[] = [];
-        const usersQuery = query(collection(firestore, 'users'));
-        const usersSnapshot = await getDocs(usersQuery);
+    const usersQueryRef = query(collection(firestore, 'users'));
+    getDocs(usersQueryRef).then(usersSnapshot => {
         const usersData = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as WithId<UserWithDisplayName>[];
         setAllUsers(usersData);
-
-        if (isUserRoot || isUserAdminRole || isUserSupport) {
-            const issuesCollectionGroup = collectionGroup(firestore, 'issues');
-            const issuesSnapshot = await getDocs(issuesCollectionGroup);
-            fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
-        }
+    }).catch(err => {
+        console.error("Error fetching users:", err);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch user data.' });
+    });
+    
+    const issuesQuery = collectionGroup(firestore, 'issues');
+    
+    const unsubscribe = onSnapshot(issuesQuery, 
+      (snapshot) => {
+        const fetchedTickets = snapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
         
-        setAllTickets(fetchedTickets.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
-      } catch (error: any) {
+        const sortedTickets = fetchedTickets.sort((a,b) => {
+            const timeA = a.createdAt?.toMillis() || 0;
+            const timeB = b.createdAt?.toMillis() || 0;
+            return timeB - timeA;
+        });
+
+        setAllTickets(sortedTickets);
+        setTicketsLoading(false);
+      }, 
+      (error) => {
         console.error("Error fetching tickets for admin/support:", error);
         toast({
             variant: 'destructive',
@@ -156,14 +166,11 @@ export default function AdminTicketList() {
                 ? 'You do not have the required permissions to view all tickets.'
                 : 'Could not fetch all tickets. Please check permissions and console for details.',
         });
-      } finally {
         setTicketsLoading(false);
       }
-    };
-
-    if (!userLoading && !profileLoading) {
-        fetchTicketsAndUsers();
-    }
+    );
+    
+    return () => unsubscribe();
   }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
   
   useEffect(() => {
