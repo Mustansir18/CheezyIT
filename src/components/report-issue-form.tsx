@@ -17,10 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useSound } from '@/hooks/use-sound';
-import type { TicketPriority } from '@/lib/data';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
-const priorities: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
@@ -28,9 +26,6 @@ const ticketSchema = z.object({
     required_error: "You need to select an issue type.",
   }),
   customIssueType: z.string().optional(),
-  priority: z.enum(priorities, {
-      required_error: "You need to select a priority level."
-  }),
   description: z.string().min(1, 'Description is required.'),
   anydesk: z.string().regex(/^\d*$/, { message: 'AnyDesk ID must be a number.' }).optional(),
 }).refine(data => {
@@ -76,7 +71,6 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       anydesk: '',
       issueType: undefined,
       customIssueType: '',
-      priority: 'Medium',
     },
   });
 
@@ -127,7 +121,6 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 customIssueType: data.customIssueType || '',
                 description: data.description,
                 anydesk: data.anydesk || '',
-                priority: data.priority,
                 status: 'Open',
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
@@ -178,8 +171,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
+            <FormField
                 control={form.control}
                 name="issueType"
                 render={({ field }) => (
@@ -201,29 +193,6 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {priorities.map(p => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
             {issueType === 'Other' && (
                  <FormField
                     control={form.control}
@@ -281,5 +250,3 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     </Dialog>
   );
 }
-
-    

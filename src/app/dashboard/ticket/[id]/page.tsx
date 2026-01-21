@@ -81,6 +81,10 @@ export default function TicketDetailPage() {
     const backLink = canManageTicket && ownerId ? '/admin/tickets' : '/dashboard';
 
     const handleStatusChange = (newStatus: TicketStatus) => {
+        if (ticket?.status === 'Closed') {
+            toast({ variant: 'destructive', title: 'Ticket is Closed', description: 'Cannot change the status of a closed ticket.' });
+            return;
+        }
         if (!ticketRef || !user) return;
         const updateData: {
             status: TicketStatus;
@@ -115,6 +119,10 @@ export default function TicketDetailPage() {
     };
     
     const handleAssignment = (assigneeId: string) => {
+        if (ticket?.status === 'Closed') {
+            toast({ variant: 'destructive', title: 'Ticket is Closed', description: 'Cannot assign a closed ticket.' });
+            return;
+        }
         if (!ticketRef || !user) return;
         
         const assignee = allUsers?.find(u => u.id === assigneeId);
@@ -131,6 +139,11 @@ export default function TicketDetailPage() {
     };
 
     const handleDeleteTicket = () => {
+        if (ticket?.status === 'Closed') {
+            toast({ variant: 'destructive', title: 'Ticket is Closed', description: 'Cannot delete a closed ticket.' });
+            setIsDeleteDialogOpen(false);
+            return;
+        }
         if (!ticketRef) return;
         setIsDeleteDialogOpen(false);
 
@@ -188,6 +201,10 @@ export default function TicketDetailPage() {
     };
 
     const handleReferTicket = () => {
+        if (ticket?.status === 'Closed') {
+            toast({ variant: 'destructive', title: 'Ticket is Closed', description: 'Cannot refer a closed ticket.' });
+            return;
+        }
         if (!ticketRef || !canManageTicket) return;
 
         const updateData = {

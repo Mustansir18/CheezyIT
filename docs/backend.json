@@ -41,11 +41,6 @@
           "description": "Current status of the issue.",
           "enum": ["Open", "In-Progress", "Pending", "Resolved", "Closed"]
         },
-        "priority": {
-          "type": "string",
-          "description": "The priority level of the issue.",
-          "enum": ["Low", "Medium", "High", "Critical"]
-        },
         "assignedTo": {
             "type": "string",
             "description": "The UID of the user this ticket is assigned to."
@@ -93,7 +88,6 @@
         "issueType",
         "description",
         "status",
-        "priority",
         "createdAt",
         "updatedAt",
         "region"
@@ -330,5 +324,3 @@
     }
   }
 }
-
-    

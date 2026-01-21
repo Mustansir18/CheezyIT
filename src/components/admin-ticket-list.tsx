@@ -4,7 +4,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceToNowStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
-import { Filter, FileDown, Loader2, MoreHorizontal, ShieldAlert, Shield, ShieldCheck, ShieldX, Thermometer, Flame, Bomb, Snowflake, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck, MessageSquare } from 'lucide-react';
+import { Filter, FileDown, Loader2, MoreHorizontal, ShieldCheck, ShieldX, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Ticket, TicketStatus, TicketPriority } from '@/lib/data';
+import type { Ticket, TicketStatus } from '@/lib/data';
 import { getStats } from '@/lib/data';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
@@ -47,19 +47,9 @@ const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: strin
     'Closed': { icon: ShieldX, color: 'bg-gray-500' }
 };
 
-const priorityConfig: Record<TicketPriority, { icon: React.ElementType, color: string }> = {
-    'Low': { icon: Snowflake, color: 'bg-blue-400' },
-    'Medium': { icon: Thermometer, color: 'bg-yellow-500' },
-    'High': { icon: Flame, color: 'bg-orange-600' },
-    'Critical': { icon: Bomb, color: 'bg-red-600' }
-};
-
 const TicketCard = ({ ticket, user, onClick, onCommentClick }: { ticket: WithId<Ticket>, user?: UserWithDisplayName, onClick: () => void, onCommentClick: (ticket: WithId<Ticket>) => void }) => {
     const statusInfo = statusConfig[ticket.status];
     const StatusIcon = statusInfo?.icon;
-    
-    const priorityInfo = ticket.priority ? priorityConfig[ticket.priority] : undefined;
-    const PriorityIcon = priorityInfo?.icon;
 
     return (
         <Card className="group flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
@@ -100,12 +90,6 @@ const TicketCard = ({ ticket, user, onClick, onCommentClick }: { ticket: WithId<
                     </Badge>
                 )}
                 <div className="flex items-center gap-1">
-                    {priorityInfo && PriorityIcon && ticket.priority && (
-                        <Badge variant="outline" className="gap-1.5 border-dashed">
-                            <PriorityIcon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
-                            {ticket.priority}
-                        </Badge>
-                    )}
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-accent-foreground" onClick={(e) => { e.stopPropagation(); onCommentClick(ticket); }}>
                         <MessageSquare className="h-4 w-4" />
                     </Button>
@@ -128,7 +112,6 @@ export default function AdminTicketList() {
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -239,15 +222,12 @@ export default function AdminTicketList() {
     if (statusFilter !== 'all') {
         tickets = tickets.filter(ticket => ticket.status === statusFilter);
     }
-    if (priorityFilter !== 'all') {
-        tickets = tickets.filter(ticket => ticket.priority === priorityFilter);
-    }
     if (regionFilter !== 'all') {
         tickets = tickets.filter(ticket => ticket.region === regionFilter);
     }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, priorityFilter, regionFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
+  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, regionFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
@@ -284,13 +264,12 @@ export default function AdminTicketList() {
     }
     setExporting(true);
     const title = "All Tickets Report";
-    const columns = ['Ticket ID', 'Title', 'User', 'Status', 'Priority', 'Region', 'Created', 'Completed', 'Resolved By'];
+    const columns = ['Ticket ID', 'Title', 'User', 'Status', 'Region', 'Created', 'Completed', 'Resolved By'];
     const data = filteredTickets.map(ticket => [
         ticket.ticketId,
         ticket.title,
         usersMap[ticket.userId]?.displayName || 'Unknown User',
         ticket.status,
-        ticket.priority,
         ticket.region || 'N/A',
         ticket.createdAt ? format(ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt), 'PPp') : 'N/A',
         ticket.completedAt ? format(ticket.completedAt.toDate ? ticket.completedAt.toDate() : new Date(ticket.completedAt), 'PPp') : 'N/A',
@@ -343,7 +322,6 @@ const handleSendComment = async () => {
 };
 
   const statusList: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
-  const priorityList: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
   if (loading && allTickets.length === 0) {
     return (
@@ -431,15 +409,6 @@ const handleSendComment = async () => {
                         <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
                             <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
                             {statusList.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
-                        </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Priority</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        <DropdownMenuRadioGroup value={priorityFilter} onValueChange={setPriorityFilter}>
-                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
-                            {priorityList.map(p => <DropdownMenuRadioItem key={p} value={p}>{p}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>

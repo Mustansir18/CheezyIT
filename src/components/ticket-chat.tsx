@@ -11,9 +11,9 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { ChatMessage, Ticket, TicketStatus, TicketPriority } from '@/lib/data';
+import type { ChatMessage, Ticket, TicketStatus } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import AudioPlayer from '@/components/audio-player';
@@ -37,6 +37,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     const [message, setMessage] = useState('');
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const { id: ticketId, userId } = ticket;
+    const isLocked = ticket.status === 'Closed';
 
     const userProfileRef = useMemoFirebase(() => (userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
     const { data: ticketOwnerProfile } = useDoc<any>(userProfileRef);
@@ -203,7 +204,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                             <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!ticketOwnerProfile?.phoneNumber}>
                                 <Phone className="h-5 w-5" />
                             </Button>
-                            <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
+                            <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status} disabled={isLocked}>
                                 <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs focus:ring-0 shadow-none hover:bg-white/5 w-auto gap-1"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-[#233138] border-[#424d54] text-white">
                                     {statusOptions.map(status => (
@@ -212,7 +213,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                 </SelectContent>
                             </Select>
                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
+                                <DropdownMenuTrigger asChild disabled={isLocked}>
                                     <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5">
                                         <UserCheck className="h-5 w-5" />
                                     </Button>
@@ -236,7 +237,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                                     <Users className="mr-2 h-4 w-4" /> Refer to Queue
                                 </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={onDeleteClick} className="text-red-400 focus:bg-red-400/10 focus:text-red-400 cursor-pointer"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                            <DropdownMenuItem onClick={onDeleteClick} disabled={isLocked} className="text-red-400 focus:bg-red-400/10 focus:text-red-400 cursor-pointer"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -390,5 +391,3 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
         </div>
     );
 }
-
-    

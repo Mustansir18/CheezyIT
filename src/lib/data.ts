@@ -1,7 +1,6 @@
 
 
 export type TicketStatus = 'Open' | 'In-Progress' | 'Pending' | 'Resolved' | 'Closed';
-export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
 export type Ticket = {
   userId: string;
@@ -9,7 +8,6 @@ export type Ticket = {
   title: string;
   description: string;
   status: TicketStatus;
-  priority: TicketPriority;
   assignedTo?: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp

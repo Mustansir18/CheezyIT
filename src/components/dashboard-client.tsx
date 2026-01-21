@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Ticket, TicketStatus, TicketPriority } from '@/lib/data';
+import type { Ticket, TicketStatus } from '@/lib/data';
 import { getStats } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Info, Clock, ShieldCheck, ShieldX, Calendar as CalendarIcon, Filter, Snowflake, Thermometer, Flame, Bomb, User, MapPin, UserCheck } from 'lucide-react';
+import { Loader2, Info, Clock, ShieldCheck, ShieldX, Calendar as CalendarIcon, Filter, User, MapPin, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -36,18 +36,9 @@ const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: strin
     'Closed': { icon: ShieldX, color: 'bg-gray-500' }
 };
 
-const priorityConfig: Record<TicketPriority, { icon: React.ElementType, color: string }> = {
-    'Low': { icon: Snowflake, color: 'bg-blue-400' },
-    'Medium': { icon: Thermometer, color: 'bg-yellow-500' },
-    'High': { icon: Flame, color: 'bg-orange-600' },
-    'Critical': { icon: Bomb, color: 'bg-red-600' }
-};
-
 const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () => void }) => {
     const statusInfo = statusConfig[ticket.status];
     const StatusIcon = statusInfo?.icon;
-    const priorityInfo = ticket.priority ? priorityConfig[ticket.priority] : undefined;
-    const PriorityIcon = priorityInfo?.icon;
 
     return (
         <Card className="group flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
@@ -83,12 +74,6 @@ const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () =
                         {ticket.status}
                     </Badge>
                 )}
-                {priorityInfo && PriorityIcon && ticket.priority && (
-                    <Badge variant="outline" className="gap-1.5 border-dashed">
-                        <PriorityIcon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
-                        {ticket.priority}
-                    </Badge>
-                )}
             </CardFooter>
         </Card>
     )
@@ -113,7 +98,6 @@ export default function DashboardClient({}: DashboardClientProps) {
 
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
 
   const filteredTickets = useMemo(() => {
@@ -141,17 +125,13 @@ export default function DashboardClient({}: DashboardClientProps) {
     if (statusFilter !== 'all') {
         tickets = tickets.filter(ticket => ticket.status === statusFilter);
     }
-     if (priorityFilter !== 'all') {
-        tickets = tickets.filter(ticket => ticket.priority === priorityFilter);
-    }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, statusFilter, priorityFilter]);
+  }, [allTickets, date, ticketIdFilter, statusFilter]);
 
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   const statusList: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
-  const priorityList: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 
   return (
@@ -205,15 +185,6 @@ export default function DashboardClient({}: DashboardClientProps) {
                         <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
                             <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
                             {statusList.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
-                        </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Priority</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        <DropdownMenuRadioGroup value={priorityFilter} onValueChange={setPriorityFilter}>
-                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
-                            {priorityList.map(p => <DropdownMenuRadioItem key={p} value={p}>{p}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
