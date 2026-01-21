@@ -8,7 +8,7 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
 import { useUser, useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -36,46 +36,47 @@ const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: strin
     'Closed': { icon: ShieldX, color: 'bg-gray-500' }
 };
 
-const TicketCard = ({ ticket, onClick }: { ticket: WithId<Ticket>, onClick: () => void }) => {
+const TicketCard = ({ ticket }: { ticket: WithId<Ticket> }) => {
     const statusInfo = statusConfig[ticket.status];
     const StatusIcon = statusInfo?.icon;
 
     return (
-        <Card className="group flex items-center p-3 cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
-            <div className="flex-1 space-y-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    {ticket.unreadByUser && <span className="h-2.5 w-2.5 rounded-full bg-accent flex-shrink-0" />}
-                    <CardTitle className="text-base font-bold leading-tight truncate">{ticket.title}</CardTitle>
+        <Link href={`/dashboard/ticket/${ticket.id}`} className="block group">
+            <Card className="group-hover:shadow-lg transition-all duration-200 group-hover:-translate-y-1 group-hover:border-primary flex items-center p-3">
+                <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        {ticket.unreadByUser && <span className="h-2.5 w-2.5 rounded-full bg-accent flex-shrink-0" />}
+                        <CardTitle className="text-base font-bold leading-tight truncate">{ticket.title}</CardTitle>
+                    </div>
+                    <CardDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="font-mono">{ticket.ticketId}</span>
+                        <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
+                        {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
+                        {ticket.assignedToDisplayName && (ticket.status === 'In-Progress' || ticket.status === 'Pending') && (
+                            <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />With: {ticket.assignedToDisplayName}</span>
+                        )}
+                        {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
+                            <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Resolved by {ticket.resolvedByDisplayName}</span>
+                        )}
+                    </CardDescription>
                 </div>
-                <CardDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="font-mono">{ticket.ticketId}</span>
-                    <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
-                    {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
-                    {ticket.assignedToDisplayName && (ticket.status === 'In-Progress' || ticket.status === 'Pending') && (
-                        <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />With: {ticket.assignedToDisplayName}</span>
-                    )}
-                    {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
-                        <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Resolved by {ticket.resolvedByDisplayName}</span>
-                    )}
-                </CardDescription>
-            </div>
 
-            <div className="flex items-center gap-2 ml-4">
-                {statusInfo && StatusIcon && (
-                    <Badge variant="secondary" className={cn(statusInfo.color, 'text-white gap-1.5')}>
-                        <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
-                        {ticket.status}
-                    </Badge>
-                )}
-            </div>
-        </Card>
+                <div className="flex items-center gap-2 ml-4">
+                    {statusInfo && StatusIcon && (
+                        <Badge variant="secondary" className={cn(statusInfo.color, 'text-white gap-1.5')}>
+                            <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
+                            {ticket.status}
+                        </Badge>
+                    )}
+                </div>
+            </Card>
+        </Link>
     )
 }
 
 export default function DashboardClient({}: DashboardClientProps) {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
 
   const issuesQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.uid, 'issues'), orderBy('createdAt', 'desc')) : null,
@@ -189,7 +190,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                 [...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
               ) : filteredTickets.length > 0 ? (
                 filteredTickets.map((ticket) => (
-                  <TicketCard key={ticket.id} ticket={ticket} onClick={() => router.push(`/dashboard/ticket/${ticket.id}`)} />
+                  <TicketCard key={ticket.id} ticket={ticket} />
                 ))
               ) : (
                 <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground">

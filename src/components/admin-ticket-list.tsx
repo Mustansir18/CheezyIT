@@ -8,7 +8,7 @@ import { Filter, FileDown, Loader2, MoreHorizontal, ShieldCheck, ShieldX, Info, 
 import Image from 'next/image';
 import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -47,51 +47,52 @@ const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: strin
     'Closed': { icon: ShieldX, color: 'bg-gray-500' }
 };
 
-const TicketCard = ({ ticket, user, onClick, onCommentClick }: { ticket: WithId<Ticket>, user?: UserWithDisplayName, onClick: () => void, onCommentClick: (ticket: WithId<Ticket>) => void }) => {
+const TicketCard = ({ ticket, user, onCommentClick }: { ticket: WithId<Ticket>, user?: UserWithDisplayName, onCommentClick: (e: React.MouseEvent, ticket: WithId<Ticket>) => void }) => {
     const statusInfo = statusConfig[ticket.status];
     const StatusIcon = statusInfo?.icon;
 
     return (
-        <Card className="group flex items-center p-3 cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group-hover:border-primary" onClick={onClick}>
-            <div className="flex-1 space-y-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    {ticket.unreadByAdmin && <span className="h-2.5 w-2.5 rounded-full bg-accent flex-shrink-0" />}
-                    <CardTitle className="text-base font-bold leading-tight truncate">{ticket.title}</CardTitle>
+        <Link href={`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`} className="block group">
+            <Card className="group-hover:shadow-lg transition-all duration-200 group-hover:-translate-y-1 group-hover:border-primary flex items-center p-3">
+                <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        {ticket.unreadByAdmin && <span className="h-2.5 w-2.5 rounded-full bg-accent flex-shrink-0" />}
+                        <CardTitle className="text-base font-bold leading-tight truncate">{ticket.title}</CardTitle>
+                    </div>
+                    <CardDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="font-mono">{ticket.ticketId}</span>
+                        <span className="flex items-center gap-1.5"><User className="h-3 w-3" />{user?.displayName || 'Unknown User'}</span>
+                        <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
+                        {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
+                        {ticket.assignedToDisplayName && (ticket.status === 'In-Progress' || ticket.status === 'Pending') && (
+                            <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Working: {ticket.assignedToDisplayName}</span>
+                        )}
+                        {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
+                            <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Resolved by {ticket.resolvedByDisplayName}</span>
+                        )}
+                    </CardDescription>
                 </div>
-                <CardDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="font-mono">{ticket.ticketId}</span>
-                    <span className="flex items-center gap-1.5"><User className="h-3 w-3" />{user?.displayName || 'Unknown User'}</span>
-                    <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
-                    {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
-                    {ticket.assignedToDisplayName && (ticket.status === 'In-Progress' || ticket.status === 'Pending') && (
-                        <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Working: {ticket.assignedToDisplayName}</span>
-                    )}
-                    {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
-                        <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Resolved by {ticket.resolvedByDisplayName}</span>
-                    )}
-                </CardDescription>
-            </div>
 
-            <div className="flex items-center gap-2 ml-4">
-                {statusInfo && StatusIcon && (
-                    <Badge variant="secondary" className={cn(statusInfo.color, 'text-white gap-1.5')}>
-                        <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
-                        {ticket.status}
-                    </Badge>
-                )}
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-accent-foreground" onClick={(e) => { e.stopPropagation(); onCommentClick(ticket); }}>
-                        <MessageSquare className="h-4 w-4" />
-                    </Button>
+                <div className="flex items-center gap-2 ml-4">
+                    {statusInfo && StatusIcon && (
+                        <Badge variant="secondary" className={cn(statusInfo.color, 'text-white gap-1.5')}>
+                            <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
+                            {ticket.status}
+                        </Badge>
+                    )}
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-accent-foreground relative z-10" onClick={(e) => onCommentClick(e, ticket)}>
+                            <MessageSquare className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
-            </div>
-        </Card>
+            </Card>
+        </Link>
     )
 }
 
 export default function AdminTicketList() {
   const firestore = useFirestore();
-  const router = useRouter();
   const { toast } = useToast();
   const { user, loading: userLoading } = useUser();
 
@@ -221,8 +222,10 @@ export default function AdminTicketList() {
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
-  const handleTicketClick = (ticket: WithId<Ticket>) => {
-    router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
+  const handleCommentClick = (e: React.MouseEvent, ticket: WithId<Ticket>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCommentingTicket(ticket);
   };
 
   const handleExport = async (exportFormat: 'pdf' | 'excel') => {
@@ -397,7 +400,7 @@ const handleSendComment = async () => {
                 [...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
               ) : filteredTickets.length > 0 ? (
                 filteredTickets.map((ticket) => (
-                    <TicketCard key={ticket.id} ticket={ticket} user={usersMap[ticket.userId]} onClick={() => handleTicketClick(ticket)} onCommentClick={(t) => setCommentingTicket(t)} />
+                    <TicketCard key={ticket.id} ticket={ticket} user={usersMap[ticket.userId]} onCommentClick={handleCommentClick} />
                 ))
               ) : (
                 <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground">
