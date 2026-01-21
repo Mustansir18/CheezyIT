@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import { getStats } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
