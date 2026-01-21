@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         src="/background.png"
                         alt="Dashboard Banner"
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         priority
                     />
                 </div>

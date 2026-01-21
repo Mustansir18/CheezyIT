@@ -87,7 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 src="/background.png"
                 alt="Dashboard Banner"
                 fill
-                className="object-cover"
+                className="object-contain"
                 priority
             />
         </div>
