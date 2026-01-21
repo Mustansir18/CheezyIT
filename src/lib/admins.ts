@@ -3,6 +3,7 @@
 
 export const ROOT_EMAILS = [
   'mustansir133@gmail.com',
+  'mustansir131@gmail.com',
 ];
 
 export const isRoot = (email: string | undefined | null): boolean => {
