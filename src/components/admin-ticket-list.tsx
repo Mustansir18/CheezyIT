@@ -146,13 +146,12 @@ export default function AdminTicketList() {
     
     const issuesQuery = collectionGroup(firestore, 'issues');
     
-    const unsubscribe = onSnapshot(issuesQuery, 
+    const unsubscribe = onSnapshot(issuesQuery,
       (snapshot) => {
         let newTicketSoundToPlay = false;
 
-        if (!isInitialLoadComplete.current && !snapshot.metadata.fromCache) {
-            isInitialLoadComplete.current = true;
-        } else if (isInitialLoadComplete.current) {
+        // On subsequent updates (not the initial load), check for changes.
+        if (isInitialLoadComplete.current) {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === "added") {
                     newTicketSoundToPlay = true;
@@ -161,7 +160,7 @@ export default function AdminTicketList() {
                     const oldTicket = allTicketsRef.current.find(t => t.id === change.doc.id);
                     const newTicket = change.doc.data() as Ticket;
                     if (oldTicket && oldTicket.status !== newTicket.status) {
-                         switch (newTicket.status) {
+                        switch (newTicket.status) {
                             case 'In-Progress':
                                 playInProgressSound();
                                 break;
@@ -176,7 +175,7 @@ export default function AdminTicketList() {
                 }
             });
         }
-        
+
         if (newTicketSoundToPlay) {
             playNewTicketSound();
         }
@@ -191,7 +190,12 @@ export default function AdminTicketList() {
 
         setAllTickets(sortedTickets);
         setTicketsLoading(false);
-      }, 
+        
+        // Mark initial load as complete after the first snapshot is processed.
+        if (!isInitialLoadComplete.current) {
+            isInitialLoadComplete.current = true;
+        }
+      },
       (error) => {
         console.error("Error fetching tickets for admin/support:", error);
         toast({
