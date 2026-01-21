@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, Ticket, TicketStatus } from '@/lib/data';
+import { TICKET_STATUS_LIST } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -28,9 +28,7 @@ const WA_COLORS = {
     blue: '#53bdeb'
 };
 
-const statusOptions: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
-
-export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onTakeOwnership, onReturnToQueue }: any) {
+export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onTakeOwnership, onReturnToQueue, onBackToDetail }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -38,12 +36,6 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const { id: ticketId, userId } = ticket;
     const isLocked = ticket.status === 'Closed';
-
-    const userProfileRef = useMemoFirebase(() => (userId ? doc(firestore, 'users', userId) : null), [firestore, userId]);
-    const { data: ticketOwnerProfile } = useDoc<any>(userProfileRef);
-
-    const assignedUserRef = useMemoFirebase(() => (ticket.assignedTo ? doc(firestore, 'users', ticket.assignedTo) : null), [firestore, ticket.assignedTo]);
-    const { data: assignedUserProfile } = useDoc<any>(assignedUserRef);
 
     const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
     const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
@@ -182,9 +174,15 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
             <header className="flex-none w-full flex items-center justify-between px-4 py-2 z-20 border-b border-white/5" 
                     style={{ backgroundColor: WA_COLORS.header }}>
                 <div className="flex items-center gap-3">
-                    <Link href={backLink} className="text-[#aebac1] hover:text-white transition-colors">
-                        <ArrowLeft className="h-6 w-6" />
-                    </Link>
+                    {onBackToDetail ? (
+                        <Button variant="ghost" size="icon" onClick={onBackToDetail} className="text-[#aebac1] hover:text-white transition-colors h-10 w-10 p-0 rounded-full">
+                            <ArrowLeft className="h-6 w-6" />
+                        </Button>
+                    ) : (
+                        <Link href={backLink} className="text-[#aebac1] hover:text-white transition-colors">
+                            <ArrowLeft className="h-6 w-6" />
+                        </Link>
+                    )}
                     <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-[#6a7175] text-white font-semibold">
                             {ticketOwnerProfile?.displayName?.charAt(0).toUpperCase() || 'U'}
@@ -214,7 +212,7 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                             <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status} disabled={isLocked}>
                                 <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs focus:ring-0 shadow-none hover:bg-white/5 w-auto gap-1"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-[#233138] border-[#424d54] text-white">
-                                    {statusOptions.map(status => (
+                                    {TICKET_STATUS_LIST.map(status => (
                                         <SelectItem key={status} value={status}>{status}</SelectItem>
                                     ))}
                                 </SelectContent>

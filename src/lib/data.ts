@@ -2,6 +2,8 @@
 
 export type TicketStatus = 'Open' | 'In-Progress' | 'Pending' | 'Resolved' | 'Closed';
 
+export const TICKET_STATUS_LIST: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
+
 export type Ticket = {
   userId: string;
   ticketId: string;

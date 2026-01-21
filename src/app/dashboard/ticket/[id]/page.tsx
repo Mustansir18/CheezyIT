@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -9,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import TicketChat from '@/components/ticket-chat';
+import TicketDetailView from '@/components/ticket-detail-view';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -31,6 +30,7 @@ export default function TicketDetailPage() {
     const ownerId = searchParams.get('ownerId');
 
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [view, setView] = useState<'detail' | 'chat'>('detail');
 
     const { user, loading: userLoading } = useUser();
     const firestore = useFirestore();
@@ -42,15 +42,6 @@ export default function TicketDetailPage() {
 
     const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(currentUserProfileRef);
     
-    // Fetch all users to find assignable staff
-    const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-    const { data: allUsers, isLoading: usersLoading } = useCollection<WithId<{displayName: string; role: string}>>(usersQuery);
-
-    const assignableUsers = useMemo(() => {
-        if (!allUsers) return [];
-        return allUsers.filter(u => u.role === 'Admin' || u.role === 'it-support');
-    }, [allUsers]);
-
     const canManageTicket = useMemo(() => {
         if (!user) return false;
         if (isRoot(user.email)) return true;
@@ -65,6 +56,21 @@ export default function TicketDetailPage() {
         return user?.uid;
     }, [ownerId, user, canManageTicket]);
 
+    // Fetch ticket owner profile
+    const ticketOwnerProfileRef = useMemoFirebase(
+        () => (effectiveUserId ? doc(firestore, 'users', effectiveUserId) : null),
+        [firestore, effectiveUserId]
+    );
+    const { data: ticketOwnerProfile, isLoading: ownerProfileLoading } = useDoc<any>(ticketOwnerProfileRef);
+    
+    // Fetch all users to find assignable staff
+    const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const { data: allUsers, isLoading: usersLoading } = useCollection<WithId<{displayName: string; role: string}>>(usersQuery);
+
+    const assignableUsers = useMemo(() => {
+        if (!allUsers) return [];
+        return allUsers.filter(u => u.role === 'Admin' || u.role === 'it-support');
+    }, [allUsers]);
 
     const ticketRef = useMemoFirebase(
         () => (effectiveUserId && ticketId ? doc(firestore, 'users', effectiveUserId, 'issues', ticketId) : null),
@@ -179,7 +185,8 @@ export default function TicketDetailPage() {
             .then(() => {
                 toast({ title: 'Ticket Reopened', description: 'Your ticket is now In-Progress.' });
                 
-                const messagesColRef = collection(firestore, 'users', effectiveUserId!, 'issues', ticketId, 'messages');
+                if(!effectiveUserId || !ticketId) return;
+                const messagesColRef = collection(firestore, 'users', effectiveUserId, 'issues', ticketId, 'messages');
                 addDoc(messagesColRef, {
                     userId: 'system',
                     displayName: 'System',
@@ -259,7 +266,7 @@ export default function TicketDetailPage() {
           });
     };
 
-    if (userLoading || ticketLoading || profileLoading || usersLoading || !effectiveUserId) {
+    if (userLoading || ticketLoading || profileLoading || usersLoading || ownerProfileLoading || !effectiveUserId) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -287,11 +294,34 @@ export default function TicketDetailPage() {
         )
     }
 
+    if (view === 'chat') {
+        return (
+            <div className="flex flex-1 flex-col min-h-0">
+                <TicketChat 
+                    ticket={ticket}
+                    ticketOwnerProfile={ticketOwnerProfile}
+                    canManageTicket={canManageTicket} 
+                    isOwner={isOwner}
+                    backLink={backLink}
+                    assignableUsers={assignableUsers}
+                    onStatusChange={handleStatusChange}
+                    onAssignmentChange={handleAssignment}
+                    onDeleteClick={() => setIsDeleteDialogOpen(true)}
+                    onReopenTicket={handleReopenTicket}
+                    onTakeOwnership={handleTakeOwnership}
+                    onReturnToQueue={handleReturnToQueue}
+                    onBackToDetail={() => setView('detail')}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-1 flex-col min-h-0">
-            <TicketChat 
-                ticket={ticket} 
-                canManageTicket={canManageTicket} 
+            <TicketDetailView
+                ticket={ticket}
+                ticketOwnerProfile={ticketOwnerProfile}
+                canManageTicket={canManageTicket}
                 isOwner={isOwner}
                 backLink={backLink}
                 assignableUsers={assignableUsers}
@@ -301,6 +331,7 @@ export default function TicketDetailPage() {
                 onReopenTicket={handleReopenTicket}
                 onTakeOwnership={handleTakeOwnership}
                 onReturnToQueue={handleReturnToQueue}
+                onChatClick={() => setView('chat')}
             />
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
