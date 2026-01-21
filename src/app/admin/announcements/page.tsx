@@ -25,11 +25,13 @@ export default function AdminAnnouncementsPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
+  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+
   const isAuthorized = useMemo(() => {
-    if (user && isRoot(user.email)) return true;
+    if (userIsRoot) return true;
     if (userProfile && userProfile.role === 'Admin') return true;
     return false;
-  }, [user, userProfile]);
+  }, [userIsRoot, userProfile]);
 
   useEffect(() => {
     if (!userLoading && !profileLoading && !isAuthorized) {
