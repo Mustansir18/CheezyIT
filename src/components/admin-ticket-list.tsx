@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceToNowStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
 import { Filter, FileDown, Loader2, MoreHorizontal, ShieldCheck, ShieldX, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck, MessageSquare } from 'lucide-react';
@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { exportData } from '@/lib/export';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useSound } from '@/hooks/use-sound';
 
 
 type UserProfile = {
@@ -109,6 +110,13 @@ export default function AdminTicketList() {
   const [commentingTicket, setCommentingTicket] = useState<WithId<Ticket> | null>(null);
   const [commentText, setCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  
+  const playNewTicketSound = useSound('/sounds/new-ticket.mp3');
+  const playInProgressSound = useSound('/sounds/new-message.mp3');
+  const playResolvedSound = useSound('/sounds/new-ticket.mp3');
+  const playClosedSound = useSound('/sounds/new-announcement.mp3');
+  const seenTicketsRef = useRef<Map<string, TicketStatus>>(new Map());
+  const isInitialLoadRef = useRef(true);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -157,6 +165,46 @@ export default function AdminTicketList() {
         fetchTicketsAndUsers();
     }
   }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
+  
+  useEffect(() => {
+    if (ticketsLoading || !allTickets) {
+        return;
+    }
+
+    if (isInitialLoadRef.current) {
+        const initialMap = new Map(allTickets.map(ticket => [ticket.id, ticket.status]));
+        seenTicketsRef.current = initialMap;
+        isInitialLoadRef.current = false;
+        return;
+    }
+
+    const newTickets = allTickets.filter(ticket => !seenTicketsRef.current.has(ticket.id));
+
+    if (newTickets.length > 0) {
+        playNewTicketSound();
+    }
+
+    allTickets.forEach(currentTicket => {
+        const previousStatus = seenTicketsRef.current.get(currentTicket.id);
+        if (previousStatus && previousStatus !== currentTicket.status) {
+            switch (currentTicket.status) {
+                case 'In-Progress':
+                    playInProgressSound();
+                    break;
+                case 'Resolved':
+                    playResolvedSound();
+                    break;
+                case 'Closed':
+                    playClosedSound();
+                    break;
+            }
+        }
+    });
+
+    const updatedMap = new Map(allTickets.map(ticket => [ticket.id, ticket.status]));
+    seenTicketsRef.current = updatedMap;
+
+  }, [allTickets, ticketsLoading, playNewTicketSound, playInProgressSound, playResolvedSound, playClosedSound]);
 
   const loading = userLoading || profileLoading || ticketsLoading;
 
