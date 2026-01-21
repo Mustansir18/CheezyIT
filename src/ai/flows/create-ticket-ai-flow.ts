@@ -31,7 +31,7 @@ export async function extractTicketInfo(input: TicketExtractionInput): Promise<T
 
 const prompt = ai.definePrompt({
   name: 'createTicketAIPrompt',
-  model: 'gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: TicketExtractionInputSchema},
   output: {schema: TicketExtractionOutputSchema},
   prompt: `You are an expert IT support assistant. Your task is to analyze a user's description of a problem and convert it into a structured support ticket.

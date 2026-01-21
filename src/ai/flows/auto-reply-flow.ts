@@ -28,7 +28,7 @@ export async function generateAutoReply(input: AutoReplyInput): Promise<AutoRepl
 
 const prompt = ai.definePrompt({
   name: 'autoReplyPrompt',
-  model: 'gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: AutoReplyInputSchema},
   output: {schema: AutoReplyOutputSchema},
   prompt: `You are a friendly and helpful AI assistant for the Cheezious IT Support desk.
