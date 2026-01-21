@@ -9,6 +9,7 @@ import { isRoot } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
+import { Button } from '@/components/ui/button';
 
 type UserProfile = {
   role: string;
@@ -33,14 +34,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isAdminHomePage = pathname === '/admin';
 
   useEffect(() => {
-    if (!userLoading && !profileLoading) {
-      if (!user || !isAuthorized) {
-        router.push('/dashboard');
-      }
+    // This effect now only handles the case where the user is not logged in at all after checking.
+    // It no longer redirects for authorization, preventing the loop.
+    if (!userLoading && !user) {
+        router.push('/');
     }
-  }, [user, userLoading, profileLoading, isAuthorized, router]);
+  }, [user, userLoading, router]);
 
-  if (userLoading || profileLoading || !user) {
+  // We wait until both user and profile have been checked.
+  if (userLoading || profileLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -48,10 +50,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!isAuthorized) {
+  // After loading, if the user is somehow not authorized, we show a message instead of redirecting.
+  // This is the key change to prevent the infinite redirect loop.
+  if (!user || !isAuthorized) {
     return (
-        <div className="flex h-screen w-full items-center justify-center">
+        <div className="flex h-screen w-full flex-col items-center justify-center gap-4">
             <p>You are not authorized to view this page.</p>
+            <Button asChild variant="outline">
+                <Link href="/dashboard">Go to Your Dashboard</Link>
+            </Button>
         </div>
     );
   }
