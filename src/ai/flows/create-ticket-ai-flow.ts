@@ -12,12 +12,12 @@ import {z} from 'genkit';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
 
-export const TicketExtractionInputSchema = z.object({
+const TicketExtractionInputSchema = z.object({
   userDescription: z.string().describe('The user\'s description of their IT problem.'),
 });
 export type TicketExtractionInput = z.infer<typeof TicketExtractionInputSchema>;
 
-export const TicketExtractionOutputSchema = z.object({
+const TicketExtractionOutputSchema = z.object({
   title: z.string().describe('A concise, descriptive title for the support ticket, summarizing the issue.'),
   issueType: z.enum(issueTypes).describe('The category of the issue. This MUST be one of the provided options: ' + issueTypes.join(', ') + '.'),
   customIssueType: z.string().optional().describe("If the issueType is 'Other', provide a brief custom type. Otherwise, this should be empty."),
