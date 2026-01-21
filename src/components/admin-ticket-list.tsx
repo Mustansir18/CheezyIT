@@ -232,6 +232,8 @@ export default function AdminTicketList() {
           updatedAt: serverTimestamp(),
           unreadByAdmin: false,
           unreadByUser: true,
+          assignedTo: user.uid,
+          assignedToDisplayName: user.displayName || 'N/A',
         });
         toast({ title: 'Ticket In-Progress', description: "Status updated automatically." });
       } catch (error) {
@@ -406,7 +408,7 @@ const handleSendComment = async () => {
                     <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Region</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                         <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
-                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
+                            <DropdownMenuRadioItem value="all">All Regions</DropdownMenuRadioItem><DropdownMenuSeparator />
                             {availableRegions.map(region => (<DropdownMenuRadioItem key={region} value={region}>{region}</DropdownMenuRadioItem>))}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
