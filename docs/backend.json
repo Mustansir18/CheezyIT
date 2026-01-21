@@ -137,6 +137,11 @@
             "items": {
                 "type": "string"
             }
+        },
+        "blockedUntil": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the user's block expires. If null or in the past, the user is not blocked."
         }
       },
       "required": [

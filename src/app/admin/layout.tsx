@@ -3,8 +3,10 @@ import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
+import { doc, Timestamp } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { formatDistanceToNow } from 'date-fns';
 import { isRoot } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { cn } from '@/lib/utils';
@@ -13,10 +15,12 @@ import { Button } from '@/components/ui/button';
 
 type UserProfile = {
   role: string;
+  blockedUntil?: Timestamp;
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: userLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
@@ -32,16 +36,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [user, userProfile]);
 
   const isAdminHomePage = pathname === '/admin';
+  
+  const isBlocked = useMemo(() => {
+      return userProfile?.blockedUntil && userProfile.blockedUntil.toDate() > new Date();
+  }, [userProfile]);
 
   useEffect(() => {
-    // This effect now only handles the case where the user is not logged in at all after checking.
-    // It no longer redirects for authorization, preventing the loop.
     if (!userLoading && !user) {
         router.push('/');
     }
   }, [user, userLoading, router]);
 
-  // We wait until both user and profile have been checked.
   if (userLoading || profileLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -49,9 +54,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     );
   }
+  
+  if (isBlocked) {
+    const blockExpires = formatDistanceToNow(userProfile.blockedUntil!.toDate(), { addSuffix: true });
+    return (
+        <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
+            <h1 className="text-2xl font-bold">Account Blocked</h1>
+            <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
+            <p>Access will be restored {blockExpires}.</p>
+            <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
+        </div>
+    );
+  }
 
-  // After loading, if the user is somehow not authorized, we show a message instead of redirecting.
-  // This is the key change to prevent the infinite redirect loop.
   if (!user || !isAuthorized) {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4">

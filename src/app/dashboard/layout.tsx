@@ -1,10 +1,12 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { doc } from 'firebase/firestore';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, Timestamp } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
+import { formatDistanceToNow } from 'date-fns';
 import { isRoot } from '@/lib/admins';
 
 import { UserNav } from '@/components/user-nav';
@@ -16,10 +18,12 @@ import WhatsAppFAB from '@/components/whatsapp-fab';
 
 type UserProfile = {
   role: string;
+  blockedUntil?: Timestamp;
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, loading: userLoading } = useUser();
+    const auth = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const firestore = useFirestore();
@@ -30,23 +34,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isPrivilegedUser = user && (isRoot(user.email) || userProfile?.role === 'it-support' || userProfile?.role === 'Admin');
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
     const isDashboardHomePage = pathname === '/dashboard';
+    
+    const isBlocked = useMemo(() => {
+      return userProfile?.blockedUntil && userProfile.blockedUntil.toDate() > new Date();
+    }, [userProfile]);
 
     useEffect(() => {
         if (!userLoading && !profileLoading) {
           if (!user) {
             router.push('/');
-          } else if (isPrivilegedUser && !isTicketPage) {
+          } else if (!isBlocked && isPrivilegedUser && !isTicketPage) {
             router.push('/admin');
           }
         }
-    }, [user, userLoading, profileLoading, isPrivilegedUser, isTicketPage, router, pathname]);
+    }, [user, userLoading, profileLoading, isPrivilegedUser, isTicketPage, isBlocked, router, pathname]);
     
-    if (userLoading || profileLoading || !user || (isPrivilegedUser && !isTicketPage)) {
+    if (userLoading || profileLoading || !user) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
       );
+    }
+    
+    if (isBlocked) {
+        const blockExpires = formatDistanceToNow(userProfile.blockedUntil!.toDate(), { addSuffix: true });
+        return (
+            <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
+                <h1 className="text-2xl font-bold">Account Blocked</h1>
+                <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
+                <p>Access will be restored {blockExpires}.</p>
+                <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
+            </div>
+        );
+    }
+    
+    if (isPrivilegedUser && !isTicketPage) {
+        // This is a safeguard for the useEffect redirect, showing a loader while it happens
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+            </div>
+        );
     }
     
     return (

@@ -10,8 +10,9 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId } fro
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
-import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus } from 'lucide-react';
+import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firebase/firestore';
+import { add } from 'date-fns';
+import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -35,6 +36,7 @@ type User = {
   phoneNumber?: string;
   region?: string;
   regions?: string[];
+  blockedUntil?: Timestamp;
 };
 
 const AVAILABLE_ROLES = ['User', 'Branch', 'it-support', 'Admin'];
@@ -57,6 +59,83 @@ const editUserSchema = z.object({
 
 type EditUserFormData = z.infer<typeof editUserSchema>;
 
+const blockDurations = [
+    { value: 'unblock', label: 'Unblock User'},
+    { value: '1-hour', label: '1 Hour' },
+    { value: '1-day', label: '1 Day' },
+    { value: '7-days', label: '7 Days' },
+    { value: '30-days', label: '30 Days' },
+    { value: 'indefinite', label: 'Indefinite' },
+];
+
+function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [duration, setDuration] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleBlockUser = async () => {
+        if (!user || !duration) return;
+        setIsSubmitting(true);
+
+        let blockedUntil: Timestamp | null | ReturnType<typeof deleteField> = null;
+
+        if (duration === 'unblock') {
+            blockedUntil = deleteField();
+        } else if (duration === 'indefinite') {
+            blockedUntil = Timestamp.fromDate(new Date('9999-12-31T23:59:59Z'));
+        } else {
+            const [amount, unit] = duration.split('-');
+            const now = new Date();
+            blockedUntil = Timestamp.fromDate(add(now, { [unit + 's']: parseInt(amount) }));
+        }
+
+        try {
+            const userDocRef = doc(firestore, 'users', user.id);
+            await updateDoc(userDocRef, { blockedUntil });
+            toast({ title: 'Success', description: `User ${user.displayName} has been updated.` });
+            onOpenChange(false);
+        } catch (error) {
+            console.error('Error blocking user:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update user block status.' });
+        } finally {
+            setIsSubmitting(false);
+            setDuration('');
+        }
+    };
+
+    if (!user) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Block User: {user.displayName}</DialogTitle>
+                    <DialogDescription>
+                        Select a duration to block this user. They will not be able to log in until the block expires.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Select onValueChange={setDuration} value={duration}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select block duration..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {blockDurations.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleBlockUser} disabled={isSubmitting || !duration}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm Action
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
@@ -285,6 +364,7 @@ export default function UserManagement() {
   const { toast } = useToast();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [blockingUser, setBlockingUser] = useState<User | null>(null);
 
   const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
   const { data: users, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
@@ -392,7 +472,7 @@ export default function UserManagement() {
                                         >
                                             <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
                                             <SelectContent>
-                                                {regions.map(r => ({ value: r, label: r }))}
+                                                {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     ) : (
@@ -442,8 +522,13 @@ export default function UserManagement() {
               ))
             ) : users && users.length > 0 ? (
               users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.displayName}</TableCell>
+                <TableRow key={user.id} className={user.blockedUntil && user.blockedUntil.toDate() > new Date() ? 'bg-destructive/10' : ''}>
+                  <TableCell className="font-medium flex items-center gap-2">
+                    {user.displayName}
+                    {user.blockedUntil && user.blockedUntil.toDate() > new Date() && (
+                        <Badge variant="destructive">Blocked</Badge>
+                    )}
+                  </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
                   <TableCell>{user.region || user.regions?.join(', ') || 'N/A'}</TableCell>
@@ -454,6 +539,7 @@ export default function UserManagement() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setEditingUser(user)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setBlockingUser(user)}><ShieldBan className="mr-2 h-4 w-4" /> Block/Unblock</DropdownMenuItem>
                             <DropdownMenuItem className="text-red-500" disabled>
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete (Not available)
                             </DropdownMenuItem>
@@ -479,8 +565,12 @@ export default function UserManagement() {
             onOpenChange={(isOpen) => !isOpen && setEditingUser(null)}
         />
     )}
+    
+    <BlockUserDialog
+        user={blockingUser}
+        open={!!blockingUser}
+        onOpenChange={(isOpen) => !isOpen && setBlockingUser(null)}
+    />
     </>
   );
 }
-
-    
