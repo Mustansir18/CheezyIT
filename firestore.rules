@@ -32,16 +32,21 @@ service cloud.firestore {
     function canManageTickets() {
       return isAdmin() || isSupport();
     }
-    
-    function canManageUsers() {
-      return isRoot();
-    }
 
     // Path rules
     match /users/{userId} {
-      allow read, update: if isOwner(userId) || canManageUsers();
-      // User creation is done via a separate auth instance in the app, but Firestore doc creation should be restricted.
-      allow create, delete: if canManageUsers();
+      // Any support staff can view a user's profile (e.g. on a ticket page)
+      // and users can view their own.
+      allow get: if isOwner(userId) || isAdmin() || isSupport();
+      
+      // Admin/support can list users for reports and ticket filtering.
+      allow list: if isAdmin() || isSupport();
+
+      // A user can update their own profile. A root user can update anyone's.
+      allow update: if isOwner(userId) || isRoot();
+      
+      // Only root users can create or delete user documents directly.
+      allow create, delete: if isRoot();
     }
 
     match /users/{userId}/issues/{issueId} {
