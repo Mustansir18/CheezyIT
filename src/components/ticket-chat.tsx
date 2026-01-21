@@ -5,7 +5,7 @@ import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, updateDoc } from 'firebase/firestore';
-import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone, Users, UserCheck } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone, Users, UserCheck, Check } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ const WA_COLORS = {
 
 const statusOptions: TicketStatus[] = ['Open', 'In-Progress', 'Pending', 'Resolved', 'Closed'];
 
-export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onReferTicket }: any) {
+export default function TicketChat({ ticket, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onTakeOwnership, onReturnToQueue }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -204,6 +204,13 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                             <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!ticketOwnerProfile?.phoneNumber}>
                                 <Phone className="h-5 w-5" />
                             </Button>
+                            
+                            {(ticket.status === 'Open' || ticket.status === 'Pending') && !ticket.assignedTo && (
+                                <Button onClick={onTakeOwnership} size="sm" className="h-8 bg-green-600 hover:bg-green-700 text-white gap-2">
+                                   <Check className="h-4 w-4" /> Check
+                                </Button>
+                            )}
+
                             <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status} disabled={isLocked}>
                                 <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs focus:ring-0 shadow-none hover:bg-white/5 w-auto gap-1"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-[#233138] border-[#424d54] text-white">
@@ -232,9 +239,9 @@ export default function TicketChat({ ticket, canManageTicket, isOwner, backLink,
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-[#233138] border-[#424d54] text-white">
-                            {canManageTicket && ticket.status === 'In-Progress' && (
-                                <DropdownMenuItem onClick={onReferTicket} className="cursor-pointer">
-                                    <Users className="mr-2 h-4 w-4" /> Refer to Queue
+                            {canManageTicket && ticket.assignedTo && (
+                                <DropdownMenuItem onClick={onReturnToQueue} className="cursor-pointer">
+                                    <Users className="mr-2 h-4 w-4" /> Return to Queue
                                 </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onClick={onDeleteClick} disabled={isLocked} className="text-red-400 focus:bg-red-400/10 focus:text-red-400 cursor-pointer"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>

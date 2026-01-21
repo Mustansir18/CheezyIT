@@ -200,9 +200,38 @@ export default function TicketDetailPage() {
             });
     };
 
-    const handleReferTicket = () => {
+    const handleTakeOwnership = () => {
+        if (ticket?.status !== 'Open' && ticket.status !== 'Pending') {
+            toast({ variant: 'destructive', title: 'Action Not Allowed', description: 'This ticket is already in progress or closed.' });
+            return;
+        }
+        if (!ticketRef || !user) return;
+
+        const updateData = {
+            status: 'In-Progress' as TicketStatus,
+            assignedTo: user.uid,
+            assignedToDisplayName: user.displayName || 'N/A',
+            updatedAt: serverTimestamp(),
+        };
+
+        updateDoc(ticketRef, updateData)
+            .then(() => {
+                toast({ title: 'Ticket Assigned', description: `You have taken ownership of this ticket.` });
+            })
+            .catch(async (error: any) => {
+              const permissionError = new FirestorePermissionError({
+                  path: ticketRef.path,
+                  operation: 'update',
+                  requestResourceData: updateData
+              });
+              errorEmitter.emit('permission-error', permissionError);
+              toast({ variant: 'destructive', title: 'Error', description: 'Failed to take ownership.' });
+          });
+    };
+
+    const handleReturnToQueue = () => {
         if (ticket?.status === 'Closed') {
-            toast({ variant: 'destructive', title: 'Ticket is Closed', description: 'Cannot refer a closed ticket.' });
+            toast({ variant: 'destructive', title: 'Ticket is Closed', description: 'Cannot modify a closed ticket.' });
             return;
         }
         if (!ticketRef || !canManageTicket) return;
@@ -210,11 +239,13 @@ export default function TicketDetailPage() {
         const updateData = {
             status: 'Pending' as TicketStatus,
             updatedAt: serverTimestamp(),
+            assignedTo: deleteField(),
+            assignedToDisplayName: deleteField(),
         };
 
         updateDoc(ticketRef, updateData)
             .then(() => {
-                toast({ title: 'Ticket Referred', description: 'Ticket status returned to Pending.' });
+                toast({ title: 'Ticket Returned', description: 'Ticket returned to the general queue.' });
                 router.push('/admin/tickets');
             })
             .catch(async (error: any) => {
@@ -224,7 +255,7 @@ export default function TicketDetailPage() {
                   requestResourceData: updateData,
               });
               errorEmitter.emit('permission-error', permissionError);
-              toast({ variant: 'destructive', title: 'Error', description: 'Failed to refer ticket.' });
+              toast({ variant: 'destructive', title: 'Error', description: 'Failed to return ticket to queue.' });
           });
     };
 
@@ -268,7 +299,8 @@ export default function TicketDetailPage() {
                 onAssignmentChange={handleAssignment}
                 onDeleteClick={() => setIsDeleteDialogOpen(true)}
                 onReopenTicket={handleReopenTicket}
-                onReferTicket={handleReferTicket}
+                onTakeOwnership={handleTakeOwnership}
+                onReturnToQueue={handleReturnToQueue}
             />
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -288,5 +320,3 @@ export default function TicketDetailPage() {
         </div>
     );
 }
-
-    

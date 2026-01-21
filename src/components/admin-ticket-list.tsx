@@ -221,31 +221,7 @@ export default function AdminTicketList() {
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
-  const handleTicketClick = async (ticket: WithId<Ticket>) => {
-    if (!user) return;
-
-    if (ticket.status === 'Open' && (isUserAdminRole || isUserRoot || isUserSupport)) {
-      const ticketRef = doc(firestore, 'users', ticket.userId, 'issues', ticket.id);
-      try {
-        await updateDoc(ticketRef, {
-          status: 'In-Progress',
-          updatedAt: serverTimestamp(),
-          unreadByAdmin: false,
-          unreadByUser: true,
-          assignedTo: user.uid,
-          assignedToDisplayName: user.displayName || 'N/A',
-        });
-        toast({ title: 'Ticket In-Progress', description: "Status updated automatically." });
-      } catch (error) {
-        console.error("Error updating ticket status:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not update ticket status.',
-        });
-      }
-    }
-
+  const handleTicketClick = (ticket: WithId<Ticket>) => {
     router.push(`/dashboard/ticket/${ticket.id}?ownerId=${ticket.userId}`);
   };
 
