@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -15,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { isRoot } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useSound } from '@/hooks/use-sound';
 
 
 type UserProfile = {
@@ -26,6 +26,10 @@ export default function TicketDetailPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
+
+    const playInProgressSound = useSound('/sounds/new-message.mp3');
+    const playResolvedSound = useSound('/sounds/new-ticket.mp3');
+    const playClosedSound = useSound('/sounds/new-announcement.mp3');
 
     const ticketId = params.id as string;
     const ownerId = searchParams.get('ownerId');
@@ -113,6 +117,9 @@ export default function TicketDetailPage() {
         updateDoc(ticketRef, updateData)
             .then(() => {
                 toast({ title: 'Status Updated', description: `Ticket status changed to ${newStatus}` });
+                if (newStatus === 'In-Progress') playInProgressSound();
+                if (newStatus === 'Resolved') playResolvedSound();
+                if (newStatus === 'Closed') playClosedSound();
             })
             .catch(async (error: any) => {
               const permissionError = new FirestorePermissionError({
@@ -137,6 +144,7 @@ export default function TicketDetailPage() {
         updateDoc(ticketRef, { assignedTo: assigneeId, assignedToDisplayName: assignee?.displayName || 'Unknown' })
             .then(() => {
                 toast({ title: 'Ticket Assigned', description: `Ticket assigned to ${assignee?.displayName}` });
+                playInProgressSound();
             })
             .catch(async (error: any) => {
               const permissionError = new FirestorePermissionError({ path: ticketRef.path, operation: 'update' });
@@ -185,6 +193,7 @@ export default function TicketDetailPage() {
         updateDoc(ticketRef, updateData)
             .then(() => {
                 toast({ title: 'Ticket Reopened', description: 'Your ticket is now In-Progress.' });
+                playInProgressSound();
                 
                 if(!effectiveUserId || !ticketId) return;
                 const messagesColRef = collection(firestore, 'users', effectiveUserId, 'issues', ticketId, 'messages');
@@ -225,6 +234,7 @@ export default function TicketDetailPage() {
         updateDoc(ticketRef, updateData)
             .then(() => {
                 toast({ title: 'Ticket Assigned', description: `You have taken ownership of this ticket.` });
+                playInProgressSound();
             })
             .catch(async (error: any) => {
               const permissionError = new FirestorePermissionError({
