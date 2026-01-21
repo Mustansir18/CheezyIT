@@ -67,7 +67,7 @@ export default function ReadStatusList({ announcement }: { announcement: Announc
                             return (
                                 <div key={user.id} className="flex items-center justify-between text-sm">
                                     <span>{user.displayName}</span>
-                                    <Badge variant={isRead ? 'default' : 'secondary'} className={isRead ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                    <Badge variant={isRead ? 'default' : 'secondary'}>
                                         {isRead ? 'Read' : 'Unread'}
                                     </Badge>
                                 </div>

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, addDoc, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -85,7 +85,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     form.reset();
   }
   
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = (data: FormData) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to create a ticket.' });
         return;
@@ -96,20 +96,19 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     }
 
     setIsSubmitting(true);
-    try {
-        const newCount = await runTransaction(firestore, async (transaction) => {
-            const counterRef = doc(firestore, 'system_settings', 'ticketCounter');
-            const counterDoc = await transaction.get(counterRef);
-            let count = 1;
-            if (counterDoc.exists()) {
-                count = counterDoc.data().count + 1;
-                transaction.update(counterRef, { count: count });
-            } else {
-                transaction.set(counterRef, { count: 1 });
-            }
-            return count;
-        });
-        
+    runTransaction(firestore, async (transaction) => {
+        const counterRef = doc(firestore, 'system_settings', 'ticketCounter');
+        const counterDoc = await transaction.get(counterRef);
+        let count = 1;
+        if (counterDoc.exists()) {
+            count = counterDoc.data().count + 1;
+            transaction.update(counterRef, { count: count });
+        } else {
+            transaction.set(counterRef, { count: 1 });
+        }
+        return count;
+    })
+    .then((newCount) => {
         const ticketId = `TKT-${String(newCount).padStart(6, '0')}`;
         
         const ticketData = {
@@ -127,20 +126,39 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             unreadByUser: false,
             region: userProfile.region,
         };
-
-        await addDoc(collection(firestore, 'users', user.uid, 'issues'), ticketData);
-
+        const collectionRef = collection(firestore, 'users', user.uid, 'issues');
+        
+        return addDoc(collectionRef, ticketData).catch((addDocError) => {
+            const permissionError = new FirestorePermissionError({
+                path: collectionRef.path,
+                operation: 'create',
+                requestResourceData: ticketData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw new Error(`Failed to add ticket document: ${addDocError.message}`);
+        });
+    })
+    .then(() => {
         toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
         playNewTicketSound();
         resetFormState();
         closeButtonRef.current?.click();
-
-    } catch (error: any) {
+    })
+    .catch((error: any) => {
         console.error("Error creating ticket:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create ticket. Please try again.' });
-    } finally {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create ticket. You may not have permissions.' });
+
+        if (!error.message.includes('Failed to add ticket document')) {
+             const permissionError = new FirestorePermissionError({
+                path: 'system_settings/ticketCounter',
+                operation: 'update',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+    })
+    .finally(() => {
         setIsSubmitting(false);
-    }
+    });
   }
 
   return (

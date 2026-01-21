@@ -6,7 +6,7 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceToNowStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
 import { Filter, FileDown, Loader2, MoreHorizontal, ShieldCheck, ShieldX, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
-import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp, writeBatch, onSnapshot } from 'firebase/firestore';
 import Link from 'next/link';
 
@@ -313,13 +313,15 @@ export default function AdminTicketList() {
     }
 };
 
-const handleSendComment = async () => {
+const handleSendComment = () => {
     if (!commentingTicket || !commentText.trim() || !user) return;
     setIsSubmittingComment(true);
 
     const ticketRef = doc(firestore, 'users', commentingTicket.userId, 'issues', commentingTicket.id);
     const newMessageRef = doc(collection(ticketRef, 'messages'));
     const batch = writeBatch(firestore);
+
+    const updateData = { unreadByUser: true, updatedAt: serverTimestamp() };
 
     batch.set(newMessageRef, {
         userId: user.uid,
@@ -330,22 +332,26 @@ const handleSendComment = async () => {
         type: 'user',
     });
 
-    batch.update(ticketRef, {
-        unreadByUser: true,
-        updatedAt: serverTimestamp(),
-    });
+    batch.update(ticketRef, updateData);
 
-    try {
-        await batch.commit();
-        toast({ title: 'Comment Sent', description: 'Your comment has been added to the ticket.' });
-        setCommentingTicket(null);
-        setCommentText('');
-    } catch (error) {
-        console.error('Error sending comment:', error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send comment.' });
-    } finally {
-        setIsSubmittingComment(false);
-    }
+    batch.commit()
+        .then(() => {
+            toast({ title: 'Comment Sent', description: 'Your comment has been added to the ticket.' });
+            setCommentingTicket(null);
+            setCommentText('');
+        })
+        .catch(error => {
+            const permissionError = new FirestorePermissionError({
+                path: ticketRef.path,
+                operation: 'update',
+                requestResourceData: updateData
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to send comment.' });
+        })
+        .finally(() => {
+            setIsSubmittingComment(false);
+        });
 };
 
   if (loading && allTickets.length === 0) {

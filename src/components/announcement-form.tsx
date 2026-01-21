@@ -91,7 +91,7 @@ export default function AnnouncementForm() {
   });
 
   const onSubmit = (data: FormData) => {
-    startTransition(async () => {
+    startTransition(() => {
         if (!currentUser) {
             toast({ variant: 'destructive', title: 'Authentication Error', description: 'Admin user not authenticated.' });
             return;
@@ -147,70 +147,64 @@ export default function AnnouncementForm() {
             recipientCount: recipientUids.length,
             readBy: [],
         };
+        
+        addDoc(collection(firestore, 'announcements'), announcementPayload)
+            .then(announcementRef => {
+                const batch = writeBatch(firestore);
+                const notificationData = {
+                    title: data.title,
+                    message: data.message,
+                    createdAt: serverTimestamp(),
+                    isRead: false,
+                    announcementId: announcementRef.id,
+                    createdByDisplayName: senderDisplayName,
+                    startDate: data.startDate || null,
+                    endDate: data.endDate || null,
+                };
 
-        let announcementRef;
-        try {
-            announcementRef = await addDoc(collection(firestore, 'announcements'), announcementPayload);
-        } catch (error: any) {
-            console.error("Error creating master announcement:", error);
-            const permissionError = new FirestorePermissionError({
-                path: 'announcements',
-                operation: 'create',
-                requestResourceData: announcementPayload,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({
-                variant: 'destructive',
-                title: 'Error Step 1: Saving Announcement',
-                description: 'Could not save the master announcement. Check permissions for the /announcements collection.',
-            });
-            return;
-        }
+                targetUsers.forEach(user => {
+                    const userNotificationRef = doc(collection(firestore, 'users', user.id, 'notifications'));
+                    batch.set(userNotificationRef, notificationData);
+                });
 
-        try {
-            const batch = writeBatch(firestore);
-            const notificationData = {
-                title: data.title,
-                message: data.message,
-                createdAt: serverTimestamp(),
-                isRead: false,
-                announcementId: announcementRef.id,
-                createdByDisplayName: senderDisplayName,
-                startDate: data.startDate || null,
-                endDate: data.endDate || null,
-            };
-
-            targetUsers.forEach(user => {
-                const userNotificationRef = doc(collection(firestore, 'users', user.id, 'notifications'));
-                batch.set(userNotificationRef, notificationData);
+                return batch.commit().catch(error => {
+                    const firstUser = targetUsers[0];
+                    const permissionError = new FirestorePermissionError({
+                        path: `users/${firstUser?.id || 'some-user'}/notifications`,
+                        operation: 'create',
+                        requestResourceData: notificationData,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error Step 2: Sending to Users',
+                        description: 'Master announcement was saved, but failed to send to users. Check write permissions for notifications subcollections.',
+                    });
+                    throw error;
+                });
+            })
+            .then(() => {
+                toast({
+                    title: 'Announcement Sent!',
+                    description: `Message sent to ${targetUsers.length} user(s).`,
+                });
+                form.reset();
+            })
+            .catch(error => {
+                if (!error.message?.includes("Sending to Users")) {
+                    const permissionError = new FirestorePermissionError({
+                        path: 'announcements',
+                        operation: 'create',
+                        requestResourceData: announcementPayload,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error Step 1: Saving Announcement',
+                        description: 'Could not save the master announcement. Check permissions for the /announcements collection.',
+                    });
+                }
             });
-
-            await batch.commit();
-
-            toast({
-                title: 'Announcement Sent!',
-                description: `Message sent to ${targetUsers.length} user(s).`,
-            });
-            form.reset();
-
-        } catch (error: any) {
-            console.error("Error fanning out notifications:", error);
-            const firstUser = targetUsers[0];
-            const notificationData = {
-                title: data.title, message: data.message, createdAt: 'SERVER_TIMESTAMP', isRead: false, announcementId: announcementRef.id, createdByDisplayName: senderDisplayName
-            };
-            const permissionError = new FirestorePermissionError({
-                path: `users/${firstUser?.id || 'some-user'}/notifications`,
-                operation: 'create',
-                requestResourceData: notificationData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({
-                variant: 'destructive',
-                title: 'Error Step 2: Sending to Users',
-                description: 'Master announcement was saved, but failed to send to users. Check permissions for notifications subcollections.',
-            });
-        }
     });
   };
 

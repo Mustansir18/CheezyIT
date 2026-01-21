@@ -1,9 +1,79 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Helper functions
+    function isRoot() {
+      return request.auth.token.email in ['mustansir133@gmail.com'];
+    }
+
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+    
+    function getUserRole(uid) {
+        return getUserData(uid).role;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    function isAdmin() {
+      // Check for existence of user doc before accessing role
+      return isRoot() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole(request.auth.uid) == 'Admin');
+    }
+    
+    function isSupport() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole(request.auth.uid) == 'it-support';
+    }
+
+    function canManageTickets() {
+      return isAdmin() || isSupport();
+    }
+    
+    function canManageUsers() {
+      return isRoot();
+    }
+
+    // Path rules
+    match /users/{userId} {
+      allow read, update: if isOwner(userId) || canManageUsers();
+      // User creation is done via a separate auth instance in the app, but Firestore doc creation should be restricted.
+      allow create, delete: if canManageUsers();
+    }
+
+    match /users/{userId}/issues/{issueId} {
+      allow create: if isOwner(userId);
+      allow read: if isOwner(userId) || canManageTickets();
+      // Users can re-open tickets. Admins can do anything.
+      allow update: if canManageTickets() || (isOwner(userId) && resource.data.status in ['Resolved', 'Closed']);
+      allow delete: if canManageTickets();
+    }
+    
+    match /users/{userId}/issues/{issueId}/messages/{messageId} {
+      allow read, create: if isOwner(userId) || canManageTickets();
+      allow update, delete: if false; // Messages should be immutable
+    }
+    
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, delete: if isOwner(userId);
+      allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow create: if isAdmin(); // Fanned out by admins
+    }
+
+    match /announcements/{announcementId} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /system_settings/{settingId} {
+        // All auth'd users can read settings like regions.
+        allow read: if request.auth != null;
+        // Only root can change region/role settings.
+        // Any user can write to ticketCounter as part of a transaction.
+        allow write: if (settingId == 'regions' || settingId == 'roles') && isRoot() ||
+                     (settingId == 'ticketCounter' && request.auth != null);
     }
   }
 }

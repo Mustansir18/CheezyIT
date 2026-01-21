@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
@@ -74,11 +74,11 @@ function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open
     const [duration, setDuration] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleBlockUser = async () => {
+    const handleBlockUser = () => {
         if (!user || !duration) return;
         setIsSubmitting(true);
 
-        let blockedUntil: Timestamp | null | ReturnType<typeof deleteField> = null;
+        let blockedUntil: Timestamp | ReturnType<typeof deleteField>;
 
         if (duration === 'unblock') {
             blockedUntil = deleteField();
@@ -89,19 +89,28 @@ function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open
             const now = new Date();
             blockedUntil = Timestamp.fromDate(add(now, { [unit + 's']: parseInt(amount) }));
         }
+        
+        const updateData = { blockedUntil };
+        const userDocRef = doc(firestore, 'users', user.id);
 
-        try {
-            const userDocRef = doc(firestore, 'users', user.id);
-            await updateDoc(userDocRef, { blockedUntil });
-            toast({ title: 'Success', description: `User ${user.displayName} has been updated.` });
-            onOpenChange(false);
-        } catch (error) {
-            console.error('Error blocking user:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update user block status.' });
-        } finally {
-            setIsSubmitting(false);
-            setDuration('');
-        }
+        updateDoc(userDocRef, updateData)
+            .then(() => {
+                toast({ title: 'Success', description: `User ${user.displayName} has been updated.` });
+                onOpenChange(false);
+            })
+            .catch((error) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to update user block status.' });
+            })
+            .finally(() => {
+                setIsSubmitting(false);
+                setDuration('');
+            });
     };
 
     if (!user) return null;
@@ -164,30 +173,35 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
     }, [user, open, reset]);
 
 
-    const onSubmit = async (data: EditUserFormData) => {
-        try {
-            const userDocRef = doc(firestore, 'users', user.id);
-            const updateData: any = {
-                displayName: data.displayName,
-                role: data.role,
-            };
+    const onSubmit = (data: EditUserFormData) => {
+        const userDocRef = doc(firestore, 'users', user.id);
+        const updateData: any = {
+            displayName: data.displayName,
+            role: data.role,
+        };
 
-            if (data.role === 'User' || data.role === 'Branch') {
-                updateData.region = data.regions[0] || '';
-                updateData.regions = [];
-            } else {
-                updateData.regions = data.regions;
-                updateData.region = '';
-            }
-
-            await updateDoc(userDocRef, updateData);
-            
-            toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
-            onOpenChange(false);
-        } catch (error: any) {
-            console.error("Error updating user:", error);
-            toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update user profile.' });
+        if (data.role === 'User' || data.role === 'Branch') {
+            updateData.region = data.regions[0] || '';
+            updateData.regions = deleteField();
+        } else {
+            updateData.regions = data.regions;
+            updateData.region = deleteField();
         }
+
+        updateDoc(userDocRef, updateData)
+            .then(() => {
+                toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
+                onOpenChange(false);
+            })
+            .catch((error) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update user profile.' });
+            });
     };
 
     return (
@@ -270,33 +284,41 @@ function RegionManagement() {
   const settingsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
   const { data: settingsData, isLoading } = useDoc<{ list: string[] }>(settingsRef);
 
-  const handleAddItem = async () => {
+  const handleAddItem = () => {
     if (!newItem.trim()) return;
     setIsSubmitting(true);
-    try {
-      await setDoc(settingsRef, {
-        list: arrayUnion(newItem.trim()),
-      }, { merge: true });
-      toast({ title: 'Success', description: `${newItem.trim()} added.` });
-      setNewItem('');
-    } catch (error) {
-      console.error(`Error adding region:`, error);
-      toast({ variant: 'destructive', title: 'Error', description: `Could not add item.` });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const trimmedItem = newItem.trim();
+    setDoc(settingsRef, { list: arrayUnion(trimmedItem) }, { merge: true })
+      .then(() => {
+        toast({ title: 'Success', description: `${trimmedItem} added.` });
+        setNewItem('');
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+            path: settingsRef.path,
+            operation: 'update',
+            requestResourceData: { list: [trimmedItem]}
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Error', description: `Could not add item.` });
+      })
+      .finally(() => setIsSubmitting(false));
   };
 
-  const handleDeleteItem = async (item: string) => {
-    try {
-      await updateDoc(settingsRef, {
-        list: arrayRemove(item),
+  const handleDeleteItem = (item: string) => {
+    updateDoc(settingsRef, { list: arrayRemove(item) })
+      .then(() => {
+        toast({ title: 'Success', description: `${item} removed.` });
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+            path: settingsRef.path,
+            operation: 'update',
+            requestResourceData: { list: arrayRemove(item) } // This is symbolic
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Error', description: `Could not remove item.` });
       });
-      toast({ title: 'Success', description: `${item} removed.` });
-    } catch (error) {
-      console.error(`Error removing region:`, error);
-      toast({ variant: 'destructive', title: 'Error', description: `Could not remove item.` });
-    }
   };
 
   return (
@@ -380,39 +402,51 @@ export default function UserManagement() {
     defaultValues: { displayName: '', email: '', password: '', role: '', regions: [] },
   });
 
-  const { formState: { isSubmitting: isAddingUser }, watch: watchAddUser, control: addUserControl } = addUserForm;
-  const selectedRoleForNewUser = watchAddUser('role');
+  const { handleSubmit: handleAddUserSubmit, formState: { isSubmitting: isAddingUser }, watch: watchAddUser, control: addUserControl, reset: resetAddUserForm } = addUserForm;
 
-  const onAddUserSubmit = async (data: NewUserFormData) => {
+  const onAddUserSubmit = (data: NewUserFormData) => {
     const tempAppName = `user-creation-${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
-    try {
-      const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
-      const newUser = userCredential.user;
-      await updateAuthProfile(newUser, { displayName: data.displayName });
+    createUserWithEmailAndPassword(tempAuth, data.email, data.password)
+      .then(async (userCredential) => {
+        const newUser = userCredential.user;
+        await updateAuthProfile(newUser, { displayName: data.displayName });
+        return newUser;
+      })
+      .then((newUser) => {
+        const userData: any = { displayName: data.displayName, email: data.email, role: data.role, phoneNumber: '' };
+        if (data.role === 'User' || data.role === 'Branch') {
+          userData.region = data.regions[0] || '';
+          userData.regions = deleteField();
+        } else {
+          userData.regions = data.regions;
+          userData.region = deleteField();
+        }
 
-      const userData: any = { displayName: data.displayName, email: data.email, role: data.role, phoneNumber: '' };
-      if (data.role === 'User' || data.role === 'Branch') {
-        userData.region = data.regions[0] || '';
-        userData.regions = [];
-      } else {
-        userData.regions = data.regions;
-        userData.region = '';
-      }
-
-      await setDoc(doc(firestore, 'users', newUser.uid), userData);
-
-      toast({ title: 'Success!', description: 'New user created successfully.' });
-      addUserForm.reset();
-      setIsAddUserOpen(false);
-    } catch (error: any) {
-      console.error("Error creating user:", error);
-      toast({ variant: 'destructive', title: 'Error creating user', description: error.message || 'An unknown error occurred.' });
-    } finally {
-      await deleteApp(tempApp);
-    }
+        return setDoc(doc(firestore, 'users', newUser.uid), userData)
+          .catch((dbError) => {
+            const permissionError = new FirestorePermissionError({
+              path: `users/${newUser.uid}`,
+              operation: 'create',
+              requestResourceData: userData
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Error creating user document', description: 'The user was created, but their profile could not be saved. Check Firestore permissions.' });
+          });
+      })
+      .then(() => {
+        toast({ title: 'Success!', description: 'New user created successfully.' });
+        resetAddUserForm();
+        setIsAddUserOpen(false);
+      })
+      .catch((authError: any) => {
+        toast({ variant: 'destructive', title: 'Error creating user', description: authError.message || 'An unknown error occurred.' });
+      })
+      .finally(() => {
+        deleteApp(tempApp);
+      });
   };
 
   return (
@@ -440,7 +474,7 @@ export default function UserManagement() {
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...addUserForm}>
-                        <form onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-4">
+                        <form onSubmit={handleAddUserSubmit(onAddUserSubmit)} className="space-y-4">
                              <FormField control={addUserControl} name="displayName" render={({ field }) => (
                                 <FormItem><FormLabel>Display Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
@@ -465,7 +499,7 @@ export default function UserManagement() {
                             <FormField control={addUserControl} name="regions" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Region(s)</FormLabel>
-                                    {selectedRoleForNewUser === 'User' || selectedRoleForNewUser === 'Branch' ? (
+                                    {watchAddUser('role') === 'User' || watchAddUser('role') === 'Branch' ? (
                                         <Select
                                             onValueChange={(value) => field.onChange(value ? [value] : [])}
                                             defaultValue={field.value?.[0]}
@@ -484,7 +518,7 @@ export default function UserManagement() {
                                         />
                                     )}
                                     <FormDescription>
-                                        {selectedRoleForNewUser === 'User' || selectedRoleForNewUser === 'Branch' ? 'Assign to a single region.' : "Assign one or more regions."}
+                                        {watchAddUser('role') === 'User' || watchAddUser('role') === 'Branch' ? 'Assign to a single region.' : "Assign one or more regions."}
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>

@@ -100,11 +100,7 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col pt-2 pb-4">
-           <p className="text-xs text-center text-muted-foreground">
-            Sign in to continue
-          </p>
-        </CardFooter>
+        <CardFooter className="flex flex-col pt-2 pb-4" />
       </Card>
     </div>
   );
