@@ -97,6 +97,9 @@ export default function AdminTicketList() {
   const { user, loading: userLoading } = useUser();
 
   const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
+  const allTicketsRef = useRef(allTickets);
+  allTicketsRef.current = allTickets;
+
   const [allUsers, setAllUsers] = useState<WithId<UserWithDisplayName>[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   
@@ -115,8 +118,7 @@ export default function AdminTicketList() {
   const playInProgressSound = useSound('/sounds/new-message.mp3');
   const playResolvedSound = useSound('/sounds/new-ticket.mp3');
   const playClosedSound = useSound('/sounds/new-announcement.mp3');
-  const seenTicketsRef = useRef<Map<string, TicketStatus>>(new Map());
-  const isInitialLoadRef = useRef(true);
+  const isInitialLoadComplete = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -146,6 +148,39 @@ export default function AdminTicketList() {
     
     const unsubscribe = onSnapshot(issuesQuery, 
       (snapshot) => {
+        let newTicketSoundToPlay = false;
+
+        if (!isInitialLoadComplete.current && !snapshot.metadata.fromCache) {
+            isInitialLoadComplete.current = true;
+        } else if (isInitialLoadComplete.current) {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    newTicketSoundToPlay = true;
+                }
+                if (change.type === "modified") {
+                    const oldTicket = allTicketsRef.current.find(t => t.id === change.doc.id);
+                    const newTicket = change.doc.data() as Ticket;
+                    if (oldTicket && oldTicket.status !== newTicket.status) {
+                         switch (newTicket.status) {
+                            case 'In-Progress':
+                                playInProgressSound();
+                                break;
+                            case 'Resolved':
+                                playResolvedSound();
+                                break;
+                            case 'Closed':
+                                playClosedSound();
+                                break;
+                        }
+                    }
+                }
+            });
+        }
+        
+        if (newTicketSoundToPlay) {
+            playNewTicketSound();
+        }
+
         const fetchedTickets = snapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
         
         const sortedTickets = fetchedTickets.sort((a,b) => {
@@ -170,49 +205,12 @@ export default function AdminTicketList() {
       }
     );
     
-    return () => unsubscribe();
-  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
+    return () => {
+        unsubscribe();
+        isInitialLoadComplete.current = false;
+    };
+  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast, playNewTicketSound, playInProgressSound, playResolvedSound, playClosedSound]);
   
-  useEffect(() => {
-    if (ticketsLoading || !allTickets) {
-        return;
-    }
-
-    if (isInitialLoadRef.current) {
-        const initialMap = new Map(allTickets.map(ticket => [ticket.id, ticket.status]));
-        seenTicketsRef.current = initialMap;
-        isInitialLoadRef.current = false;
-        return;
-    }
-
-    const newTickets = allTickets.filter(ticket => !seenTicketsRef.current.has(ticket.id));
-
-    if (newTickets.length > 0) {
-        playNewTicketSound();
-    }
-
-    allTickets.forEach(currentTicket => {
-        const previousStatus = seenTicketsRef.current.get(currentTicket.id);
-        if (previousStatus && previousStatus !== currentTicket.status) {
-            switch (currentTicket.status) {
-                case 'In-Progress':
-                    playInProgressSound();
-                    break;
-                case 'Resolved':
-                    playResolvedSound();
-                    break;
-                case 'Closed':
-                    playClosedSound();
-                    break;
-            }
-        }
-    });
-
-    const updatedMap = new Map(allTickets.map(ticket => [ticket.id, ticket.status]));
-    seenTicketsRef.current = updatedMap;
-
-  }, [allTickets, ticketsLoading, playNewTicketSound, playInProgressSound, playResolvedSound, playClosedSound]);
-
   const loading = userLoading || profileLoading || ticketsLoading;
 
   const [date, setDate] = useState<DateRange | undefined>({
