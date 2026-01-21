@@ -51,18 +51,24 @@ export default function AdminDashboardPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsAdmin = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   
   const loading = userLoading || profileLoading;
   
   useEffect(() => {
-    if (!loading && userIsSupport) {
-      router.replace('/admin/tickets');
+    if (!loading) {
+        if (userIsSupport) {
+            router.replace('/admin/tickets');
+        } else if (!userIsRoot && !userIsAdmin) {
+            // This is a safeguard. The layout should prevent non-privileged users,
+            // but if they get here, redirect them.
+            router.replace('/dashboard');
+        }
     }
-  }, [loading, userIsSupport, router]);
+  }, [loading, userIsSupport, userIsRoot, userIsAdmin, router]);
 
   const navItems = useMemo(() => {
-    // This logic is for Admin and Root users, as 'it-support' will be redirected.
     let items = [...baseNavItems];
     if (userIsRoot) {
       items.push(rootNavItem);
@@ -70,7 +76,9 @@ export default function AdminDashboardPage() {
     return items;
   }, [userIsRoot]);
 
-  if (loading || userIsSupport) {
+  // This loading state now also acts as a guard, preventing the page from rendering
+  // until the redirect logic in useEffect has had a chance to run.
+  if (loading || userIsSupport || (!userIsRoot && !userIsAdmin)) {
       return (
         <div className="flex h-full w-full items-center justify-center">
             <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
