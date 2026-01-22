@@ -150,14 +150,10 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
     );
 });
 
-const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenChange }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; }) {
+const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenChange, regions, regionsLoading }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; regions: string[], regionsLoading: boolean }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
-    const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
-    const regions = regionsData?.list || [];
-
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
         defaultValues: { displayName: '', role: '', regions: [] },
@@ -282,13 +278,9 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
     );
 });
 
-const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, regions, regionsLoading }: { open: boolean, onOpenChange: (open: boolean) => void, regions: string[], regionsLoading: boolean }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-
-    const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
-    const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
-    const regions = regionsData?.list || [];
     
     const form = useForm<NewUserFormData>({
         resolver: zodResolver(newUserSchema),
@@ -487,7 +479,10 @@ export default function UserManagement() {
   const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
   const { data: users, isLoading } = useCollection<WithId<User>>(usersQuery);
   
-  // Callbacks for opening/closing dialogs are memoized
+  const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
+  const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
+  const availableRegions = regionsData?.list || [];
+
   const handleAddUserOpenChange = useCallback((isOpen: boolean) => setIsAddUserOpen(isOpen), []);
   const handleEdit = useCallback((user: User) => setEditingUser(user), []);
   const handleBlock = useCallback((user: User) => setBlockingUser(user), []);
@@ -503,15 +498,10 @@ export default function UserManagement() {
                 <CardTitle>User Accounts</CardTitle>
                 <CardDescription>View and manage all users in the system.</CardDescription>
             </div>
-            <Dialog open={isAddUserOpen} onOpenChange={handleAddUserOpenChange}>
-                <DialogTrigger asChild>
-                    <Button disabled={isLoading}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Add User
-                    </Button>
-                </DialogTrigger>
-                <AddUserDialog open={isAddUserOpen} onOpenChange={handleAddUserOpenChange} />
-            </Dialog>
+            <Button onClick={() => setIsAddUserOpen(true)} disabled={isLoading || regionsLoading}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add User
+            </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -549,11 +539,20 @@ export default function UserManagement() {
       </CardContent>
     </Card>
 
+    <AddUserDialog
+        open={isAddUserOpen}
+        onOpenChange={handleAddUserOpenChange}
+        regions={availableRegions}
+        regionsLoading={regionsLoading}
+    />
+
     {editingUser && (
         <EditUserDialog 
             user={editingUser}
             open={!!editingUser}
             onOpenChange={handleEditDialogChange}
+            regions={availableRegions}
+            regionsLoading={regionsLoading}
         />
     )}
     
