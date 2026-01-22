@@ -1,13 +1,14 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, deleteApp } from 'firebase/app';
+import { initializeApp, deleteApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { collection, query, doc, setDoc, updateDoc, deleteField, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
@@ -71,17 +72,17 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
     const firestore = useFirestore();
     const { toast } = useToast();
     const [duration, setDuration] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { control, handleSubmit, formState: { isSubmitting }, reset } = useForm();
 
     useEffect(() => {
       if (!open) {
         setDuration('');
+        reset();
       }
-    }, [open]);
+    }, [open, reset]);
 
-    const handleBlockUser = () => {
+    const handleBlockUser = async () => {
         if (!user || !duration) return;
-        setIsSubmitting(true);
 
         let blockedUntil: Timestamp | ReturnType<typeof deleteField>;
 
@@ -98,23 +99,19 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
         const updateData = { blockedUntil };
         const userDocRef = doc(firestore, 'users', user.id);
 
-        updateDoc(userDocRef, updateData)
-            .then(() => {
-                toast({ title: 'Success', description: `User ${user.displayName} has been updated.` });
-                onOpenChange(false);
-            })
-            .catch((error) => {
-                const permissionError = new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'update',
-                    requestResourceData: updateData
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to update user block status.' });
-            })
-            .finally(() => {
-                setIsSubmitting(false);
+        try {
+            await updateDoc(userDocRef, updateData);
+            toast({ title: 'Success', description: `User ${user.displayName} has been updated.` });
+            onOpenChange(false);
+        } catch (error) {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: updateData
             });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update user block status.' });
+        }
     };
 
     if (!user) return null;
@@ -128,23 +125,25 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
                         Select a duration to block this user. They will not be able to log in until the block expires.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="py-4">
-                    <Select onValueChange={setDuration} value={duration}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select block duration..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {blockDurations.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleBlockUser} disabled={isSubmitting || !duration}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Confirm Action
-                    </Button>
-                </DialogFooter>
+                <form onSubmit={handleSubmit(handleBlockUser)}>
+                    <div className="py-4">
+                        <Select onValueChange={setDuration} value={duration}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select block duration..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {blockDurations.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                        <Button type="submit" disabled={isSubmitting || !duration}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Confirm Action
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );
@@ -172,7 +171,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
         }
     }, [user, open, reset]);
 
-    const onSubmit = (data: EditUserFormData) => {
+    const onSubmit = async (data: EditUserFormData) => {
         if (!user) return;
         const userDocRef = doc(firestore, 'users', user.id);
         
@@ -189,20 +188,19 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
             updateData.region = deleteField();
         }
 
-        updateDoc(userDocRef, updateData)
-            .then(() => {
-                toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
-                onOpenChange(false);
-            })
-            .catch((error) => {
-                const permissionError = new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'update',
-                    requestResourceData: updateData
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update user profile.' });
+        try {
+            await updateDoc(userDocRef, updateData);
+            toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
+            onOpenChange(false);
+        } catch (error) {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: updateData
             });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update user profile.' });
+        }
     };
     
     if (!user) return null;
@@ -297,13 +295,21 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
 
     const selectedRole = watch('role');
 
-    const onSubmit = (data: NewUserFormData) => {
-        const tempAppName = `user-creation-${Date.now()}`;
-        const tempApp = initializeApp(firebaseConfig, tempAppName);
-        const tempAuth = getAuth(tempApp);
+    const onSubmit = async (data: NewUserFormData) => {
+        const tempAppName = `user-creation-temp`;
+        let tempApp;
 
-        createUserWithEmailAndPassword(tempAuth, data.email, data.password)
-        .then(async (userCredential) => {
+        try {
+            try {
+                tempApp = initializeApp(firebaseConfig, tempAppName);
+            } catch (e) {
+                const existingApp = getApp(tempAppName);
+                await deleteApp(existingApp);
+                tempApp = initializeApp(firebaseConfig, tempAppName);
+            }
+
+            const tempAuth = getAuth(tempApp);
+            const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
             const newUser = userCredential.user;
             await updateAuthProfile(newUser, { displayName: data.displayName });
             
@@ -327,44 +333,54 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
                 userData.regions = data.regions;
             }
 
-            try {
-                await setDoc(doc(firestore, 'users', newUser.uid), userData);
-                toast({ title: 'Success!', description: 'New user created successfully.' });
-                onOpenChange(false);
-            } catch (dbError) {
-                const permissionError = new FirestorePermissionError({
-                path: `users/${newUser.uid}`,
-                operation: 'create',
-                requestResourceData: userData
+            await setDoc(doc(firestore, 'users', newUser.uid), userData);
+            toast({ title: 'Success!', description: 'New user created successfully.' });
+            onOpenChange(false);
+
+        } catch (error: any) {
+            if (error.code === 'auth/email-already-in-use') {
+                 toast({ 
+                    variant: 'destructive', 
+                    title: 'Error Creating User', 
+                    description: `The email '${data.email}' is already in use by another account. Please delete the user from the Firebase Console (Authentication tab) and try again.`,
+                    duration: 10000,
+                });
+            } else if (error.name === 'FirebaseError' && error.code) { // Firestore permission error
+                 const permissionError = new FirestorePermissionError({
+                    path: `users/${error.uid}`, // Assuming we can get a UID
+                    operation: 'create',
+                    requestResourceData: error.requestData,
                 });
                 errorEmitter.emit('permission-error', permissionError);
                 toast({ 
-                variant: 'destructive', 
-                title: 'Database Write Failed', 
-                description: `User account was created, but saving the profile failed. Please delete the user with email '${data.email}' from the Firebase Console (Authentication tab) and try again.`,
-                duration: 10000,
+                    variant: 'destructive', 
+                    title: 'Database Write Failed', 
+                    description: `User account was created, but saving the profile failed. Please delete the user with email '${data.email}' from the Firebase Console (Authentication tab) and try again.`,
+                    duration: 10000,
+                });
+            } else {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'An Unknown Error Occurred', 
+                    description: error.message || 'Please check the console for details.',
+                    duration: 10000,
                 });
             }
-        })
-        .catch((authError: any) => {
-            let description = `The email '${data.email}' is already in use by another account. This can happen if a previous registration failed. Please go to your Firebase Project's Authentication tab, find and delete the user with this email, and then try creating them again.`;
-            if (authError.code !== 'auth/email-already-in-use') {
-                description = authError.message || 'An unknown authentication error occurred.';
+        } finally {
+            if (tempApp) {
+                await deleteApp(tempApp);
             }
-            toast({ 
-                variant: 'destructive', 
-                title: 'Error Creating User', 
-                description,
-                duration: 15000,
-            });
-        })
-        .finally(() => {
-            deleteApp(tempApp);
-        });
+        }
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogTrigger asChild>
+                <Button disabled={regionsLoading}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add User
+                </Button>
+            </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Create New User</DialogTitle>
@@ -498,10 +514,12 @@ export default function UserManagement() {
                 <CardTitle>User Accounts</CardTitle>
                 <CardDescription>View and manage all users in the system.</CardDescription>
             </div>
-            <Button onClick={() => setIsAddUserOpen(true)} disabled={isLoading || regionsLoading}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add User
-            </Button>
+            <AddUserDialog
+                open={isAddUserOpen}
+                onOpenChange={handleAddUserOpenChange}
+                regions={availableRegions}
+                regionsLoading={regionsLoading}
+            />
         </div>
       </CardHeader>
       <CardContent>
@@ -539,13 +557,6 @@ export default function UserManagement() {
       </CardContent>
     </Card>
 
-    <AddUserDialog
-        open={isAddUserOpen}
-        onOpenChange={handleAddUserOpenChange}
-        regions={availableRegions}
-        regionsLoading={regionsLoading}
-    />
-
     {editingUser && (
         <EditUserDialog 
             user={editingUser}
@@ -564,3 +575,4 @@ export default function UserManagement() {
     </>
   );
 }
+
