@@ -5,7 +5,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isRoot() {
-      return request.auth.token.email in ['mustansir133@gmail.com'];
+      return request.auth.token.email in ['mustansir133@gmail.com', 'mustansir131@gmail.com'];
     }
 
     function getUserData(uid) {
@@ -49,10 +49,10 @@ service cloud.firestore {
       allow list: if isAdmin() || isSupport();
 
       // A user can update their own profile. A root user can update anyone's.
-      allow update: if isOwner(userId) || isRoot();
+      allow update: if isOwner(userId) || request.auth.token.email in ['mustansir133@gmail.com', 'mustansir131@gmail.com'];
       
       // Only root users can create or delete user documents directly.
-      allow create, delete: if isRoot();
+      allow create, delete: if request.auth.token.email in ['mustansir133@gmail.com', 'mustansir131@gmail.com'];
     }
 
     match /users/{userId}/issues/{issueId} {
