@@ -6,17 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const auth = useAuth();
   const { user, loading } = useUser();
@@ -33,6 +39,30 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, loading, router]);
+  
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+    setIsResetting(true);
+    try {
+        await sendPasswordResetEmail(auth, resetEmail);
+        toast({
+            title: 'Password Reset Email Sent',
+            description: `If an account with ${resetEmail} exists, an email has been sent with reset instructions.`,
+        });
+        setIsResetDialogOpen(false);
+        setResetEmail('');
+    } catch (error: any) {
+        console.error('Password reset error', error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: error.message || 'Failed to send reset email.',
+        });
+    } finally {
+        setIsResetting(false);
+    }
+  }
 
   const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +130,43 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col pt-2 pb-4" />
+        <CardFooter className="flex flex-col pt-2 pb-4">
+            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="link" className="text-sm">Forgot Password?</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reset Your Password</DialogTitle>
+                        <DialogDescription>
+                            Enter your email address and we will send you a link to reset your password.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="reset-email">Email</Label>
+                            <Input
+                                id="reset-email"
+                                type="email"
+                                placeholder="m@example.com"
+                                value={resetEmail}
+                                onChange={(e) => setResetEmail(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={isResetting}>
+                                {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Send Reset Link
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+        </CardFooter>
       </Card>
     </div>
   );

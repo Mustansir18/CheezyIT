@@ -5,13 +5,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useAuth } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
-import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan } from 'lucide-react';
+import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan, KeyRound } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 type User = {
@@ -147,7 +147,9 @@ function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open
 
 function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
+    const auth = useAuth();
     const { toast } = useToast();
+    const [isResetting, setIsResetting] = useState(false);
 
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
@@ -171,6 +173,26 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
         }
     }, [user, open, reset]);
 
+    const handlePasswordReset = async () => {
+        if (!user) return;
+        setIsResetting(true);
+        try {
+            await sendPasswordResetEmail(auth, user.email);
+            toast({
+                title: 'Password Reset Email Sent',
+                description: `An email has been sent to ${user.email} with instructions to reset their password.`,
+            });
+        } catch (error: any) {
+            console.error("Password reset error:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error Sending Email',
+                description: error.message || 'An unknown error occurred.',
+            });
+        } finally {
+            setIsResetting(false);
+        }
+    };
 
     const onSubmit = (data: EditUserFormData) => {
         const userDocRef = doc(firestore, 'users', user.id);
@@ -209,7 +231,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                 <DialogHeader>
                     <DialogTitle>Edit User: {user.displayName}</DialogTitle>
                     <DialogDescription>
-                        Modify the user's details below. Note: Email and password cannot be changed here.
+                        Modify the user's details below.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -260,12 +282,18 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Changes
+                        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between pt-4">
+                            <Button type="button" variant="outline" onClick={handlePasswordReset} disabled={isResetting} className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive mt-2 sm:mt-0">
+                                {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                                Reset Password
                             </Button>
+                            <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+                                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="mt-2 sm:mt-0">Cancel</Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Changes
+                                </Button>
+                            </div>
                         </DialogFooter>
                     </form>
                 </Form>
@@ -421,9 +449,9 @@ export default function UserManagement() {
         };
         
         if (data.role === 'User' || data.role === 'Branch') {
-          userData.region = data.regions[0] || '';
+            userData.region = data.regions[0];
         } else {
-          userData.regions = data.regions;
+            userData.regions = data.regions;
         }
 
         try {
