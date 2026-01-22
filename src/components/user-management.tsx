@@ -150,7 +150,8 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
 const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-
+    const { user: currentUser } = useUser();
+    
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
         defaultValues: {
@@ -259,6 +260,15 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                                 <FormMessage />
                             </FormItem>
                         )} />
+
+                        <Separator />
+                        
+                        <div className="space-y-2">
+                            <FormLabel>Password Management</FormLabel>
+                            <FormDescription>
+                                For security, passwords can only be managed from the server. To reset a password for a user with a non-working email, you must temporarily change their email in the Firebase Console to one you can access, send the reset link, and then change it back.
+                            </FormDescription>
+                        </div>
                         
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -607,8 +617,8 @@ export default function UserManagement() {
                             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setEditingUser(user)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setBlockingUser(user)}><ShieldBan className="mr-2 h-4 w-4" /> Block/Unblock</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setEditingUser(user)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setBlockingUser(user)}><ShieldBan className="mr-2 h-4 w-4" /> Block/Unblock</DropdownMenuItem>
                             <DropdownMenuItem className="text-red-500" disabled>
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete (Not available)
                             </DropdownMenuItem>
@@ -635,11 +645,11 @@ export default function UserManagement() {
         />
     )}
     
-    <BlockUserDialog
+    {blockingUser && <BlockUserDialog
         user={blockingUser}
         open={!!blockingUser}
         onOpenChange={handleBlockDialogChange}
-    />
+    />}
     </>
   );
 }
