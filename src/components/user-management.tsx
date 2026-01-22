@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 type User = {
@@ -196,7 +196,13 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
 
     const onSubmit = (data: EditUserFormData) => {
         const userDocRef = doc(firestore, 'users', user.id);
-        const updateData: any = {
+        
+        const updateData: {
+            displayName: string;
+            role: string;
+            region?: string | ReturnType<typeof deleteField>;
+            regions?: string[] | ReturnType<typeof deleteField>;
+        } = {
             displayName: data.displayName,
             role: data.role,
         };
@@ -441,7 +447,14 @@ export default function UserManagement() {
         const newUser = userCredential.user;
         await updateAuthProfile(newUser, { displayName: data.displayName });
         
-        const userData: any = { 
+        const userData: {
+            displayName: string;
+            email: string;
+            role: string;
+            phoneNumber: string;
+            region?: string;
+            regions?: string[];
+        } = { 
             displayName: data.displayName, 
             email: data.email, 
             role: data.role, 
