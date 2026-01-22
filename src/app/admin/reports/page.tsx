@@ -26,7 +26,7 @@ export default function AdminReportsPage() {
 
   const isAuthorized = useMemo(() => {
     if (user && isRoot(user.email)) return true;
-    if (userProfile && userProfile.role === 'Admin') return true;
+    if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
     return false;
   }, [user, userProfile]);
 
@@ -36,7 +36,7 @@ export default function AdminReportsPage() {
     }
   }, [userLoading, profileLoading, isAuthorized, router]);
 
-  if (userLoading || (!userIsRoot && profileLoading) || !isAuthorized) {
+  if (userLoading || profileLoading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />

@@ -48,12 +48,12 @@ service cloud.firestore {
       // Admin/support can list users for reports and ticket filtering.
       allow list: if isAdmin() || isSupport();
 
-      // To write a user doc:
-      // - You must be a root user (for create/update/delete)
-      // - OR you must be the owner of the doc and you are only updating it.
-      allow create: if request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com';
-      allow update: if (request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com') || isOwner(userId);
-      allow delete: if request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com';
+      // Admin/root can create new users.
+      allow create: if isAdmin();
+      // Admin/root can update any user. A user can update their own profile.
+      allow update: if isAdmin() || isOwner(userId);
+      // Only root users can delete other users.
+      allow delete: if isRoot();
     }
 
     match /users/{userId}/issues/{issueId} {
