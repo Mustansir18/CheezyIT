@@ -5,7 +5,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isRoot() {
-      return request.auth.token.email in ['mustansir133@gmail.com', 'mustansir131@gmail.com'];
+      return request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com';
     }
 
     function getUserData(uid) {
@@ -51,7 +51,9 @@ service cloud.firestore {
       // To write a user doc:
       // - You must be a root user (for create/update/delete)
       // - OR you must be the owner of the doc and you are only updating it.
-      allow write: if (request.auth.token.email in ['mustansir133@gmail.com', 'mustansir131@gmail.com']) || (isOwner(userId) && request.method == 'update');
+      allow create: if request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com';
+      allow update: if (request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com') || isOwner(userId);
+      allow delete: if request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com';
     }
 
     match /users/{userId}/issues/{issueId} {
