@@ -1,6 +1,7 @@
 'use client';
 
 import UpdateProfileForm from '@/components/update-profile-form';
+import ChangePasswordForm from '@/components/change-password-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import Image from 'next/image';
@@ -32,7 +33,7 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-6">
             <Card className="w-full max-w-2xl">
                 <CardHeader>
                     <div>
@@ -60,6 +61,10 @@ export default function ProfilePage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <div className="w-full max-w-2xl">
+                <ChangePasswordForm />
+            </div>
         </div>
     );
 }
