@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useForm as useReactHookForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
@@ -149,9 +149,8 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
 const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenChange, regions, regionsLoading }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; regions: string[], regionsLoading: boolean }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { user: currentUser } = useUser();
     
-    const form = useForm<EditUserFormData>({
+    const form = useReactHookForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
         defaultValues: { displayName: '', role: '', regions: [] },
     });
@@ -276,7 +275,7 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const form = useForm<NewUserFormData>({
+    const form = useReactHookForm<NewUserFormData>({
         resolver: zodResolver(newUserSchema),
         defaultValues: { displayName: '', email: '', password: '', role: '', regions: [] },
     });
@@ -522,16 +521,13 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [blockingUser, setBlockingUser] = useState<User | null>(null);
 
-  // Fetch users in the main controller component
   const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
   const { data: users, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
   
-  // Fetch regions in the main controller component
   const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
   const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
   const availableRegions = useMemo(() => regionsData?.list || [], [regionsData]);
 
-  // Stable callbacks to prevent re-renders
   const handleAddUserOpenChange = useCallback((isOpen: boolean) => setIsAddUserOpen(isOpen), []);
   const handleEdit = useCallback((user: User) => setEditingUser(user), []);
   const handleBlock = useCallback((user: User) => setBlockingUser(user), []);
