@@ -149,6 +149,7 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
 const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenChange, regions, regionsLoading }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; regions: string[], regionsLoading: boolean }) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { user: currentUser } = useUser();
     
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
@@ -295,7 +296,7 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
         let tempApp;
 
         try {
-            try {
+             try {
                 tempApp = initializeApp(firebaseConfig, tempAppName);
             } catch (e) {
                 const existingApp = getApp(tempAppName);
@@ -478,34 +479,42 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
   );
 });
 
-const UserTable = React.memo(function UserTable({ onEdit, onBlock }: { onEdit: (user: User) => void; onBlock: (user: User) => void; }) {
-    const firestore = useFirestore();
-    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
-    const { data: users, isLoading } = useCollection<WithId<User>>(usersQuery);
-
+const UserTable = React.memo(function UserTable({ users, isLoading, onEdit, onBlock }: { users: WithId<User>[] | null; isLoading: boolean; onEdit: (user: User) => void; onBlock: (user: User) => void; }) {
     return (
-        <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                    <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Display Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Region(s)</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))
-            ) : users && users.length > 0 ? (
-              users.map((user) => (
-                <UserTableRow 
-                    key={user.id}
-                    user={user}
-                    onEdit={onEdit}
-                    onBlock={onBlock}
-                />
-              ))
-            ) : (
-              <TableRow><TableCell colSpan={5} className="h-24 text-center">No users found.</TableCell></TableRow>
-            )}
-        </TableBody>
+            </TableHeader>
+            <TableBody>
+                {isLoading ? (
+                [...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                    </TableRow>
+                ))
+                ) : users && users.length > 0 ? (
+                users.map((user) => (
+                    <UserTableRow 
+                        key={user.id}
+                        user={user}
+                        onEdit={onEdit}
+                        onBlock={onBlock}
+                    />
+                ))
+                ) : (
+                <TableRow><TableCell colSpan={5} className="h-24 text-center">No users found.</TableCell></TableRow>
+                )}
+            </TableBody>
+        </Table>
     );
 });
+
 
 export default function UserManagement() {
   const firestore = useFirestore();
@@ -513,10 +522,16 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [blockingUser, setBlockingUser] = useState<User | null>(null);
 
+  // Fetch users in the main controller component
+  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+  const { data: users, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
+  
+  // Fetch regions in the main controller component
   const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
   const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
   const availableRegions = useMemo(() => regionsData?.list || [], [regionsData]);
 
+  // Stable callbacks to prevent re-renders
   const handleAddUserOpenChange = useCallback((isOpen: boolean) => setIsAddUserOpen(isOpen), []);
   const handleEdit = useCallback((user: User) => setEditingUser(user), []);
   const handleBlock = useCallback((user: User) => setBlockingUser(user), []);
@@ -525,50 +540,44 @@ export default function UserManagement() {
   
   return (
     <>
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-            <div>
-                <CardTitle>User Accounts</CardTitle>
-                <CardDescription>View and manage all users in the system.</CardDescription>
-            </div>
-            <AddUserDialog
-                open={isAddUserOpen}
-                onOpenChange={handleAddUserOpenChange}
-                regions={availableRegions}
-                regionsLoading={regionsLoading}
-            />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Display Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Region(s)</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <UserTable onEdit={handleEdit} onBlock={handleBlock} />
-        </Table>
-      </CardContent>
-    </Card>
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>User Accounts</CardTitle>
+                        <CardDescription>View and manage all users in the system.</CardDescription>
+                    </div>
+                    <AddUserDialog
+                        open={isAddUserOpen}
+                        onOpenChange={handleAddUserOpenChange}
+                        regions={availableRegions}
+                        regionsLoading={regionsLoading}
+                    />
+                </div>
+            </CardHeader>
+            <CardContent>
+                <UserTable 
+                    users={users} 
+                    isLoading={usersLoading} 
+                    onEdit={handleEdit} 
+                    onBlock={handleBlock} 
+                />
+            </CardContent>
+        </Card>
 
-    <EditUserDialog 
-        user={editingUser}
-        open={!!editingUser}
-        onOpenChange={handleEditDialogChange}
-        regions={availableRegions}
-        regionsLoading={regionsLoading}
-    />
-    
-    <BlockUserDialog
-        user={blockingUser}
-        open={!!blockingUser}
-        onOpenChange={handleBlockDialogChange}
-    />
+        <EditUserDialog 
+            user={editingUser}
+            open={!!editingUser}
+            onOpenChange={handleEditDialogChange}
+            regions={availableRegions}
+            regionsLoading={regionsLoading}
+        />
+        
+        <BlockUserDialog
+            user={blockingUser}
+            open={!!blockingUser}
+            onOpenChange={handleBlockDialogChange}
+        />
     </>
   );
 }
