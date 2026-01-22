@@ -135,21 +135,28 @@ export default function TicketDetailPage() {
             return;
         }
         if (!ticketRef || !user) return;
-        const updateData: {
-            status: TicketStatus;
-            updatedAt: any;
-            completedAt?: any;
-            resolvedBy?: string;
-            resolvedByDisplayName?: string;
-        } = {
+        
+        const updateData: any = {
             status: newStatus,
             updatedAt: serverTimestamp(),
         };
+
+        if (canManageTicket) {
+            if (newStatus === 'In-Progress' || newStatus === 'Resolved') {
+                updateData.unreadByUser = true;
+                updateData.unreadByAdmin = false;
+            }
+        }
 
         if (newStatus === 'Resolved') {
             updateData.completedAt = serverTimestamp();
             updateData.resolvedBy = user.uid;
             updateData.resolvedByDisplayName = user.displayName || 'N/A';
+        }
+        
+        if (newStatus === 'Closed') {
+            updateData.unreadByAdmin = false;
+            updateData.unreadByUser = false;
         }
         
         updateDoc(ticketRef, updateData)
