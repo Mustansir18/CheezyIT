@@ -8,10 +8,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useAuth } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
-import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan } from 'lucide-react';
+import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan, KeyRound } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -149,6 +149,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
     const firestore = useFirestore();
     const { toast } = useToast();
     const auth = useAuth();
+    const [isResetting, setIsResetting] = useState(false);
 
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
@@ -171,6 +172,33 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
             });
         }
     }, [user, open, reset]);
+    
+    const handlePasswordReset = () => {
+        if (!user.email) {
+            toast({ variant: 'destructive', title: 'Error', description: 'User does not have an email address.' });
+            return;
+        }
+        setIsResetting(true);
+        sendPasswordResetEmail(auth, user.email)
+            .then(() => {
+                toast({
+                    title: 'Password Reset Email Sent',
+                    description: `An email has been sent to ${user.email} with instructions to reset their password.`,
+                });
+                onOpenChange(false);
+            })
+            .catch((error) => {
+                console.error("Password reset error:", error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: `Failed to send password reset email. ${error.message}`,
+                });
+            })
+            .finally(() => {
+                setIsResetting(false);
+            });
+    };
 
     const onSubmit = (data: EditUserFormData) => {
         const userDocRef = doc(firestore, 'users', user.id);
@@ -210,7 +238,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                 <DialogHeader>
                     <DialogTitle>Edit User: {user.displayName}</DialogTitle>
                     <DialogDescription>
-                        Modify the user's details below.
+                        Modify the user's details or send a password reset email.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -261,12 +289,18 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Changes
+                        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:items-center w-full">
+                            <Button type="button" variant="outline" onClick={handlePasswordReset} disabled={isResetting}>
+                                {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                                Send Password Reset
                             </Button>
+                            <div className="flex justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Changes
+                                </Button>
+                            </div>
                         </DialogFooter>
                     </form>
                 </Form>
