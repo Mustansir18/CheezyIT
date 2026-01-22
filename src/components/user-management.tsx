@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -8,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useAuth } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
 import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan } from 'lucide-react';
@@ -148,9 +149,7 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
 
 const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
-    const auth = useAuth();
     const { toast } = useToast();
-    const [isResettingPassword, setIsResettingPassword] = useState(false);
 
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
@@ -203,26 +202,6 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                 });
                 errorEmitter.emit('permission-error', permissionError);
                 toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update user profile.' });
-            });
-    };
-
-    const handlePasswordReset = () => {
-        if (!user.email) {
-            toast({ variant: 'destructive', title: 'Error', description: 'User does not have an email address.' });
-            return;
-        }
-        setIsResettingPassword(true);
-        sendPasswordResetEmail(auth, user.email)
-            .then(() => {
-                toast({ title: 'Email Sent', description: `A password reset link has been sent to ${user.email}.` });
-                onOpenChange(false);
-            })
-            .catch((error) => {
-                console.error("Password reset error:", error);
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to send password reset email.' });
-            })
-            .finally(() => {
-                setIsResettingPassword(false);
             });
     };
     
@@ -284,21 +263,26 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                         <Separator className="my-4" />
 
                         <div className="space-y-2">
-                            <h3 className="text-sm font-medium">Password Reset</h3>
-                             <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={handlePasswordReset}
-                                disabled={isResettingPassword}
-                            >
-                                {isResettingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Send Password Reset Email
-                            </Button>
+                            <h3 className="text-sm font-medium">Password Management</h3>
                             <p className="text-sm text-muted-foreground">
-                                This will send a link to the user's email ({user.email}). This action requires the user to have a valid, accessible email address.
+                                For security, this app cannot directly change a user's password. This must be done manually in the Firebase Console.
                             </p>
+                            <div className="text-xs text-muted-foreground pt-2 space-y-2">
+                                <p>
+                                    <strong>If the user's email is valid:</strong> You can send a reset link from the Firebase Console (Authentication &gt; Users &gt; ... &gt; Reset password).
+                                </p>
+                                <p>
+                                    <strong>If the user's email is NOT valid:</strong> The only secure way to reset the password without losing data is a manual process in the Firebase Console:
+                                    <ol className="list-decimal list-inside pl-2 mt-1 space-y-1">
+                                        <li>Go to Authentication &gt; Users and find the user.</li>
+                                        <li>Temporarily change their email to a real one you can access.</li>
+                                        <li>Use the "Reset password" option. You will receive the email.</li>
+                                        <li>Set a new password for the user.</li>
+                                        <li>Change the user's email back to the original one.</li>
+                                    </ol>
+                                </p>
+                            </div>
                         </div>
-
 
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
