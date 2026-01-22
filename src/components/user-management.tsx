@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useForm } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
@@ -72,7 +72,7 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
     const firestore = useFirestore();
     const { toast } = useToast();
     const [duration, setDuration] = useState('');
-    const { control, handleSubmit, formState: { isSubmitting }, reset } = useForm();
+    const { handleSubmit, formState: { isSubmitting }, reset } = useForm();
 
     useEffect(() => {
       if (!open) {
@@ -209,7 +209,10 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
          <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Edit User: {user.displayName}</DialogTitle>
+                    <DialogTitle>Edit User</DialogTitle>
+                    <DialogDescription>
+                        Modify the details for {user.displayName}.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -576,3 +579,4 @@ export default function UserManagement() {
   );
 }
 
+    
