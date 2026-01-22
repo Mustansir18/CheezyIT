@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Megaphone } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,7 @@ export default function AdminDashboardPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const hasRedirected = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -57,12 +58,14 @@ export default function AdminDashboardPage() {
   const loading = userLoading || profileLoading;
   
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !hasRedirected.current) {
         if (userIsSupport) {
+            hasRedirected.current = true;
             router.replace('/admin/tickets');
         } else if (!userIsRoot && !userIsAdmin) {
             // This is a safeguard. The layout should prevent non-privileged users,
             // but if they get here, redirect them.
+            hasRedirected.current = true;
             router.replace('/dashboard');
         }
     }
