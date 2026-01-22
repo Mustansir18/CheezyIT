@@ -155,7 +155,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
         defaultValues: { displayName: '', role: '', regions: [] },
     });
     
-    const { formState: { isSubmitting }, watch, reset } = form;
+    const { handleSubmit, formState: { isSubmitting }, watch, control, reset } = form;
     const selectedRole = watch('role');
 
     useEffect(() => {
@@ -204,21 +204,18 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
          <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Edit User</DialogTitle>
-                    <DialogDescription>
-                        Modify the details for {user?.displayName}.
-                    </DialogDescription>
+                    <DialogTitle>Edit User: {user?.displayName}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField control={form.control} name="displayName" render={({ field }) => (
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField control={control} name="displayName" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Display Name</FormLabel>
                                 <FormControl><Input {...field} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="role" render={({ field }) => (
+                        <FormField control={control} name="role" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Role</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value} disabled={regionsLoading}>
@@ -230,7 +227,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="regions" render={({ field }) => (
+                        <FormField control={control} name="regions" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Region(s)</FormLabel>
                                 {selectedRole === 'User' || selectedRole === 'Branch' ? (
@@ -343,7 +340,7 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
                     description: `The email '${data.email}' is already in use by another account. Please delete the user from the Firebase Console (Authentication tab) and try again.`,
                     duration: 10000,
                 });
-            } else if (error.name === 'FirebaseError' && error.code) { // Firestore permission error
+            } else if (error.name === 'FirebaseError' && error.code) { 
                  const permissionError = new FirestorePermissionError({
                     path: `users/some-user-id`,
                     operation: 'create',
@@ -481,15 +478,41 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
   );
 });
 
+const UserTable = React.memo(function UserTable({ onEdit, onBlock }: { onEdit: (user: User) => void; onBlock: (user: User) => void; }) {
+    const firestore = useFirestore();
+    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+    const { data: users, isLoading } = useCollection<WithId<User>>(usersQuery);
+
+    return (
+        <TableBody>
+            {isLoading ? (
+              [...Array(5)].map((_, i) => (
+                <TableRow key={i}>
+                    <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                </TableRow>
+              ))
+            ) : users && users.length > 0 ? (
+              users.map((user) => (
+                <UserTableRow 
+                    key={user.id}
+                    user={user}
+                    onEdit={onEdit}
+                    onBlock={onBlock}
+                />
+              ))
+            ) : (
+              <TableRow><TableCell colSpan={5} className="h-24 text-center">No users found.</TableCell></TableRow>
+            )}
+        </TableBody>
+    );
+});
+
 export default function UserManagement() {
   const firestore = useFirestore();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [blockingUser, setBlockingUser] = useState<User | null>(null);
 
-  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
-  const { data: users, isLoading } = useCollection<WithId<User>>(usersQuery);
-  
   const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
   const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
   const availableRegions = useMemo(() => regionsData?.list || [], [regionsData]);
@@ -528,26 +551,7 @@ export default function UserManagement() {
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                    <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
-                </TableRow>
-              ))
-            ) : users && users.length > 0 ? (
-              users.map((user) => (
-                <UserTableRow 
-                    key={user.id}
-                    user={user}
-                    onEdit={handleEdit}
-                    onBlock={handleBlock}
-                />
-              ))
-            ) : (
-              <TableRow><TableCell colSpan={5} className="h-24 text-center">No users found.</TableCell></TableRow>
-            )}
-          </TableBody>
+          <UserTable onEdit={handleEdit} onBlock={handleBlock} />
         </Table>
       </CardContent>
     </Card>
