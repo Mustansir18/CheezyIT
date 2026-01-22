@@ -18,12 +18,12 @@ export default function AdminSettingsPage() {
   const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
 
   useEffect(() => {
-    if (!loading && (!user || !isRoot(user.email))) {
+    if (!loading && (!user || !userIsRoot)) {
       router.push('/admin');
     }
-  }, [user, loading, router]);
+  }, [user, loading, userIsRoot, router]);
 
-  if (loading || !user || !isRoot(user.email)) {
+  if (loading || !user || !userIsRoot) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -46,7 +46,7 @@ export default function AdminSettingsPage() {
       </div>
       
       <div className="space-y-8">
-        <UserManagement />
+        <UserManagement userIsRoot={userIsRoot} />
         <Separator />
         <div>
             <h2 className="text-2xl font-headline font-bold mb-4">System Settings</h2>
