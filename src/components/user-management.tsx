@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
 import UserTable, { type User } from '@/components/user-table';
+import { isRoot } from '@/lib/admins';
 
 const AVAILABLE_ROLES = ['User', 'Branch', 'it-support', 'Admin'];
 
@@ -64,16 +65,10 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
     const selectedRole = watch('role');
 
     const onSubmit = async (data: NewUserFormData) => {
-        const tempAppName = `user-creation-temp`;
+        const tempAppName = `user-creation-temp-${Date.now()}`;
         let tempApp;
+
         try {
-            try {
-                tempApp = getApp(tempAppName);
-                await deleteApp(tempApp);
-            } catch (e) {
-                // App does not exist, safe to initialize
-            }
-            
             tempApp = initializeApp(firebaseConfig, tempAppName);
             const tempAuth = getAuth(tempApp);
             const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
@@ -100,10 +95,12 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
             let description = 'An unknown error occurred. Please check the console for details.';
             if (error.code === 'auth/email-already-in-use') {
                 description = `The email '${data.email}' is already in use by another account.`;
-            } else if (error.name === 'FirebaseError') {
-                const permissionError = new FirestorePermissionError({ path: `users/some-user-id`, operation: 'create' });
+            } else if (error.name === 'FirebaseError' && error.message.includes('permission-denied')) {
+                 const permissionError = new FirestorePermissionError({ path: `users/some-user-id`, operation: 'create' });
                 errorEmitter.emit('permission-error', permissionError);
                 description = `User account was created, but saving the profile failed. You may not have write permissions. The user should be deleted from the Firebase Console before retrying.`;
+            } else if (error.code) { // General Firebase auth errors
+                description = error.message;
             }
             toast({ variant: 'destructive', title: 'Error Creating User', description, duration: 10000 });
         } finally {
@@ -330,7 +327,8 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
     );
 });
 
-export default function UserManagement({ userIsRoot }: { userIsRoot: boolean }) {
+// This is the main component that fetches data and controls dialogs.
+export default function UserManagement() {
     const firestore = useFirestore();
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -351,7 +349,6 @@ export default function UserManagement({ userIsRoot }: { userIsRoot: boolean }) 
             <UserTable 
                 onEdit={handleEdit} 
                 onBlock={handleBlock} 
-                userIsRoot={userIsRoot}
                 onAddUser={() => setIsAddUserOpen(true)}
                 isAddUserDisabled={regionsLoading}
              />

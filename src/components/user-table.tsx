@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
-import { useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
+import React, { useMemo } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
 import { collection, query, Timestamp } from 'firebase/firestore';
 import { Loader2, UserPlus, MoreHorizontal, Pencil, ShieldBan, Trash2 } from 'lucide-react';
+import { isRoot } from '@/lib/admins';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,6 @@ export interface UserTableProps {
   onEdit: (user: WithId<User>) => void;
   onBlock: (user: WithId<User>) => void;
   onAddUser: () => void;
-  userIsRoot: boolean;
   isAddUserDisabled: boolean;
 }
 
@@ -61,16 +61,19 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
   );
 });
 
-export default function UserTable({ onEdit, onBlock, onAddUser, userIsRoot, isAddUserDisabled }: UserTableProps) {
+export default function UserTable({ onEdit, onBlock, onAddUser, isAddUserDisabled }: UserTableProps) {
   const firestore = useFirestore();
+  const { user: currentUser, loading: userLoading } = useUser();
+  
+  const userIsRoot = useMemo(() => currentUser && isRoot(currentUser.email), [currentUser]);
 
   const usersQuery = useMemoFirebase(
     () => (userIsRoot ? query(collection(firestore, 'users')) : null),
     [firestore, userIsRoot]
   );
-  const { data: users, isLoading } = useCollection<WithId<User>>(usersQuery);
+  const { data: users, isLoading: usersDataLoading } = useCollection<WithId<User>>(usersQuery);
   
-  const isLoadingUsers = userIsRoot && isLoading;
+  const isLoading = userIsRoot && (userLoading || usersDataLoading);
 
   return (
     <Card>
@@ -98,7 +101,7 @@ export default function UserTable({ onEdit, onBlock, onAddUser, userIsRoot, isAd
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoadingUsers ? (
+            {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
