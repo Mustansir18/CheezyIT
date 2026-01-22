@@ -260,15 +260,6 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                                 <FormMessage />
                             </FormItem>
                         )} />
-
-                        <Separator />
-                        
-                        <div className="space-y-2">
-                            <FormLabel>Password Management</FormLabel>
-                            <FormDescription>
-                                To reset a password for a user with a non-working email, you must manually change their email in the Firebase Console to one you can access, send the reset link, and then change it back. This is a security measure and cannot be done from the app.
-                            </FormDescription>
-                        </div>
                         
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -654,3 +645,4 @@ export default function UserManagement() {
   );
 }
 
+    
