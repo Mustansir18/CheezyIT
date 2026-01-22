@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { collection, query, doc, setDoc, updateDoc, deleteField, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
-import { Loader2, UserPlus, Pencil, ShieldBan } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,11 +86,15 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
         let tempApp;
         try {
             try {
-                tempApp = getApp(tempAppName);
-            } catch (error) {
-                tempApp = initializeApp(firebaseConfig, tempAppName);
+                // First, try to get the app if it exists, for cleanup.
+                const existingApp = getApp(tempAppName);
+                await deleteApp(existingApp);
+            } catch (e) {
+                // App doesn't exist, which is the normal case.
             }
 
+            // Initialize a fresh app.
+            tempApp = initializeApp(firebaseConfig, tempAppName);
             const tempAuth = getAuth(tempApp);
             const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
             const newUser = userCredential.user;
@@ -116,7 +120,7 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
             let description = 'An unknown error occurred. Please check the console for details.';
             if (error.code === 'auth/email-already-in-use') {
                 description = `The email '${data.email}' is already in use by another account.`;
-            } else if (error.name === 'FirebaseError') { // Catching Firestore permission errors
+            } else if (error.name === 'FirebaseError') { 
                 const permissionError = new FirestorePermissionError({ path: `users/some-user-id`, operation: 'create' });
                 errorEmitter.emit('permission-error', permissionError);
                 description = `User account was created, but saving the profile failed. You may not have write permissions. The user should be deleted from the Firebase Console before retrying.`;
