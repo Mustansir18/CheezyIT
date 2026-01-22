@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, erro
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
-import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firebase/firestore';
+import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firestore/firestore';
 import { add } from 'date-fns';
 import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan } from 'lucide-react';
 
@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 type User = {
@@ -67,7 +67,7 @@ const blockDurations = [
     { value: 'indefinite', label: 'Indefinite' },
 ];
 
-function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; }) {
+const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [duration, setDuration] = useState('');
@@ -143,11 +143,12 @@ function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open
             </DialogContent>
         </Dialog>
     );
-}
+});
 
-function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
+const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const auth = useAuth();
 
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
@@ -174,12 +175,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
     const onSubmit = (data: EditUserFormData) => {
         const userDocRef = doc(firestore, 'users', user.id);
         
-        const updateData: {
-            displayName: string;
-            role: string;
-            region?: string | ReturnType<typeof deleteField>;
-            regions?: string[] | ReturnType<typeof deleteField>;
-        } = {
+        const updateData: any = {
             displayName: data.displayName,
             role: data.role,
         };
@@ -207,7 +203,7 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
                 toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update user profile.' });
             });
     };
-
+    
     return (
          <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -277,9 +273,9 @@ function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: Us
             </DialogContent>
         </Dialog>
     );
-}
+});
 
-function RegionManagement() {
+const RegionManagement = React.memo(function RegionManagement() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [newItem, setNewItem] = useState('');
@@ -382,7 +378,7 @@ function RegionManagement() {
       </CardContent>
     </Card>
   );
-}
+});
 
 
 export default function UserManagement() {
@@ -391,6 +387,14 @@ export default function UserManagement() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [blockingUser, setBlockingUser] = useState<User | null>(null);
+
+  const handleEditDialogChange = useCallback((isOpen: boolean) => {
+    if (!isOpen) setEditingUser(null);
+  }, []);
+
+  const handleBlockDialogChange = useCallback((isOpen: boolean) => {
+    if (!isOpen) setBlockingUser(null);
+  }, []);
 
   const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
   const { data: users, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
@@ -434,10 +438,8 @@ export default function UserManagement() {
         
         if (data.role === 'User' || data.role === 'Branch') {
             userData.region = data.regions[0];
-            delete userData.regions;
         } else {
             userData.regions = data.regions;
-            delete userData.region;
         }
 
         try {
@@ -624,14 +626,14 @@ export default function UserManagement() {
             roles={AVAILABLE_ROLES}
             regions={regions}
             open={!!editingUser}
-            onOpenChange={(isOpen) => !isOpen && setEditingUser(null)}
+            onOpenChange={handleEditDialogChange}
         />
     )}
     
     <BlockUserDialog
         user={blockingUser}
         open={!!blockingUser}
-        onOpenChange={(isOpen) => !isOpen && setBlockingUser(null)}
+        onOpenChange={handleBlockDialogChange}
     />
     </>
   );
