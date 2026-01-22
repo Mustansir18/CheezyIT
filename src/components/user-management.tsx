@@ -16,7 +16,7 @@ import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan, Key
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Separator } from './ui/separator';
 
 
 type User = {
@@ -185,7 +186,6 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                     title: 'Password Reset Email Sent',
                     description: `An email has been sent to ${user.email} with instructions to reset their password.`,
                 });
-                onOpenChange(false);
             })
             .catch((error) => {
                 console.error("Password reset error:", error);
@@ -238,7 +238,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                 <DialogHeader>
                     <DialogTitle>Edit User: {user.displayName}</DialogTitle>
                     <DialogDescription>
-                        Modify the user's details or send a password reset email.
+                        Modify the user's details and manage their password.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -289,18 +289,28 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:items-center w-full pt-4">
-                            <Button type="button" variant="outline" onClick={handlePasswordReset} disabled={isResetting}>
+                        
+                        <Separator className="my-6" />
+
+                        <div className="space-y-2">
+                            <FormLabel>Password Management</FormLabel>
+                            <FormDescription>
+                                For security, administrators cannot directly change user passwords. 
+                                This will send the user an email to reset their password.
+                            </FormDescription>
+                             <Button type="button" variant="outline" onClick={handlePasswordReset} disabled={isResetting}>
                                 {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                                Send Password Reset
+                                Send Password Reset Email
                             </Button>
-                            <div className="flex justify-end gap-2">
-                                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Save Changes
-                                </Button>
-                            </div>
+                        </div>
+
+
+                        <DialogFooter className="pt-6">
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
                         </DialogFooter>
                     </form>
                 </Form>
@@ -472,10 +482,8 @@ export default function UserManagement() {
         
         if (data.role === 'User' || data.role === 'Branch') {
             userData.region = data.regions[0];
-            // userData.regions = deleteField(); -> This is invalid on create
         } else {
             userData.regions = data.regions;
-            // userData.region = deleteField(); -> This is invalid on create
         }
 
 
@@ -500,9 +508,9 @@ export default function UserManagement() {
         }
       })
       .catch((authError: any) => {
-        let description = 'An unknown error occurred. Please check the console.';
-        if (authError.code === 'auth/email-already-in-use') {
-            description = `The email '${data.email}' is already in use by another account. If you cannot see this user in the list, it may be an "orphaned" account from a previously failed registration. Please go to your Firebase Project's Authentication tab, find and delete the user with this email, and then try creating them again.`;
+        let description = `The email '${data.email}' is already in use by another account. This can happen if a previous registration failed. Please go to your Firebase Project's Authentication tab, find and delete the user with this email, and then try creating them again.`;
+        if (authError.code !== 'auth/email-already-in-use') {
+            description = authError.message || 'An unknown authentication error occurred.';
         }
         toast({ 
             variant: 'destructive', 
@@ -526,7 +534,12 @@ export default function UserManagement() {
                 <CardTitle>All Users</CardTitle>
                 <CardDescription>View and manage all users in the system.</CardDescription>
             </div>
-            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <Dialog open={isAddUserOpen} onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    resetAddUserForm();
+                }
+                setIsAddUserOpen(isOpen);
+            }}>
                 <DialogTrigger asChild>
                     <Button disabled={isLoading}>
                         <UserPlus className="mr-2 h-4 w-4" />
