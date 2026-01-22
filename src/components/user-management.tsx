@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -67,22 +66,22 @@ const blockDurations = [
     { value: 'indefinite', label: 'Indefinite' },
 ];
 
-// Dialog Components (Memoized)
 const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpenChange }: { user: User | null; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [duration, setDuration] = useState('');
-    const { handleSubmit, formState: { isSubmitting }, reset } = useForm();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
       if (!open) {
         setDuration('');
-        reset();
       }
-    }, [open, reset]);
+    }, [open]);
 
     const handleBlockUser = async () => {
         if (!user || !duration) return;
+
+        setIsSubmitting(true);
 
         let blockedUntil: Timestamp | ReturnType<typeof deleteField>;
 
@@ -111,39 +110,37 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
             });
             errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to update user block status.' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
-
-    if (!user) return null;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Block User: {user.displayName}</DialogTitle>
+                    <DialogTitle>Block User: {user?.displayName}</DialogTitle>
                     <DialogDescription>
                         Select a duration to block this user. They will not be able to log in until the block expires.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(handleBlockUser)}>
-                    <div className="py-4">
-                        <Select onValueChange={setDuration} value={duration}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select block duration..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {blockDurations.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                        <Button type="submit" disabled={isSubmitting || !duration}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Action
-                        </Button>
-                    </DialogFooter>
-                </form>
+                <div className="py-4">
+                    <Select onValueChange={setDuration} value={duration}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select block duration..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {blockDurations.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleBlockUser} disabled={isSubmitting || !duration}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm Action
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
@@ -203,15 +200,13 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
         }
     };
     
-    if (!user) return null;
-
     return (
          <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit User</DialogTitle>
                     <DialogDescription>
-                        Modify the details for {user.displayName}.
+                        Modify the details for {user?.displayName}.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -226,7 +221,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
                         <FormField control={form.control} name="role" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Role</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={regionsLoading}>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={regionsLoading}>
                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {AVAILABLE_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
@@ -241,7 +236,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
                                 {selectedRole === 'User' || selectedRole === 'Branch' ? (
                                     <Select
                                         onValueChange={(value) => field.onChange(value ? [value] : [])}
-                                        defaultValue={field.value?.[0]}
+                                        value={field.value?.[0]}
                                         disabled={regionsLoading}
                                     >
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
@@ -350,9 +345,8 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
                 });
             } else if (error.name === 'FirebaseError' && error.code) { // Firestore permission error
                  const permissionError = new FirestorePermissionError({
-                    path: `users/${error.uid}`, // Assuming we can get a UID
+                    path: `users/some-user-id`,
                     operation: 'create',
-                    requestResourceData: error.requestData,
                 });
                 errorEmitter.emit('permission-error', permissionError);
                 toast({ 
@@ -405,7 +399,7 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
                         <FormField control={control} name="role" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Role</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={regionsLoading}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={regionsLoading}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {AVAILABLE_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
@@ -420,7 +414,7 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
                             {selectedRole === 'User' || selectedRole === 'Branch' ? (
                                 <Select
                                     onValueChange={(value) => field.onChange(value ? [value] : [])}
-                                    defaultValue={field.value?.[0]}
+                                    value={field.value?.[0]}
                                     disabled={regionsLoading}
                                 >
                                     <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
@@ -457,7 +451,6 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
     );
 });
 
-// Row Component (Memoized)
 const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }: { user: WithId<User>; onEdit: (user: WithId<User>) => void; onBlock: (user: WithId<User>) => void; }) {
   return (
     <TableRow className={user.blockedUntil && user.blockedUntil.toDate() > new Date() ? 'bg-destructive/10' : ''}>
@@ -488,7 +481,6 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
   );
 });
 
-// Main Component
 export default function UserManagement() {
   const firestore = useFirestore();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -500,7 +492,7 @@ export default function UserManagement() {
   
   const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
   const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
-  const availableRegions = regionsData?.list || [];
+  const availableRegions = useMemo(() => regionsData?.list || [], [regionsData]);
 
   const handleAddUserOpenChange = useCallback((isOpen: boolean) => setIsAddUserOpen(isOpen), []);
   const handleEdit = useCallback((user: User) => setEditingUser(user), []);
@@ -560,23 +552,19 @@ export default function UserManagement() {
       </CardContent>
     </Card>
 
-    {editingUser && (
-        <EditUserDialog 
-            user={editingUser}
-            open={!!editingUser}
-            onOpenChange={handleEditDialogChange}
-            regions={availableRegions}
-            regionsLoading={regionsLoading}
-        />
-    )}
+    <EditUserDialog 
+        user={editingUser}
+        open={!!editingUser}
+        onOpenChange={handleEditDialogChange}
+        regions={availableRegions}
+        regionsLoading={regionsLoading}
+    />
     
-    {blockingUser && <BlockUserDialog
+    <BlockUserDialog
         user={blockingUser}
         open={!!blockingUser}
         onOpenChange={handleBlockDialogChange}
-    />}
+    />
     </>
   );
 }
-
-    
