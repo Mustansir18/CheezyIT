@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
 import { collection, query, Timestamp } from 'firebase/firestore';
 import { MoreHorizontal, Pencil, ShieldBan, Trash2 } from 'lucide-react';
@@ -54,7 +54,7 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
 
 const UserTable = ({ onEdit, onBlock }: { onEdit: (user: User) => void; onBlock: (user: User) => void; }) => {
     const firestore = useFirestore();
-    const usersQuery = useMemo(() => query(collection(firestore, 'users')), [firestore]);
+    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
     const { data: users, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
 
     return (
