@@ -8,10 +8,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useAuth } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { collection, query, doc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
-import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan, KeyRound } from 'lucide-react';
+import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Separator } from './ui/separator';
 
 
@@ -267,9 +267,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                         <div className="space-y-2">
                             <FormLabel>Password Management</FormLabel>
                             <FormDescription>
-                                For security, a user's password cannot be changed directly from this panel. To reset a password for a user, you must delete and re-create their account.
-                                <br /><br />
-                                You can delete the user from the <strong>Firebase Console &gt; Authentication &gt; Users</strong> tab, then create them again here with a new temporary password.
+                                To reset a password, the user must be deleted from the Firebase Console (Authentication tab) and then re-created here with a temporary password. Direct password changes are disabled for security reasons.
                             </FormDescription>
                         </div>
 
