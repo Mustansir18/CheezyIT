@@ -413,10 +413,14 @@ export default function UserManagement() {
       .then(async (userCredential) => {
         const newUser = userCredential.user;
         await updateAuthProfile(newUser, { displayName: data.displayName });
-        return newUser;
-      })
-      .then((newUser) => {
-        const userData: any = { displayName: data.displayName, email: data.email, role: data.role, phoneNumber: '' };
+        
+        const userData: any = { 
+            displayName: data.displayName, 
+            email: data.email, 
+            role: data.role, 
+            phoneNumber: '' 
+        };
+        
         if (data.role === 'User' || data.role === 'Branch') {
           userData.region = data.regions[0] || '';
           userData.regions = deleteField();
@@ -425,24 +429,37 @@ export default function UserManagement() {
           userData.region = deleteField();
         }
 
-        return setDoc(doc(firestore, 'users', newUser.uid), userData)
-          .catch((dbError) => {
+        try {
+            await setDoc(doc(firestore, 'users', newUser.uid), userData);
+            toast({ title: 'Success!', description: 'New user created successfully.' });
+            resetAddUserForm();
+            setIsAddUserOpen(false);
+        } catch (dbError) {
             const permissionError = new FirestorePermissionError({
               path: `users/${newUser.uid}`,
               operation: 'create',
               requestResourceData: userData
             });
             errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: 'destructive', title: 'Error creating user document', description: 'The user was created, but their profile could not be saved. Check Firestore permissions.' });
-          });
-      })
-      .then(() => {
-        toast({ title: 'Success!', description: 'New user created successfully.' });
-        resetAddUserForm();
-        setIsAddUserOpen(false);
+            toast({ 
+              variant: 'destructive', 
+              title: 'Database Write Failed', 
+              description: `User account was created, but saving the profile failed. Please delete the user with email '${data.email}' from the Firebase Console (Authentication tab) and try again.`,
+              duration: 10000,
+            });
+        }
       })
       .catch((authError: any) => {
-        toast({ variant: 'destructive', title: 'Error creating user', description: authError.message || 'An unknown error occurred.' });
+        let description = authError.message || 'An unknown error occurred.';
+        if (authError.code === 'auth/email-already-in-use') {
+            description = `The email '${data.email}' is already in use by another account. If you cannot see this user in the list, it may be an orphaned account. Please check the Firebase Console Authentication tab.`
+        }
+        toast({ 
+            variant: 'destructive', 
+            title: 'Error Creating User', 
+            description,
+            duration: 10000
+        });
       })
       .finally(() => {
         deleteApp(tempApp);
