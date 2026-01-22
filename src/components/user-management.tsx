@@ -16,7 +16,7 @@ import { Loader2, UserPlus, MoreHorizontal, Pencil, Trash2, Plus, ShieldBan, Key
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -482,8 +482,10 @@ export default function UserManagement() {
         
         if (data.role === 'User' || data.role === 'Branch') {
             userData.region = data.regions[0];
+            delete (userData as any).regions;
         } else {
             userData.regions = data.regions;
+            delete (userData as any).region;
         }
 
 
