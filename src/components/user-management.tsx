@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useForm, useFormContext } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { collection, query, doc, setDoc, updateDoc, deleteField, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, MoreHorizontal, Pencil, ShieldBan, Trash2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import UserTable from './user-table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 type User = {
@@ -86,15 +89,11 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
         let tempApp;
         try {
             try {
-                // First, try to get the app if it exists, for cleanup.
-                const existingApp = getApp(tempAppName);
-                await deleteApp(existingApp);
+                tempApp = getApp(tempAppName);
             } catch (e) {
-                // App doesn't exist, which is the normal case.
+                tempApp = initializeApp(firebaseConfig, tempAppName);
             }
-
-            // Initialize a fresh app.
-            tempApp = initializeApp(firebaseConfig, tempAppName);
+            
             const tempAuth = getAuth(tempApp);
             const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
             const newUser = userCredential.user;
@@ -355,61 +354,125 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
     );
 });
 
-
-export default function UserManagement() {
-  const firestore = useFirestore();
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [blockingUser, setBlockingUser] = useState<User | null>(null);
-
-  const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
-  const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
-  const availableRegions = useMemo(() => regionsData?.list || [], [regionsData]);
-
-  const handleAddUserOpenChange = useCallback((isOpen: boolean) => setIsAddUserOpen(isOpen), []);
-  const handleEdit = useCallback((user: User) => setEditingUser(user), []);
-  const handleBlock = useCallback((user: User) => setBlockingUser(user), []);
-  const handleEditDialogChange = useCallback((isOpen: boolean) => { if (!isOpen) setEditingUser(null); }, []);
-  const handleBlockDialogChange = useCallback((isOpen: boolean) => { if (!isOpen) setBlockingUser(null); }, []);
+const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }: { user: WithId<User>; onEdit: (user: WithId<User>) => void; onBlock: (user: WithId<User>) => void; }) {
+  const isBlocked = user.blockedUntil && user.blockedUntil.toDate() > new Date();
   
   return (
-    <>
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <div>
-                        <CardTitle>User Accounts</CardTitle>
-                        <CardDescription>View and manage all users in the system.</CardDescription>
-                    </div>
-                    <AddUserDialog
-                        open={isAddUserOpen}
-                        onOpenChange={handleAddUserOpenChange}
-                        regions={availableRegions}
-                        regionsLoading={regionsLoading}
-                    />
-                </div>
-            </CardHeader>
-            <CardContent>
-                <UserTable 
-                    onEdit={handleEdit} 
-                    onBlock={handleBlock} 
-                />
-            </CardContent>
-        </Card>
-
-        <EditUserDialog 
-            user={editingUser}
-            open={!!editingUser}
-            onOpenChange={handleEditDialogChange}
-            regions={availableRegions}
-            regionsLoading={regionsLoading}
-        />
-        
-        <BlockUserDialog
-            user={blockingUser}
-            open={!!blockingUser}
-            onOpenChange={handleBlockDialogChange}
-        />
-    </>
+    <TableRow className={isBlocked ? 'bg-destructive/10' : ''}>
+      <TableCell className="font-medium flex items-center gap-2">
+        {user.displayName}
+        {isBlocked && <Badge variant="destructive">Blocked</Badge>}
+      </TableCell>
+      <TableCell>{user.email}</TableCell>
+      <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
+      <TableCell>{user.region || user.regions?.join(', ') || 'N/A'}</TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => onEdit(user)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onBlock(user)}><ShieldBan className="mr-2 h-4 w-4" /> Block/Unblock</DropdownMenuItem>
+                <DropdownMenuItem className="text-red-500" disabled>
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete (Not available)
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
+});
+
+
+export default function UserManagement() {
+    const firestore = useFirestore();
+    const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [blockingUser, setBlockingUser] = useState<User | null>(null);
+
+    // Fetch both users and regions in the main component
+    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+    const { data: users, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
+    
+    const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
+    const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
+    const availableRegions = useMemo(() => regionsData?.list || [], [regionsData]);
+
+    // Use useCallback for all handlers to ensure they are stable
+    const handleAddUserOpenChange = useCallback((isOpen: boolean) => setIsAddUserOpen(isOpen), []);
+    const handleEdit = useCallback((user: User) => setEditingUser(user), []);
+    const handleBlock = useCallback((user: User) => setBlockingUser(user), []);
+    const handleEditDialogChange = useCallback((isOpen: boolean) => { if (!isOpen) setEditingUser(null); }, []);
+    const handleBlockDialogChange = useCallback((isOpen: boolean) => { if (!isOpen) setBlockingUser(null); }, []);
+    
+    const isLoading = usersLoading || regionsLoading;
+  
+    return (
+        <>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>User Accounts</CardTitle>
+                            <CardDescription>View and manage all users in the system.</CardDescription>
+                        </div>
+                        <AddUserDialog
+                            open={isAddUserOpen}
+                            onOpenChange={handleAddUserOpenChange}
+                            regions={availableRegions}
+                            regionsLoading={regionsLoading}
+                        />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Display Name</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Region(s)</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                [...Array(5)].map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : users && users.length > 0 ? (
+                                users.map((user) => (
+                                    <UserTableRow 
+                                        key={user.id}
+                                        user={user}
+                                        onEdit={handleEdit}
+                                        onBlock={handleBlock}
+                                    />
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">No users found.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <EditUserDialog 
+                user={editingUser}
+                open={!!editingUser}
+                onOpenChange={handleEditDialogChange}
+                regions={availableRegions}
+                regionsLoading={regionsLoading}
+            />
+            
+            <BlockUserDialog
+                user={blockingUser}
+                open={!!blockingUser}
+                onOpenChange={handleBlockDialogChange}
+            />
+        </>
+    );
 }
