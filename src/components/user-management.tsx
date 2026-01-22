@@ -260,30 +260,6 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                             </FormItem>
                         )} />
                         
-                        <Separator className="my-4" />
-
-                        <div className="space-y-2">
-                            <h3 className="text-sm font-medium">Password Management</h3>
-                            <p className="text-sm text-muted-foreground">
-                                For security, this app cannot directly change a user's password. This must be done manually in the Firebase Console.
-                            </p>
-                            <div className="text-xs text-muted-foreground pt-2 space-y-2">
-                                <p>
-                                    <strong>If the user's email is valid:</strong> You can send a reset link from the Firebase Console (Authentication &gt; Users &gt; ... &gt; Reset password).
-                                </p>
-                                <p>
-                                    <strong>If the user's email is NOT valid:</strong> The only secure way to reset the password without losing data is a manual process in the Firebase Console:
-                                    <ol className="list-decimal list-inside pl-2 mt-1 space-y-1">
-                                        <li>Go to Authentication &gt; Users and find the user.</li>
-                                        <li>Temporarily change their email to a real one you can access.</li>
-                                        <li>Use the "Reset password" option. You will receive the email.</li>
-                                        <li>Set a new password for the user.</li>
-                                        <li>Change the user's email back to the original one.</li>
-                                    </ol>
-                                </p>
-                            </div>
-                        </div>
-
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit" disabled={isSubmitting}>
