@@ -289,7 +289,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:items-center w-full">
+                        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:items-center w-full pt-4">
                             <Button type="button" variant="outline" onClick={handlePasswordReset} disabled={isResetting}>
                                 {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
                                 Send Password Reset
@@ -472,9 +472,12 @@ export default function UserManagement() {
         
         if (data.role === 'User' || data.role === 'Branch') {
             userData.region = data.regions[0];
+            // userData.regions = deleteField(); -> This is invalid on create
         } else {
             userData.regions = data.regions;
+            // userData.region = deleteField(); -> This is invalid on create
         }
+
 
         try {
             await setDoc(doc(firestore, 'users', newUser.uid), userData);
@@ -497,15 +500,15 @@ export default function UserManagement() {
         }
       })
       .catch((authError: any) => {
-        let description = authError.message || 'An unknown error occurred.';
+        let description = 'An unknown error occurred. Please check the console.';
         if (authError.code === 'auth/email-already-in-use') {
-            description = `The email '${data.email}' is already in use by another account. If you cannot see this user in the list, it may be an orphaned account. Please check the Firebase Console Authentication tab.`
+            description = `The email '${data.email}' is already in use by another account. If you cannot see this user in the list, it may be an "orphaned" account from a previously failed registration. Please go to your Firebase Project's Authentication tab, find and delete the user with this email, and then try creating them again.`;
         }
         toast({ 
             variant: 'destructive', 
             title: 'Error Creating User', 
             description,
-            duration: 10000
+            duration: 15000,
         });
       })
       .finally(() => {
