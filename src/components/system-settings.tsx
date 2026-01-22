@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +18,7 @@ interface SettingsListManagerProps {
   docPath: string;
 }
 
-function SettingsListManager({ title, description, docPath }: SettingsListManagerProps) {
+const SettingsListManager = React.memo(function SettingsListManager({ title, description, docPath }: SettingsListManagerProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [newItem, setNewItem] = useState('');
@@ -114,7 +113,7 @@ function SettingsListManager({ title, description, docPath }: SettingsListManage
       </CardContent>
     </Card>
   );
-}
+});
 
 export default function SystemSettings() {
   return (
