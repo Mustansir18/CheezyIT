@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useAuth } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
@@ -209,9 +209,6 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit User: {user.displayName}</DialogTitle>
-                    <DialogDescription>
-                        Modify the user's details and manage their password.
-                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -262,17 +259,17 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                             </FormItem>
                         )} />
                         
-                        <Separator className="my-6" />
+                        <Separator className="my-4" />
 
                         <div className="space-y-2">
-                            <FormLabel>Password Management</FormLabel>
-                            <FormDescription>
-                                To reset a password, the user must be deleted from the Firebase Console (Authentication tab) and then re-created here with a temporary password. Direct password changes are disabled for security reasons.
-                            </FormDescription>
+                            <h3 className="text-sm font-medium">Password Reset</h3>
+                            <p className="text-sm text-muted-foreground">
+                                To reset a password, you must delete the user from the Firebase Console and then re-create them here with a new password. This is a security measure to prevent unauthorized account access.
+                            </p>
                         </div>
 
 
-                        <DialogFooter className="pt-6">
+                        <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
