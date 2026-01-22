@@ -423,10 +423,8 @@ export default function UserManagement() {
         
         if (data.role === 'User' || data.role === 'Branch') {
           userData.region = data.regions[0] || '';
-          userData.regions = deleteField();
         } else {
           userData.regions = data.regions;
-          userData.region = deleteField();
         }
 
         try {
