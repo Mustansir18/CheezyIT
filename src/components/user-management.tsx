@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -147,11 +146,14 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
     );
 });
 
-const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
+const EditUserDialog = React.memo(function EditUserDialog({ user, onOpenChange, open }: { user: User; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { user: currentUser } = useUser();
     
+    const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
+    const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
+    const regions = regionsData?.list || [];
+
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
         defaultValues: {
@@ -224,10 +226,10 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                         <FormField control={form.control} name="role" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Role</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={regionsLoading}>
                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                        {AVAILABLE_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -240,6 +242,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                                     <Select
                                         onValueChange={(value) => field.onChange(value ? [value] : [])}
                                         defaultValue={field.value?.[0]}
+                                        disabled={regionsLoading}
                                     >
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
                                         <SelectContent>
@@ -252,6 +255,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                                         selected={field.value || []}
                                         onChange={field.onChange}
                                         placeholder="Select regions..."
+                                        disabled={regionsLoading}
                                     />
                                 )}
                                 <FormDescription>
@@ -263,7 +267,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                         
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting || regionsLoading}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save Changes
                             </Button>
@@ -275,115 +279,177 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
     );
 });
 
-const RegionManagement = React.memo(function RegionManagement() {
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const [newItem, setNewItem] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const AddUserDialog = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => {
+    const firestore = useFirestore();
+    const { toast } = useToast();
 
-  const settingsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
-  const { data: settingsData, isLoading } = useDoc<{ list: string[] }>(settingsRef);
+    const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
+    const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
+    const regions = regionsData?.list || [];
+    
+    const addUserForm = useForm<NewUserFormData>({
+        resolver: zodResolver(newUserSchema),
+        defaultValues: { displayName: '', email: '', password: '', role: '', regions: [] },
+    });
 
-  const handleAddItem = () => {
-    if (!newItem.trim()) return;
-    setIsSubmitting(true);
-    const trimmedItem = newItem.trim();
-    setDoc(settingsRef, { list: arrayUnion(trimmedItem) }, { merge: true })
-      .then(() => {
-        toast({ title: 'Success', description: `${trimmedItem} added.` });
-        setNewItem('');
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-            path: settingsRef.path,
-            operation: 'update',
-            requestResourceData: { list: [trimmedItem]}
+    const { handleSubmit: handleAddUserSubmit, formState: { isSubmitting: isAddingUser }, watch: watchAddUser, control: addUserControl, reset: resetAddUserForm } = addUserForm;
+
+    useEffect(() => {
+        if (!open) {
+            resetAddUserForm();
+        }
+    }, [open, resetAddUserForm]);
+
+    const onAddUserSubmit = (data: NewUserFormData) => {
+        const tempAppName = `user-creation-${Date.now()}`;
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        const tempAuth = getAuth(tempApp);
+
+        createUserWithEmailAndPassword(tempAuth, data.email, data.password)
+        .then(async (userCredential) => {
+            const newUser = userCredential.user;
+            await updateAuthProfile(newUser, { displayName: data.displayName });
+            
+            const userData: {
+                displayName: string;
+                email: string;
+                role: string;
+                phoneNumber: string;
+                region?: string;
+                regions?: string[];
+            } = { 
+                displayName: data.displayName, 
+                email: data.email, 
+                role: data.role, 
+                phoneNumber: '' 
+            };
+            
+            if (data.role === 'User' || data.role === 'Branch') {
+                userData.region = data.regions[0] || '';
+            } else {
+                userData.regions = data.regions;
+            }
+
+            try {
+                await setDoc(doc(firestore, 'users', newUser.uid), userData);
+                toast({ title: 'Success!', description: 'New user created successfully.' });
+                onOpenChange(false);
+            } catch (dbError) {
+                const permissionError = new FirestorePermissionError({
+                path: `users/${newUser.uid}`,
+                operation: 'create',
+                requestResourceData: userData
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({ 
+                variant: 'destructive', 
+                title: 'Database Write Failed', 
+                description: `User account was created, but saving the profile failed. Please delete the user with email '${data.email}' from the Firebase Console (Authentication tab) and try again.`,
+                duration: 10000,
+                });
+            }
+        })
+        .catch((authError: any) => {
+            let description = `The email '${data.email}' is already in use by another account. This can happen if a previous registration failed. Please go to your Firebase Project's Authentication tab, find and delete the user with this email, and then try creating them again.`;
+            if (authError.code !== 'auth/email-already-in-use') {
+                description = authError.message || 'An unknown authentication error occurred.';
+            }
+            toast({ 
+                variant: 'destructive', 
+                title: 'Error Creating User', 
+                description,
+                duration: 15000,
+            });
+        })
+        .finally(() => {
+            deleteApp(tempApp);
         });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Error', description: `Could not add item.` });
-      })
-      .finally(() => setIsSubmitting(false));
-  };
+    };
 
-  const handleDeleteItem = (item: string) => {
-    updateDoc(settingsRef, { list: arrayRemove(item) })
-      .then(() => {
-        toast({ title: 'Success', description: `${item} removed.` });
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-            path: settingsRef.path,
-            operation: 'update',
-            requestResourceData: { list: arrayRemove(item) } // This is symbolic
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Error', description: `Could not remove item.` });
-      });
-  };
-
-  return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>Manage Regions</CardTitle>
-        <CardDescription>Add or remove regions available for user assignment.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex gap-2">
-          <Input
-            placeholder="New region..."
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-          />
-          <Button onClick={handleAddItem} disabled={isSubmitting}>
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            <span className="sr-only">Add</span>
-          </Button>
-        </div>
-        <div className="mt-4 space-y-2">
-          {isLoading ? (
-            <>
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </>
-          ) : (
-            settingsData?.list?.map((item) => (
-              <div key={item} className="flex items-center justify-between rounded-md border p-2">
-                <span className="text-sm">{item}</span>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete the "{item}" region.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDeleteItem(item)} className="bg-destructive hover:bg-destructive/90">
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-});
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogTrigger asChild>
+                <Button>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add User
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create New User</DialogTitle>
+                    <DialogDescription>
+                        Fill out the form to create a new user account.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...addUserForm}>
+                    <form onSubmit={handleAddUserSubmit(onAddUserSubmit)} className="space-y-4">
+                        <FormField control={addUserControl} name="displayName" render={({ field }) => (
+                        <FormItem><FormLabel>Display Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={addUserControl} name="email" render={({ field }) => (
+                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="user@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={addUserControl} name="password" render={({ field }) => (
+                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={addUserControl} name="role" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Role</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={regionsLoading}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {AVAILABLE_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )} />
+                        <FormField control={addUserControl} name="regions" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Region(s)</FormLabel>
+                            {watchAddUser('role') === 'User' || watchAddUser('role') === 'Branch' ? (
+                                <Select
+                                    onValueChange={(value) => field.onChange(value ? [value] : [])}
+                                    defaultValue={field.value?.[0]}
+                                    disabled={regionsLoading}
+                                >
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <MultiSelect
+                                    options={regions.map(r => ({ value: r, label: r }))}
+                                    selected={field.value || []}
+                                    onChange={field.onChange}
+                                    placeholder="Select regions..."
+                                    disabled={regionsLoading}
+                                />
+                            )}
+                            <FormDescription>
+                                {watchAddUser('role') === 'User' || watchAddUser('role') === 'Branch' ? 'Assign to a single region.' : "Assign one or more regions."}
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )} />
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                            <Button type="submit" disabled={isAddingUser || regionsLoading}>
+                                {isAddingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Create User
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+};
 
 
 export default function UserManagement() {
   const firestore = useFirestore();
-  const { toast } = useToast();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -399,177 +465,18 @@ export default function UserManagement() {
   const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
   const { data: users, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
   
-  const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
-  const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
-  const regions = regionsData?.list || [];
+  const isLoading = usersLoading;
   
-  const isLoading = usersLoading || regionsLoading;
-
-  const addUserForm = useForm<NewUserFormData>({
-    resolver: zodResolver(newUserSchema),
-    defaultValues: { displayName: '', email: '', password: '', role: '', regions: [] },
-  });
-
-  const { handleSubmit: handleAddUserSubmit, formState: { isSubmitting: isAddingUser }, watch: watchAddUser, control: addUserControl, reset: resetAddUserForm } = addUserForm;
-
-  const onAddUserSubmit = (data: NewUserFormData) => {
-    const tempAppName = `user-creation-${Date.now()}`;
-    const tempApp = initializeApp(firebaseConfig, tempAppName);
-    const tempAuth = getAuth(tempApp);
-
-    createUserWithEmailAndPassword(tempAuth, data.email, data.password)
-      .then(async (userCredential) => {
-        const newUser = userCredential.user;
-        await updateAuthProfile(newUser, { displayName: data.displayName });
-        
-        const userData: {
-            displayName: string;
-            email: string;
-            role: string;
-            phoneNumber: string;
-            region?: string;
-            regions?: string[];
-        } = { 
-            displayName: data.displayName, 
-            email: data.email, 
-            role: data.role, 
-            phoneNumber: '' 
-        };
-        
-        if (data.role === 'User' || data.role === 'Branch') {
-            userData.region = data.regions[0] || '';
-        } else {
-            userData.regions = data.regions;
-        }
-
-
-        try {
-            await setDoc(doc(firestore, 'users', newUser.uid), userData);
-            toast({ title: 'Success!', description: 'New user created successfully.' });
-            resetAddUserForm();
-            setIsAddUserOpen(false);
-        } catch (dbError) {
-            const permissionError = new FirestorePermissionError({
-              path: `users/${newUser.uid}`,
-              operation: 'create',
-              requestResourceData: userData
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({ 
-              variant: 'destructive', 
-              title: 'Database Write Failed', 
-              description: `User account was created, but saving the profile failed. Please delete the user with email '${data.email}' from the Firebase Console (Authentication tab) and try again.`,
-              duration: 10000,
-            });
-        }
-      })
-      .catch((authError: any) => {
-        let description = `The email '${data.email}' is already in use by another account. This can happen if a previous registration failed. Please go to your Firebase Project's Authentication tab, find and delete the user with this email, and then try creating them again.`;
-        if (authError.code !== 'auth/email-already-in-use') {
-            description = authError.message || 'An unknown authentication error occurred.';
-        }
-        toast({ 
-            variant: 'destructive', 
-            title: 'Error Creating User', 
-            description,
-            duration: 15000,
-        });
-      })
-      .finally(() => {
-        deleteApp(tempApp);
-      });
-  };
-
   return (
     <>
-    <RegionManagement />
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
             <div>
-                <CardTitle>All Users</CardTitle>
+                <CardTitle>User Accounts</CardTitle>
                 <CardDescription>View and manage all users in the system.</CardDescription>
             </div>
-            <Dialog open={isAddUserOpen} onOpenChange={(isOpen) => {
-                if (!isOpen) {
-                    resetAddUserForm();
-                }
-                setIsAddUserOpen(isOpen);
-            }}>
-                <DialogTrigger asChild>
-                    <Button disabled={isLoading}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Add User
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Create New User</DialogTitle>
-                        <DialogDescription>
-                            Fill out the form to create a new user account.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Form {...addUserForm}>
-                        <form onSubmit={handleAddUserSubmit(onAddUserSubmit)} className="space-y-4">
-                             <FormField control={addUserControl} name="displayName" render={({ field }) => (
-                                <FormItem><FormLabel>Display Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                             <FormField control={addUserControl} name="email" render={({ field }) => (
-                                <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="user@example.com" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                             <FormField control={addUserControl} name="password" render={({ field }) => (
-                                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={addUserControl} name="role" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Role</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {AVAILABLE_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={addUserControl} name="regions" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Region(s)</FormLabel>
-                                    {watchAddUser('role') === 'User' || watchAddUser('role') === 'Branch' ? (
-                                        <Select
-                                            onValueChange={(value) => field.onChange(value ? [value] : [])}
-                                            defaultValue={field.value?.[0]}
-                                        >
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <MultiSelect
-                                            options={regions.map(r => ({ value: r, label: r }))}
-                                            selected={field.value || []}
-                                            onChange={field.onChange}
-                                            placeholder="Select regions..."
-                                        />
-                                    )}
-                                    <FormDescription>
-                                        {watchAddUser('role') === 'User' || watchAddUser('role') === 'Branch' ? 'Assign to a single region.' : "Assign one or more regions."}
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                             <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>Cancel</Button>
-                                <Button type="submit" disabled={isAddingUser}>
-                                    {isAddingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Create User
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+            <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} />
         </div>
       </CardHeader>
       <CardContent>
@@ -629,8 +536,6 @@ export default function UserManagement() {
     {editingUser && (
         <EditUserDialog 
             user={editingUser}
-            roles={AVAILABLE_ROLES}
-            regions={regions}
             open={!!editingUser}
             onOpenChange={handleEditDialogChange}
         />
@@ -644,5 +549,3 @@ export default function UserManagement() {
     </>
   );
 }
-
-    
