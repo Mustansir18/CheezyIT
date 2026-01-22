@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Separator } from './ui/separator';
 
 
@@ -149,8 +149,6 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
 const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions, onOpenChange, open }: { user: User; roles: readonly string[]; regions: string[]; open: boolean; onOpenChange: (open: boolean) => void; }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const auth = useAuth();
-    const [isResetting, setIsResetting] = useState(false);
 
     const form = useForm<EditUserFormData>({
         resolver: zodResolver(editUserSchema),
@@ -173,32 +171,6 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
             });
         }
     }, [user, open, reset]);
-    
-    const handlePasswordReset = () => {
-        if (!user.email) {
-            toast({ variant: 'destructive', title: 'Error', description: 'User does not have an email address.' });
-            return;
-        }
-        setIsResetting(true);
-        sendPasswordResetEmail(auth, user.email)
-            .then(() => {
-                toast({
-                    title: 'Password Reset Email Sent',
-                    description: `An email has been sent to ${user.email} with instructions to reset their password.`,
-                });
-            })
-            .catch((error) => {
-                console.error("Password reset error:", error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: `Failed to send password reset email. ${error.message}`,
-                });
-            })
-            .finally(() => {
-                setIsResetting(false);
-            });
-    };
 
     const onSubmit = (data: EditUserFormData) => {
         const userDocRef = doc(firestore, 'users', user.id);
@@ -295,13 +267,10 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                         <div className="space-y-2">
                             <FormLabel>Password Management</FormLabel>
                             <FormDescription>
-                                For security, administrators cannot directly change user passwords. 
-                                This will send the user an email to reset their password.
+                                For security, a user's password cannot be changed directly from this panel. To reset a password for a user, you must delete and re-create their account.
+                                <br /><br />
+                                You can delete the user from the <strong>Firebase Console &gt; Authentication &gt; Users</strong> tab, then create them again here with a new temporary password.
                             </FormDescription>
-                             <Button type="button" variant="outline" onClick={handlePasswordReset} disabled={isResetting}>
-                                {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                                Send Password Reset Email
-                            </Button>
                         </div>
 
 
@@ -481,11 +450,9 @@ export default function UserManagement() {
         };
         
         if (data.role === 'User' || data.role === 'Branch') {
-            userData.region = data.regions[0];
-            delete (userData as any).regions;
+            userData.region = data.regions[0] || '';
         } else {
             userData.regions = data.regions;
-            delete (userData as any).region;
         }
 
 
