@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useAuth } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, type WithId, errorEmitter, FirestorePermissionError, useAuth, useUser } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
@@ -266,7 +266,7 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, roles, regions
                         <div className="space-y-2">
                             <FormLabel>Password Management</FormLabel>
                             <FormDescription>
-                                For security, passwords can only be managed from the server. To reset a password for a user with a non-working email, you must temporarily change their email in the Firebase Console to one you can access, send the reset link, and then change it back.
+                                To reset a password for a user with a non-working email, you must manually change their email in the Firebase Console to one you can access, send the reset link, and then change it back. This is a security measure and cannot be done from the app.
                             </FormDescription>
                         </div>
                         
@@ -394,13 +394,13 @@ export default function UserManagement() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [blockingUser, setBlockingUser] = useState<User | null>(null);
-
   const handleEditDialogChange = useCallback((isOpen: boolean) => {
     if (!isOpen) setEditingUser(null);
   }, []);
 
+  const [blockingUser, setBlockingUser] = useState<User | null>(null);
   const handleBlockDialogChange = useCallback((isOpen: boolean) => {
     if (!isOpen) setBlockingUser(null);
   }, []);
@@ -653,3 +653,4 @@ export default function UserManagement() {
     </>
   );
 }
+
