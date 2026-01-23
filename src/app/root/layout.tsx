@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
+  const hasRedirected = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -41,10 +42,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, [userProfile]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || hasRedirected.current) {
+      return;
+    }
     if (!user) {
+      hasRedirected.current = true;
       router.replace('/');
     } else if (!isAuthorized) {
+      hasRedirected.current = true;
       router.replace('/dashboard');
     }
   }, [user, loading, isAuthorized, router]);

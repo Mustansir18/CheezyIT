@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { doc, Timestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -27,6 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const pathname = usePathname();
     const firestore = useFirestore();
+    const hasRedirected = useRef(false);
 
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -47,14 +48,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [userProfile]);
 
     useEffect(() => {
-        if (loading) return;
+        if (loading || hasRedirected.current) {
+            return;
+        }
         
         if (!user) {
+            hasRedirected.current = true;
             router.replace('/');
             return;
         }
 
         if (isPrivilegedUser && !isBlocked) {
+            hasRedirected.current = true;
             router.replace('/root');
         }
 
