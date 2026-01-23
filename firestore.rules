@@ -22,6 +22,7 @@ service cloud.firestore {
     // Path rules
     match /users/{userId} {
       allow get: if isOwner(userId) || isPrivilegedUser();
+      allow list: if isPrivilegedUser();
       // Let privileged users update user roles/profiles.
       allow update: if isOwner(userId) || isPrivilegedUser();
       // Creating users is handled via a separate auth instance in the app.
