@@ -42,12 +42,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [userProfile]);
 
   useEffect(() => {
-    if (!userLoading && !user) {
-        router.push('/');
-    }
-  }, [user, userLoading, router]);
+    if (userLoading || profileLoading) return; // Wait for all data to be loaded
 
-  if (userLoading || profileLoading) {
+    if (!user) {
+      router.push('/');
+    } else if (!isAuthorized) {
+      router.push('/dashboard');
+    }
+  }, [user, userLoading, profileLoading, isAuthorized, router]);
+
+  if (userLoading || profileLoading || !user || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -66,18 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
     );
   }
-
-  if (!user || !isAuthorized) {
-    return (
-        <div className="flex h-screen w-full flex-col items-center justify-center gap-4">
-            <p>You are not authorized to view this page.</p>
-            <Button asChild variant="outline">
-                <Link href="/dashboard">Go to Your Dashboard</Link>
-            </Button>
-        </div>
-    );
-  }
-
+  
   return (
     <div className="flex min-h-screen w-full flex-col bg-gray-100 dark:bg-gray-950">
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b bg-white px-4 text-card-foreground sm:px-6">

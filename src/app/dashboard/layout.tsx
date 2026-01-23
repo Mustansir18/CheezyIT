@@ -31,7 +31,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-    const isPrivilegedUser = user && (isRoot(user.email) || userProfile?.role === 'it-support' || userProfile?.role === 'Admin');
+    const isPrivilegedUser = useMemo(() => {
+        if (!user) return false;
+        if (isRoot(user.email)) return true;
+        return userProfile?.role === 'it-support' || userProfile?.role === 'Admin';
+    }, [user, userProfile]);
+    
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
     const isDashboardHomePage = pathname === '/dashboard';
     
@@ -40,16 +45,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [userProfile]);
 
     useEffect(() => {
-        if (!userLoading && !profileLoading) {
-          if (!user) {
+        if (userLoading || profileLoading) return; // Wait until all data is loaded.
+        
+        if (!user) {
             router.push('/');
-          } else if (!isBlocked && isPrivilegedUser && !isTicketPage) {
+        } else if (!isBlocked && isPrivilegedUser && !isTicketPage) {
             router.push('/admin');
-          }
         }
     }, [user, userLoading, profileLoading, isPrivilegedUser, isTicketPage, isBlocked, router, pathname]);
     
-    if (userLoading || profileLoading || !user) {
+    // This is a crucial guard. It shows a loading screen while the redirect effect is being processed.
+    if (userLoading || profileLoading || !user || (!isBlocked && isPrivilegedUser && !isTicketPage)) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -65,15 +71,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
                 <p>Access will be restored {blockExpires}.</p>
                 <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
-            </div>
-        );
-    }
-    
-    if (isPrivilegedUser && !isTicketPage) {
-        // This is a safeguard for the useEffect redirect, showing a loader while it happens
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
             </div>
         );
     }
