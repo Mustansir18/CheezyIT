@@ -101,8 +101,10 @@ const AddUserDialog = React.memo(function AddUserDialog({ open, onOpenChange, re
             
             if (data.role === 'User' || data.role === 'Branch') {
                 userData.region = data.regions[0] || '';
+                userData.regions = [];
             } else {
                 userData.regions = data.regions;
+                userData.region = '';
             }
 
             await setDoc(doc(firestore, 'users', newUser.uid), userData);
@@ -215,10 +217,10 @@ const EditUserDialog = React.memo(function EditUserDialog({ user, open, onOpenCh
 
         if (data.role === 'User' || data.role === 'Branch') {
             updateData.region = data.regions[0] || '';
-            updateData.regions = deleteField();
+            updateData.regions = [];
         } else {
-            updateData.regions = data.regions;
-            updateData.region = deleteField();
+            updateData.regions = data.regions || [];
+            updateData.region = '';
         }
 
         try {
@@ -346,6 +348,16 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
 
 const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }: { user: WithId<User>; onEdit: (user: WithId<User>) => void; onBlock: (user: WithId<User>) => void; }) {
   const isBlocked = user.blockedUntil && user.blockedUntil.toDate() > new Date();
+
+  const displayedRegions = useMemo(() => {
+    if (user.role === 'User' || user.role === 'Branch') {
+        return user.region || 'N/A';
+    }
+    if (user.regions && user.regions.length > 0) {
+        return user.regions.join(', ');
+    }
+    return 'N/A';
+  }, [user.role, user.region, user.regions]);
   
   return (
     <TableRow className={isBlocked ? 'bg-destructive/10' : ''}>
@@ -355,7 +367,7 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
       </TableCell>
       <TableCell>{user.email}</TableCell>
       <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
-      <TableCell>{user.region || user.regions?.join(', ') || 'N/A'}</TableCell>
+      <TableCell>{displayedRegions}</TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
