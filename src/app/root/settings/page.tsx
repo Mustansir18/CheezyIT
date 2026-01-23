@@ -1,7 +1,7 @@
 'use client';
 import UserManagement from '@/components/user-management';
 import SystemSettings from '@/components/system-settings';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -11,30 +11,37 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { doc } from 'firebase/firestore';
+
+type UserProfile = {
+  role?: string;
+};
 
 export default function RootSettingsPage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
 
-  // This check is the definitive guard for this page.
-  const userIsActuallyRoot = useMemo(() => {
-      if (!user || !user.email) return false;
-      return isRoot(user.email);
-  }, [user]);
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  
+  const isAuthorized = useMemo(() => {
+    if (userIsRoot) return true;
+    if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
+    return false;
+  }, [userIsRoot, userProfile]);
+
+  const loading = userLoading || profileLoading;
 
   useEffect(() => {
-    // Wait until loading is false.
-    if (!loading) {
-        // If the user is NOT a root user, redirect them away.
-        if (!userIsActuallyRoot) {
-            router.push('/root');
-        }
+    if (!loading && !isAuthorized) {
+      router.push('/root');
     }
-  }, [user, loading, userIsActuallyRoot, router]);
+  }, [loading, isAuthorized, router]);
 
-  // Show a loading screen while checking auth or if the user is not authorized.
-  // This prevents any content from flashing before the redirect happens.
-  if (loading || !userIsActuallyRoot) {
+  if (loading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -42,7 +49,6 @@ export default function RootSettingsPage() {
     );
   }
 
-  // Only root users will reach this point.
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -52,14 +58,14 @@ export default function RootSettingsPage() {
                 <span className="sr-only">Back to Dashboard</span>
             </Link>
         </Button>
-        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsActuallyRoot && "text-primary")}>
-          Root
+        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
+          {userIsRoot ? 'Root' : 'User Management'}
         </h1>
       </div>
       
       <div className="space-y-8">
-        <UserManagement userIsAdminOrRoot={userIsActuallyRoot} />
-        {userIsActuallyRoot && (
+        <UserManagement userIsAdminOrRoot={isAuthorized} />
+        {userIsRoot && (
           <>
             <Separator />
             <div>

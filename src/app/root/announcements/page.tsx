@@ -29,7 +29,7 @@ export default function RootAnnouncementsPage() {
 
   const isAuthorized = useMemo(() => {
     if (userIsRoot) return true;
-    if (userProfile && userProfile.role === 'Admin') return true;
+    if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
     return false;
   }, [userIsRoot, userProfile]);
 
@@ -39,7 +39,7 @@ export default function RootAnnouncementsPage() {
     }
   }, [userLoading, profileLoading, isAuthorized, router]);
 
-  if (userLoading || (!userIsRoot && profileLoading) || !isAuthorized) {
+  if (userLoading || profileLoading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />

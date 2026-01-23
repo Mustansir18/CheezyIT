@@ -5,9 +5,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Megaphone } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import { doc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const baseNavItems = [
@@ -31,11 +30,18 @@ const baseNavItems = [
   },
 ];
 
+const userManagementNavItem = {
+    href: '/root/settings',
+    icon: Settings,
+    title: 'User Management',
+    description: 'Manage user accounts and roles.',
+};
+
 const rootNavItem = {
     href: '/root/settings',
     icon: Settings,
     title: 'Root Settings',
-    description: 'Manage user accounts and roles.',
+    description: 'Manage user accounts and system settings.',
 };
 
 type UserProfile = {
@@ -45,30 +51,17 @@ type UserProfile = {
 export default function RootDashboardPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
-  const hasRedirected = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  // This check is definitive. isRoot() checks the email against a hardcoded list.
-  const userIsActuallyRoot = useMemo(() => {
-    if (!user || !user.email) return false;
-    return isRoot(user.email);
-  }, [user]);
-  
+  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsAdmin = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   
   const loading = userLoading || profileLoading;
-  
-  useEffect(() => {
-    if (!loading && userIsSupport && !hasRedirected.current) {
-        hasRedirected.current = true;
-        router.replace('/root/tickets');
-    }
-  }, [loading, userIsSupport, router]);
 
-  if (loading || userIsSupport) {
+  if (loading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
             <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -77,11 +70,12 @@ export default function RootDashboardPage() {
   }
 
   const navItems = [...baseNavItems];
-  // This condition is the gatekeeper for the settings link.
-  // It will ONLY be true if the user's email is in the ROOT_EMAILS list.
-  if (userIsActuallyRoot) {
+  if (userIsRoot) {
     navItems.push(rootNavItem);
+  } else if (userIsAdmin || userIsSupport) {
+      navItems.push(userManagementNavItem);
   }
+
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ export function UserNav() {
   const { user, loading: userLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -25,7 +26,11 @@ export function UserNav() {
   };
 
   const handleProfileClick = () => {
-    router.push('/dashboard/profile');
+    if (pathname.startsWith('/root')) {
+        router.push('/root/profile');
+    } else {
+        router.push('/dashboard/profile');
+    }
   };
 
   if (userLoading) {
