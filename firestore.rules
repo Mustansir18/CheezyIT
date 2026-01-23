@@ -14,11 +14,13 @@ service cloud.firestore {
     }
     
     function isPrivilegedUser() {
-      // Safely check for privileged role from the user's profile document
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      let hasPrivilegedRole = userDoc.exists && userDoc.data.role in ['Admin', 'it-support'];
-      
-      return hasPrivilegedRole || isRootUser();
+      // Root user is always privileged, no need to check Firestore.
+      if (isRootUser()) {
+        return true;
+      }
+      // For other users, they must have a profile doc and a privileged role.
+      let userProfile = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userProfile.exists && userProfile.data.role in ['Admin', 'it-support'];
     }
 
     // Path rules
@@ -37,13 +39,11 @@ service cloud.firestore {
       // User can create their own issue. Privileged users can manage all issues.
       allow create: if isOwner(userId) || isPrivilegedUser();
       
-      // Rules for reading/updating. `get` is for single documents, `list` is for queries.
       // A regular user can `get` their own ticket.
       // A privileged user can `get` any ticket.
       allow get, update: if isOwner(userId) || isPrivilegedUser();
 
-      // Only privileged users can `list` tickets (e.g., in the admin ticket view).
-      // This is essential for collection group queries.
+      // This is for collection group queries.
       allow list: if isPrivilegedUser();
       
       // Deleting issues is not allowed from the client for now, unless root user.
