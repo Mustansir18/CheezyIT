@@ -198,6 +198,75 @@
             }
         },
         "required": ["count"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "type": "object",
+      "description": "Represents a user notification, often generated from an announcement.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Title of the notification."
+        },
+        "message": {
+          "type": "string",
+          "description": "Message content of the notification."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the notification was created."
+        },
+        "isRead": {
+          "type": "boolean",
+          "description": "Indicates if the user has read the notification."
+        },
+        "announcementId": {
+          "type": "string",
+          "description": "Reference to the original announcement, if applicable."
+        },
+        "createdByDisplayName": {
+            "type": "string",
+            "description": "Display name of the creator (e.g., 'Root' or 'Admin Name')."
+        },
+        "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date from which the notification is visible."
+        },
+        "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date after which the notification expires."
+        }
+      },
+      "required": ["title", "message", "createdAt", "isRead"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "type": "object",
+      "description": "A broadcast message sent to a specific target audience.",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdByUid": { "type": "string" },
+        "createdByDisplayName": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "target": {
+          "type": "object",
+          "properties": {
+            "roles": { "type": "array", "items": { "type": "string" } },
+            "regions": { "type": "array", "items": { "type": "string" } },
+            "users": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "recipientUids": { "type": "array", "items": { "type": "string" } },
+        "recipientCount": { "type": "number" },
+        "readBy": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["title", "message", "createdAt", "createdByUid", "createdByDisplayName", "target", "recipientUids", "recipientCount", "readBy"]
     }
   },
   "auth": {
@@ -225,11 +294,23 @@
       },
       "description": "Stores chat messages for a specific issue."
     },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Notification"
+      },
+      "description": "Stores notifications for a specific user, usually related to announcements."
+    },
     "/system_settings/{settingId}": {
       "schema": {
         "$ref": "#/backend/entities/TicketCounter"
       },
       "description": "Stores global system settings like counters. The settingId for the ticket counter must be 'ticketCounter'."
+    },
+    "/announcements/{announcementId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Announcement"
+      },
+      "description": "Stores master copies of broadcast announcements."
     }
   }
 }

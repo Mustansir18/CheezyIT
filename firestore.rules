@@ -7,36 +7,63 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth.uid == uid;
     }
+    
+    function isPrivilegedUser() {
+      // This check must be kept in sync with the application's authorization logic.
+      // It allows access for users with 'Admin', 'it-support' roles, or root user emails.
+      let userProfile = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userProfile.data.role in ['Admin', 'it-support']
+             || request.auth.token.email == 'mustansir133@gmail.com';
+    }
 
     // Path rules
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow update: if isOwner(userId);
-      // Creating and deleting users must be done via the Firebase Console
-      // or a trusted server environment, not from the client.
+      // Let privileged users update user roles/profiles.
+      allow update: if isOwner(userId) || isPrivilegedUser();
+      // Creating users is handled via a separate auth instance in the app.
+      // Deleting users from the client is unsafe.
       allow create, delete: if false;
     }
 
     match /users/{userId}/issues/{issueId} {
-      // Any authenticated user can create an issue for themselves.
+      // User can create their own issue. Privileged users can manage all issues.
       allow create: if isOwner(userId);
-      // Only the user who owns the issue can read or update it.
-      allow read, update: if isOwner(userId);
-      // Deleting issues is not allowed from the client.
+      allow read, update: if isOwner(userId) || isPrivilegedUser();
+      // Deleting issues is not allowed from the client for now.
       allow delete: if false;
     }
     
     match /users/{userId}/issues/{issueId}/messages/{messageId} {
-      // Only the user who owns the parent issue can read or create messages.
-      allow read, create: if isOwner(userId);
+      // Only the user who owns the parent issue or a privileged user can read/create messages.
+      allow read, create: if isOwner(userId) || isPrivilegedUser();
       // Messages are immutable once created.
       allow update, delete: if false;
+    }
+
+    match /users/{userId}/notifications/{notificationId} {
+      // User can read, update (isRead), and delete their own notifications.
+      allow read, update, delete: if isOwner(userId);
+      // Privileged users can create notifications when sending announcements.
+      allow create: if isPrivilegedUser();
     }
     
     match /system_settings/ticketCounter {
         // Any authenticated user can read and write to the ticket counter
         // as part of a transaction to generate a new ticket ID.
         allow read, write: if request.auth != null;
+    }
+
+    match /announcements/{announcementId} {
+      // Only privileged users can create, read and update announcements.
+      allow read, create, update: if isPrivilegedUser();
+      // Deleting announcements is not allowed from the client.
+      allow delete: if false;
+    }
+    
+    // Catch-all for other system settings that admins might need to manage.
+    match /system_settings/{settingId} {
+        allow read, write: if isPrivilegedUser();
     }
   }
 }
