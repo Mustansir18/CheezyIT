@@ -43,6 +43,8 @@
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
     "genkit": "^1.20.0",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.475.0",
     "next": "15.5.9",
     "patch-package": "^8.0.0",
@@ -52,9 +54,11 @@
     "react-hook-form": "^7.54.2",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/jspdf": "^2.0.0",
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
