@@ -9,7 +9,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, type WithId, errorEmitt
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
-import { collection, query, doc, setDoc, updateDoc, deleteField, Timestamp } from 'firebase/firestore';
+import { collection, query, doc, setDoc, updateDoc, deleteField, Timestamp, getDoc } from 'firebase/firestore';
 import { add } from 'date-fns';
 import { Loader2, UserPlus, MoreHorizontal, Pencil, ShieldBan, Trash2 } from 'lucide-react';
 
@@ -388,9 +388,48 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
 
 export default function UserManagement({ userIsAdminOrRoot }: { userIsAdminOrRoot: boolean }) {
     const firestore = useFirestore();
+    const { user: currentUser } = useUser();
+    const { toast } = useToast();
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [blockingUser, setBlockingUser] = useState<User | null>(null);
+
+    useEffect(() => {
+        const ensureRootUserDocument = async () => {
+            if (!currentUser || !isRoot(currentUser.email) || !firestore) {
+                return;
+            }
+
+            const userDocRef = doc(firestore, 'users', currentUser.uid);
+            
+            try {
+                const userDoc = await getDoc(userDocRef);
+
+                if (!userDoc.exists()) {
+                    await setDoc(userDocRef, {
+                        displayName: currentUser.displayName || 'Root User',
+                        email: currentUser.email,
+                        role: 'Admin',
+                        regions: ['all'],
+                        phoneNumber: '',
+                    });
+                    toast({
+                        title: "Root User Synced",
+                        description: "Your root user profile has been created in the database."
+                    });
+                }
+            } catch (error) {
+                 console.error("Failed to check/create root user document:", error);
+                 toast({
+                    variant: 'destructive',
+                    title: "Database Sync Failed",
+                    description: "Could not check for the root user's profile in the database."
+                 })
+            }
+        };
+
+        ensureRootUserDocument();
+    }, [currentUser, firestore, toast]);
 
     const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
     const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
