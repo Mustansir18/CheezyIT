@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
-import { collection, query, Timestamp } from 'firebase/firestore';
 import { Loader2, UserPlus, MoreHorizontal, Pencil, ShieldBan, Trash2 } from 'lucide-react';
 import { isRoot } from '@/lib/admins';
 
@@ -21,18 +19,18 @@ export type User = {
   phoneNumber?: string;
   region?: string;
   regions?: string[];
-  blockedUntil?: Timestamp;
+  blockedUntil?: Date; // Changed from Timestamp
 };
 
 export interface UserTableProps {
-  onEdit: (user: WithId<User>) => void;
-  onBlock: (user: WithId<User>) => void;
+  onEdit: (user: User) => void;
+  onBlock: (user: User) => void;
   onAddUser: () => void;
   isAddUserDisabled: boolean;
 }
 
-const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }: { user: WithId<User>; onEdit: (user: WithId<User>) => void; onBlock: (user: WithId<User>) => void; }) {
-  const isBlocked = user.blockedUntil && user.blockedUntil.toDate() > new Date();
+const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }: { user: User; onEdit: (user: User) => void; onBlock: (user: User) => void; }) {
+  const isBlocked = user.blockedUntil && user.blockedUntil > new Date();
   
   return (
     <TableRow className={isBlocked ? 'bg-destructive/10' : ''}>
@@ -62,16 +60,10 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
 });
 
 export default function UserTable({ onEdit, onBlock, onAddUser, isAddUserDisabled }: UserTableProps) {
-  const firestore = useFirestore();
-  const { user: currentUser, loading: userLoading } = useUser();
-  
-  const userIsRoot = useMemo(() => currentUser && isRoot(currentUser.email), [currentUser]);
-
-  const usersQuery = useMemoFirebase(
-    () => (userIsRoot ? query(collection(firestore, 'users')) : null),
-    [firestore, userIsRoot]
-  );
-  const { data: users, isLoading: usersDataLoading } = useCollection<WithId<User>>(usersQuery);
+  const userLoading = false;
+  const users: User[] = [];
+  const usersDataLoading = false;
+  const userIsRoot = false;
   
   const isLoading = userIsRoot && (userLoading || usersDataLoading);
 
@@ -119,7 +111,7 @@ export default function UserTable({ onEdit, onBlock, onAddUser, isAddUserDisable
             ) : (
               <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                      {userIsRoot ? 'No users found.' : 'You do not have permission to view users.'}
+                      User data not available. Firebase is detached.
                   </TableCell>
               </TableRow>
             )}

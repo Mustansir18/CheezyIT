@@ -3,8 +3,6 @@
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, orderBy, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { ArrowLeft, MoreVertical, Trash2, CheckCheck, Smile, Send, Phone, Users, UserCheck, Check } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -29,25 +27,38 @@ const WA_COLORS = {
     blue: '#53bdeb'
 };
 
+const mockMessages: ChatMessage[] = [
+    {
+        id: '1',
+        userId: 'demo-user-id',
+        displayName: 'Demo User',
+        text: 'My laptop is not connecting to the office Wi-Fi. I have tried restarting it but it did not work. Please help.',
+        createdAt: new Date(Date.now() - 5 * 60 * 1000),
+        isRead: true,
+        type: 'user',
+    },
+    {
+        id: '2',
+        userId: 'support-user-id',
+        displayName: 'Support Person',
+        text: 'Hi there, I will look into this for you. Can you please provide your AnyDesk ID?',
+        createdAt: new Date(Date.now() - 3 * 60 * 1000),
+        isRead: true,
+        type: 'user',
+    },
+];
+
 export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onTakeOwnership, onReturnToQueue, onBackToDetail }: any) {
-    const { user } = useUser();
-    const firestore = useFirestore();
     const { toast } = useToast();
     const [message, setMessage] = useState('');
+    const [messages, setMessages] = useState<any[]>(mockMessages);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
-    const { id: ticketId, userId } = ticket;
     const isLocked = ticket.status === 'Closed';
 
-    const messagesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), orderBy('createdAt', 'asc')), [firestore, userId, ticketId]);
-    const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
-    
-    const playMessageSound = useSound('/sounds/new-message.mp3');
-    const prevUnreadCountRef = useRef<number | undefined>(undefined);
-
-    const unreadMessagesCount = useMemo(() => {
-        if (!messages || !user) return 0;
-        return messages.filter(m => !m.isRead && m.userId !== user.uid).length;
-    }, [messages, user]);
+    const currentUser = useMemo(() => {
+        const userJson = localStorage.getItem('mockUser');
+        return userJson ? JSON.parse(userJson) : null;
+    }, []);
 
     useLayoutEffect(() => {
         if (messagesContainerRef.current) {
@@ -55,62 +66,12 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
         }
     }, [messages]);
 
-    useEffect(() => {
-        if (messagesLoading) return;
-
-        if (prevUnreadCountRef.current === undefined) {
-            prevUnreadCountRef.current = unreadMessagesCount;
-            return;
-        }
-
-        if (unreadMessagesCount > prevUnreadCountRef.current) {
-            playMessageSound();
-        }
-
-        prevUnreadCountRef.current = unreadMessagesCount;
-    }, [unreadMessagesCount, messagesLoading, playMessageSound]);
-
-
-    // Effect to mark messages as read and clear ticket-level unread flags
-    useEffect(() => {
-        if (!messages || messagesLoading || !user || !firestore || !ticket) return;
-
-        const messageUpdateBatch = writeBatch(firestore);
-        let messagesToMarkAsRead = 0;
-
-        messages.forEach(msg => {
-            if (!msg.isRead && msg.userId !== user.uid) {
-                const msgRef = doc(firestore, 'users', userId, 'issues', ticketId, 'messages', msg.id);
-                messageUpdateBatch.update(msgRef, { isRead: true });
-                messagesToMarkAsRead++;
-            }
-        });
-
-        if (messagesToMarkAsRead > 0) {
-            messageUpdateBatch.commit().catch(err => {
-                console.error("Failed to mark messages as read:", err);
-            });
-        }
-
-        const ticketRef = doc(firestore, 'users', userId, 'issues', ticketId);
-
-        if (canManageTicket && ticket.unreadByAdmin) {
-            updateDoc(ticketRef, { unreadByAdmin: false });
-        }
-        
-        if (isOwner && ticket.unreadByUser) {
-            updateDoc(ticketRef, { unreadByUser: false });
-        }
-
-    }, [messages, messagesLoading, user, firestore, ticketId, userId, ticket, canManageTicket, isOwner]);
-
-
     const messagesWithDateSeparators = useMemo(() => {
         const items: any[] = [];
         let lastDate: string | null = null;
         messages?.forEach(msg => {
             if (msg.createdAt) {
-                const messageDate = format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'dd/MM/yyyy');
+                const messageDate = format(new Date(msg.createdAt), 'dd/MM/yyyy');
                 if (messageDate !== lastDate) {
                     items.push({ type: 'date-separator', date: messageDate, id: `date-${messageDate}` });
                     lastDate = messageDate;
@@ -122,50 +83,25 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (!message.trim() || !user) return;
+        if (!message.trim() || !currentUser) return;
         const msgText = message;
         setMessage('');
 
-        const ticketRef = doc(firestore, 'users', userId, 'issues', ticketId);
-        const newMessageRef = doc(collection(ticketRef, 'messages'));
-
-        const unreadUpdate = canManageTicket ? { unreadByUser: true } : { unreadByAdmin: true };
-
-        try {
-            const batch = writeBatch(firestore);
-            batch.set(newMessageRef, {
-                userId: user.uid,
-                displayName: user.displayName || 'User',
-                text: msgText,
-                createdAt: serverTimestamp(),
-                isRead: false,
-                type: 'user',
-            });
-            batch.update(ticketRef, { ...unreadUpdate, updatedAt: serverTimestamp() });
-            await batch.commit();
-        } catch (error) {
-            console.error("Error sending message:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to send message.' });
-        }
+        const newMessage = {
+            id: Date.now().toString(),
+            userId: currentUser.email, // using email as id for mock
+            displayName: currentUser.displayName || 'User',
+            text: msgText,
+            createdAt: new Date(),
+            isRead: false,
+            type: 'user',
+        };
+        setMessages(m => [...m, newMessage]);
+        toast({ title: 'Message Sent (Mock)', description: 'Your message has been sent.' });
     };
 
     const handleStartCall = async () => {
-        if (!user || !ticketOwnerProfile?.phoneNumber) {
-            toast({ variant: 'destructive', title: 'Error', description: 'User does not have a phone number.' });
-            return;
-        }
-        const whatsappNumber = '92' + ticketOwnerProfile.phoneNumber.substring(1);
-        const callLink = `https://wa.me/${whatsappNumber}`;
-
-        await addDoc(collection(firestore, 'users', userId, 'issues', ticketId, 'messages'), {
-            userId: user.uid,
-            displayName: user.displayName || 'Admin',
-            type: 'call_request',
-            link: callLink,
-            text: 'Voice call request',
-            createdAt: serverTimestamp(),
-            isRead: false,
-        });
+       toast({ variant: 'destructive', title: 'Error', description: 'This feature is disabled.' });
     };
 
 
@@ -270,8 +206,8 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
                             );
                         }
 
-                        const msg = item as WithId<ChatMessage>;
-                        const isSender = msg.userId === user?.uid;
+                        const msg = item as any;
+                        const isSender = msg.userId === currentUser?.email;
                         const prevItem = messagesWithDateSeparators[idx - 1];
 
                         const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
@@ -333,7 +269,7 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 mb-[-2px] self-end">
                                         <span className="text-[10px] text-[#8696a0] whitespace-nowrap uppercase">
-                                            {msg.createdAt ? format(msg.createdAt.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt), 'h:mm a') : ''}
+                                            {msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : ''}
                                         </span>
                                         {isSender && (
                                             <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-[#53bdeb]" : "text-[#8696a0]")} />

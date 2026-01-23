@@ -8,7 +8,6 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { doc } from 'firebase/firestore';
 
 type UserProfile = {
   role?: string;
@@ -18,7 +17,7 @@ export default function RootTicketsPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const userProfileRef = null;
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   
   const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);

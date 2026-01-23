@@ -7,7 +7,6 @@ import { ArrowLeft } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
 import { useMemo, useEffect } from 'react';
-import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -21,7 +20,7 @@ export default function RootReportsPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const userProfileRef = null;
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const isAuthorized = useMemo(() => {

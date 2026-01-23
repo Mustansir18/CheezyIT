@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
-import { doc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -21,7 +20,7 @@ type UserProfile = {
 export default function RootProfilePage() {
     const { user, loading: userLoading } = useUser();
     const firestore = useFirestore();
-    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+    const userProfileRef = null;
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
     const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
 
