@@ -3,82 +3,106 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+
+    // =================================
+    // Helper Functions
+    // =================================
+
     function isOwner(uid) {
+      // Check if the current user is authenticated and their UID matches the given UID.
       return request.auth != null && request.auth.uid == uid;
     }
 
     function isRootUser() {
-      // Check if the user's email is a designated root email, ignoring case.
+      // Check if the user's email is the designated root email, ignoring case.
+      // This is the highest level of privilege.
       return request.auth != null && request.auth.token.email != null && request.auth.token.email.toLowerCase() == 'mustansir133@gmail.com';
     }
     
     function isPrivilegedUser() {
-      // Root user is always privileged, no need to check Firestore.
+      // A user is privileged if they are the Root User, an 'Admin', or 'it-support'.
+      // The Root user does not need a document in the /users collection to be considered privileged.
       if (isRootUser()) {
         return true;
       }
-      // For other users, they must have a profile doc and a privileged role.
+      
+      // For other users, they must be authenticated and have a document in /users with a privileged role.
       if (request.auth == null) {
         return false;
       }
+      
       let userProfile = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return userProfile.exists && userProfile.data.role in ['Admin', 'it-support'];
+      // Ensure the user's profile exists and their role is either 'Admin' or 'it-support'.
+      return userProfile != null && userProfile.data.role in ['Admin', 'it-support'];
     }
 
-    // Path rules
+    // =================================
+    // Path Rules
+    // =================================
+
     match /users/{userId} {
+      // A user can read their own profile. Privileged users can read any profile.
       allow get: if isOwner(userId) || isPrivilegedUser();
+      
+      // Privileged users can list all user profiles (for user management, etc.).
       allow list: if isPrivilegedUser();
-      // Allow users to update their own profile, and privileged users to create/update any profile.
+      
+      // A user can update their own profile. Privileged users can update any profile.
+      // `create` is included to allow privileged users to create profiles, e.g., for pre-registered accounts.
       allow create, update: if isOwner(userId) || isPrivilegedUser();
-      // Deleting users from the client is unsafe unless it's the root user.
+      
+      // Only the root user should be able to delete user documents from the client.
       allow delete: if isRootUser();
     }
 
+    // This collection group query allows privileged users to see all tickets across all users.
+    // It's essential for the main admin/support ticket dashboard.
+    match /{path=**}/issues/{issueId} {
+      allow list: if isPrivilegedUser();
+    }
+
     match /users/{userId}/issues/{issueId} {
-      // User can create their own issue. Privileged users can manage all issues.
+      // Users can create their own tickets. Privileged users can also create tickets for others if needed.
       allow create: if isOwner(userId) || isPrivilegedUser();
       
-      // A regular user can `get` their own ticket.
-      // A privileged user can `get` any ticket.
+      // A user can read their own ticket. Privileged users can read any ticket.
       allow get, update: if isOwner(userId) || isPrivilegedUser();
-
-      // This is for collection group queries.
-      allow list: if isPrivilegedUser();
       
-      // Deleting issues is not allowed from the client for now, unless root user.
+      // Deleting issues from the client is restricted to the root user for safety.
       allow delete: if isRootUser();
     }
     
     match /users/{userId}/issues/{issueId}/messages/{messageId} {
-      // Only the user who owns the parent issue or a privileged user can read/create messages.
+      // The ticket owner or a privileged user can read and create messages in the chat.
       allow read, create: if isOwner(userId) || isPrivilegedUser();
-      // Messages are immutable once created, unless root user needs to intervene.
+      
+      // Messages are immutable for safety, but the root user can intervene if necessary.
       allow update, delete: if isRootUser();
     }
 
     match /users/{userId}/notifications/{notificationId} {
-      // User can read, update (isRead), and delete their own notifications.
+      // Users can manage their own notifications.
       allow read, update, delete: if isOwner(userId);
-      // Privileged users can create notifications when sending announcements.
+      
+      // Privileged users can create notifications as part of the announcement system.
       allow create: if isPrivilegedUser();
     }
     
-    match /system_settings/ticketCounter {
-        // Any authenticated user can read and write to the ticket counter
-        // as part of a transaction to generate a new ticket ID.
-        allow read, write: if request.auth != null;
-    }
-
     match /announcements/{announcementId} {
-      // Only privileged users can create, read and update announcements.
+      // Only privileged users can manage announcements.
       allow read, create, update: if isPrivilegedUser();
-      // Deleting announcements is not allowed from the client, unless root.
+      
+      // Deletion is restricted to the root user.
       allow delete: if isRootUser();
     }
     
-    // Catch-all for other system settings that admins might need to manage.
+    match /system_settings/ticketCounter {
+      // Any authenticated user can read and write to the ticket counter as part of a transaction
+      // when creating a new ticket. This is a common pattern.
+      allow read, write: if request.auth != null;
+    }
+
+    // Catch-all for other system settings that only privileged users (or root) should manage.
     match /system_settings/{settingId} {
         allow read, write: if isPrivilegedUser();
     }
