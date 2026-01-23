@@ -9,25 +9,18 @@ service cloud.firestore {
     // =================================
 
     function isOwner(uid) {
-      // Check if the current user is authenticated and their UID matches the given UID.
       return request.auth != null && request.auth.uid == uid;
     }
 
     function isRootUser() {
-      // Check if the user's email is the designated root email, ignoring case.
       return request.auth != null && request.auth.token.email != null && request.auth.token.email.toLowerCase() == 'mustansir133@gmail.com';
     }
     
-    // isPrivilegedUser now checks for 'Admin' or 'it-support' roles.
     function isPrivilegedUser() {
-      if (isRootUser()) {
-        return true;
-      }
       // A non-root user must be authenticated to be privileged.
       if (request.auth == null) {
         return false;
       }
-      // Use exists() for efficiency before the get() to prevent unnecessary reads.
       if (exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
         let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
         return userRole in ['Admin', 'it-support'];
@@ -36,71 +29,60 @@ service cloud.firestore {
     }
 
     // =================================
-    // Path Rules
+    // Root User Override
+    // =================================
+    // The root user has blanket read/write access to everything. This rule will grant
+    // access if the user is the root user, regardless of other rules.
+    match /{path=**} {
+      allow read, write: if isRootUser();
+    }
+
+    // =================================
+    // Path Rules for Non-Root Users
     // =================================
 
     match /users/{userId} {
-      // A user can read their own profile. Privileged users can read any profile.
+      // Allow privileged users to list/read user profiles.
+      // Allow users to read their own profile.
       allow get: if isOwner(userId) || isPrivilegedUser();
-      
-      // Privileged users can list all user profiles for management.
       allow list: if isPrivilegedUser();
       
-      // Users can update their own profiles. Privileged users can update any profile.
-      // Privileged users can also create user profiles.
-      allow create, update: if isPrivilegedUser() || isOwner(userId);
-      
-      // Only the root user can delete user documents.
-      allow delete: if isRootUser();
+      // Allow privileged users to create profiles.
+      // Allow users to update their own profile.
+      allow create: if isPrivilegedUser();
+      allow update: if isOwner(userId) || isPrivilegedUser();
     }
 
-    // This collection group query allows privileged users to see all tickets.
+    // Collection group query for privileged users to see all tickets.
     match /{path=**}/issues/{issueId} {
       allow list: if isPrivilegedUser();
     }
 
     match /users/{userId}/issues/{issueId} {
-      // Users can create their own tickets.
       allow create: if isOwner(userId);
-      
-      // Privileged users can update any ticket. Owners can also make updates.
-      // The client-side code restricts what an owner can update (e.g., re-opening).
       allow get, update: if isOwner(userId) || isPrivilegedUser();
-      
-      // Only privileged users can delete tickets.
       allow delete: if isPrivilegedUser();
     }
     
     match /users/{userId}/issues/{issueId}/messages/{messageId} {
-      // The ticket owner or a privileged user can read and create messages.
       allow read, create: if isOwner(userId) || isPrivilegedUser();
-      
-      // Messages are immutable for safety, but the root user can intervene if necessary.
-      allow update, delete: if isRootUser();
     }
 
     match /users/{userId}/notifications/{notificationId} {
-      // Users can manage their own notifications.
       allow read, delete: if isOwner(userId);
-
-      // Users can only mark their own notifications as read.
       allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      
-      // Privileged users can create notifications as part of the announcement system.
       allow create: if isPrivilegedUser();
     }
     
     match /announcements/{announcementId} {
-      // Only privileged users can manage announcements.
       allow read, write: if isPrivilegedUser();
-      allow delete: if isRootUser();
     }
     
     match /system_settings/ticketCounter {
       // Any authenticated user can write to the ticket counter in a transaction.
       allow read, write: if request.auth != null;
     }
-
+    
     match /system_settings/{settingId} {
         allow read: if request.auth != null; // All auth'd users can read settings like regions.
         allow write: if isPrivilegedUser();
