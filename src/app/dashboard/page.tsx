@@ -1,18 +1,30 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 import { type Ticket } from '@/lib/data';
 import DashboardClient from '@/components/dashboard-client';
-import { useUser } from '@/firebase';
+
+const useUser = () => {
+    const [user, setUser] = useState<{ email: string; } | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const userJson = localStorage.getItem('mockUser');
+        if (userJson) {
+            setUser(JSON.parse(userJson));
+        }
+        setLoading(false);
+    }, []);
+
+    return { user, loading };
+};
 
 export default function DashboardPage() {
   const { user, loading } = useUser();
   const router = useRouter();
-  // For now, we'll keep fetching mock tickets.
-  // In a real app, this would fetch from Firestore.
-  const tickets: Ticket[] = []; // Start with empty and fetch inside client
+  const tickets: Ticket[] = []; 
   const stats = { pending: 0, inProgress: 0, resolved: 0};
 
   useEffect(() => {

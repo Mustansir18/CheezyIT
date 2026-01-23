@@ -3,23 +3,29 @@
 import UpdateProfileForm from '@/components/update-profile-form';
 import ChangePasswordForm from '@/components/change-password-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import Image from 'next/image';
-import { doc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
+import { useState, useEffect } from 'react';
 
+const useUser = () => {
+    const [user, setUser] = useState<{ email: string; displayName: string } | null>(null);
+    const [loading, setLoading] = useState(true);
 
-type UserProfile = {
-  phoneNumber?: string;
-}
+    useEffect(() => {
+        const userJson = localStorage.getItem('mockUser');
+        if (userJson) {
+            setUser(JSON.parse(userJson));
+        }
+        setLoading(false);
+    }, []);
+
+    return { user, loading };
+};
 
 export default function ProfilePage() {
-    const { user, loading: userLoading } = useUser();
-    const firestore = useFirestore();
-    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-    const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+    const { user, loading } = useUser();
 
-    if (userLoading || profileLoading) {
+    if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -28,7 +34,6 @@ export default function ProfilePage() {
     }
 
     if (!user) {
-        // This should be handled by the layout, but as a safeguard
         return null;
     }
 
@@ -54,7 +59,7 @@ export default function ProfilePage() {
                     <div>
                         <UpdateProfileForm 
                             currentDisplayName={user.displayName} 
-                            currentPhoneNumber={userProfile?.phoneNumber} 
+                            currentPhoneNumber={"03001234567"} 
                             backLink="/dashboard"
                             backLinkText="Back to Dashboard"
                         />

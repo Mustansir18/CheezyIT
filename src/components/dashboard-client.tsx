@@ -1,33 +1,23 @@
 
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import type { Ticket, TicketStatus } from '@/lib/data';
+import React, { useState, useMemo } from 'react';
+import type { TicketStatus } from '@/lib/data';
 import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
-import { useUser, useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths } from 'date-fns';
 import Link from 'next/link';
 
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Info, Clock, ShieldCheck, ShieldX, Calendar as CalendarIcon, Filter, User, MapPin, UserCheck } from 'lucide-react';
+import { Loader2, Info, Clock, ShieldCheck, ShieldX, Calendar as CalendarIcon, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useSound } from '@/hooks/use-sound';
-
-
-interface DashboardClientProps {
-  tickets: never[];
-  stats: never;
-}
 
 const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: string }> = {
     'Open': { icon: Info, color: 'bg-blue-500' },
@@ -36,97 +26,9 @@ const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: strin
     'Closed': { icon: ShieldX, color: 'bg-gray-500' }
 };
 
-const TicketCard = ({ ticket }: { ticket: WithId<Ticket> }) => {
-    const statusInfo = statusConfig[ticket.status];
-    const StatusIcon = statusInfo?.icon;
-
-    return (
-        <Link href={`/dashboard/ticket/${ticket.id}`} className="block group">
-            <Card className="group-hover:shadow-lg transition-all duration-200 group-hover:-translate-y-1 group-hover:border-primary flex items-center p-3">
-                <div className="flex-1 space-y-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        {ticket.unreadByUser && <span className="h-2.5 w-2.5 rounded-full bg-accent flex-shrink-0" />}
-                        <CardTitle className="text-base font-bold leading-tight truncate">{ticket.title}</CardTitle>
-                    </div>
-                    <CardDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span className="font-mono">{ticket.ticketId}</span>
-                        <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{ticket.createdAt?.toDate ? formatDistanceToNowStrict(ticket.createdAt.toDate(), { addSuffix: true }) : ''}</span>
-                        {ticket.region && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{ticket.region}</span>}
-                        {ticket.assignedToDisplayName && (ticket.status === 'In-Progress') && (
-                            <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Working on: {ticket.assignedToDisplayName}</span>
-                        )}
-                        {(ticket.status === 'Resolved' || ticket.status === 'Closed') && ticket.resolvedByDisplayName && (
-                            <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Resolved by {ticket.resolvedByDisplayName}</span>
-                        )}
-                    </CardDescription>
-                </div>
-
-                <div className="flex items-center gap-2 ml-4">
-                    {statusInfo && StatusIcon && (
-                        <Badge variant="secondary" className={cn(statusInfo.color, 'text-white gap-1.5')}>
-                            <StatusIcon className={cn("h-3.5 w-3.5", ticket.status === 'In-Progress' && 'animate-spin')} />
-                            {ticket.status}
-                        </Badge>
-                    )}
-                </div>
-            </Card>
-        </Link>
-    )
-}
-
-export default function DashboardClient({}: DashboardClientProps) {
-  const { user } = useUser();
-  const firestore = useFirestore();
-
-  const issuesQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'issues'), orderBy('createdAt', 'desc')) : null,
-    [firestore, user]
-  );
-  const { data: tickets, isLoading: ticketsLoading } = useCollection<WithId<Ticket>>(issuesQuery);
+export default function DashboardClient({ tickets, stats }: { tickets: any[], stats: any }) {
+  const ticketsLoading = false;
   const allTickets = tickets || [];
-
-  const prevTicketsRef = useRef<WithId<Ticket>[]>([]);
-  const isInitialLoadComplete = useRef(false);
-  const playInProgressSound = useSound('/sounds/new-message.mp3');
-  const playResolvedSound = useSound('/sounds/new-ticket.mp3');
-  const playClosedSound = useSound('/sounds/new-announcement.mp3');
-
-  useEffect(() => {
-    if (ticketsLoading || !tickets) {
-      return;
-    }
-
-    // On first successful load, set the baseline and exit.
-    if (!isInitialLoadComplete.current) {
-        prevTicketsRef.current = tickets;
-        isInitialLoadComplete.current = true;
-        return;
-    }
-
-    // For subsequent updates, compare with the previous state.
-    const prevTicketsMap = new Map(prevTicketsRef.current.map(t => [t.id, t.status]));
-    
-    tickets.forEach(currentTicket => {
-        const prevStatus = prevTicketsMap.get(currentTicket.id);
-        // Check if a ticket existed before and its status has changed
-        if (prevStatus && prevStatus !== currentTicket.status) {
-            switch (currentTicket.status) {
-                case 'In-Progress':
-                    playInProgressSound();
-                    break;
-                case 'Resolved':
-                    playResolvedSound();
-                    break;
-                case 'Closed':
-                    playClosedSound();
-                    break;
-            }
-        }
-    });
-
-    // Update the ref for the next render.
-    prevTicketsRef.current = tickets;
-  }, [tickets, ticketsLoading, playInProgressSound, playResolvedSound, playClosedSound]);
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -137,37 +39,8 @@ export default function DashboardClient({}: DashboardClientProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
 
-  const filteredTickets = useMemo(() => {
-    let tickets = allTickets;
-
-    if (date?.from) {
-        tickets = tickets.filter(ticket => {
-            if (!ticket.createdAt) return false;
-            const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
-            if (!date.to) return ticketDate >= date.from;
-            const toDate = new Date(date.to);
-            toDate.setHours(23, 59, 59, 999);
-            return ticketDate >= date.from && ticketDate <= toDate;
-        });
-    }
-
-    if (ticketIdFilter) {
-        const lowerCaseFilter = ticketIdFilter.toLowerCase();
-        tickets = tickets.filter(ticket =>
-            (ticket.ticketId && ticket.ticketId.toLowerCase().includes(lowerCaseFilter)) ||
-            (ticket.title && ticket.title.toLowerCase().includes(lowerCaseFilter)) ||
-            (ticket.description && ticket.description.toLowerCase().includes(lowerCaseFilter))
-        );
-    }
-    if (statusFilter !== 'all') {
-        tickets = tickets.filter(ticket => ticket.status === statusFilter);
-    }
-
-    return tickets;
-  }, [allTickets, date, ticketIdFilter, statusFilter]);
-
-
-  const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
+  const filteredTickets = allTickets;
+  const finalStats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
 
 
   return (
@@ -198,7 +71,7 @@ export default function DashboardClient({}: DashboardClientProps) {
                     {React.createElement(statusConfig[status].icon, { className: "h-4 w-4 text-muted-foreground" })}
                 </CardHeader>
                 <CardContent>
-                    {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats[status.toLowerCase().replace('-', '') as keyof typeof stats]}</div>}
+                    {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{finalStats[status.toLowerCase().replace('-', '') as keyof typeof stats]}</div>}
                 </CardContent>
             </Card>
         ))}
@@ -207,7 +80,7 @@ export default function DashboardClient({}: DashboardClientProps) {
       <Card>
         <CardHeader>
             <CardTitle>My Tickets</CardTitle>
-            <CardDescription>A list of your support tickets. Use the filters to narrow your search.</CardDescription>
+            <CardDescription>Firebase is detached. Ticket data is not available.</CardDescription>
              <div className="flex items-center gap-2 pt-4">
                 <Input
                     placeholder="Search by ID, title, or description..."
@@ -231,12 +104,13 @@ export default function DashboardClient({}: DashboardClientProps) {
               {ticketsLoading ? (
                 [...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
               ) : filteredTickets.length > 0 ? (
-                filteredTickets.map((ticket) => (
-                  <TicketCard key={ticket.id} ticket={ticket} />
+                // This will not render as filteredTickets is empty
+                filteredTickets.map((ticket: any) => (
+                  <div key={ticket.id}>{ticket.title}</div>
                 ))
               ) : (
                 <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground">
-                    No tickets found matching your filters.
+                    No tickets found.
                 </div>
               )}
             </div>
@@ -245,5 +119,3 @@ export default function DashboardClient({}: DashboardClientProps) {
     </>
   );
 }
-
-    

@@ -4,27 +4,28 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { doc } from 'firebase/firestore';
-
-type UserProfile = {
-  role?: string;
-};
 
 export default function AdminTicketsPage() {
-  const { user, loading: userLoading } = useUser();
-  const firestore = useFirestore();
+    const [user, setUser] = useState<{email: string; role: string} | null>(null);
+    const [loading, setLoading] = useState(true);
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+    useEffect(() => {
+        const userJson = localStorage.getItem('mockUser');
+        if(userJson) {
+            const parsed = JSON.parse(userJson);
+             if (isAdmin(parsed.email)) parsed.role = 'Admin';
+             else parsed.role = 'it-support';
+            setUser(parsed);
+        }
+        setLoading(false);
+    }, []);
+
   
   const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
-  const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
-
-  const loading = userLoading || profileLoading;
+  const userIsSupport = useMemo(() => user?.role === 'it-support', [user]);
 
   if (loading) {
       return (

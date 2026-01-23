@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 
@@ -18,42 +16,29 @@ interface SettingsListManagerProps {
   docPath: string;
 }
 
+const mockRegions = ['Region A', 'Region B', 'Region C'];
+
 const SettingsListManager = React.memo(function SettingsListManager({ title, description, docPath }: SettingsListManagerProps) {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [newItem, setNewItem] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const settingsRef = useMemoFirebase(() => doc(firestore, 'system_settings', docPath), [firestore, docPath]);
-  const { data: settingsData, isLoading } = useDoc<{ list: string[] }>(settingsRef);
+  const [settingsData, setSettingsData] = useState({ list: mockRegions });
+  const isLoading = false;
 
   const handleAddItem = async () => {
     if (!newItem.trim()) return;
     setIsSubmitting(true);
-    try {
-      await setDoc(settingsRef, {
-        list: arrayUnion(newItem.trim()),
-      }, { merge: true });
-      toast({ title: 'Success', description: `${newItem.trim()} added.` });
-      setNewItem('');
-    } catch (error) {
-      console.error(`Error adding ${docPath}:`, error);
-      toast({ variant: 'destructive', title: 'Error', description: `Could not add item.` });
-    } finally {
-      setIsSubmitting(false);
-    }
+    setTimeout(() => {
+        setSettingsData(prev => ({ list: [...(prev?.list || []), newItem.trim()] }));
+        toast({ title: 'Success (Mock)', description: `${newItem.trim()} added.` });
+        setNewItem('');
+        setIsSubmitting(false);
+    }, 500);
   };
 
   const handleDeleteItem = async (item: string) => {
-    try {
-      await updateDoc(settingsRef, {
-        list: arrayRemove(item),
-      });
-      toast({ title: 'Success', description: `${item} removed.` });
-    } catch (error) {
-      console.error(`Error removing ${docPath}:`, error);
-      toast({ variant: 'destructive', title: 'Error', description: `Could not remove item.` });
-    }
+    setSettingsData(prev => ({ list: prev.list.filter(i => i !== item) }));
+    toast({ title: 'Success (Mock)', description: `${item} removed.` });
   };
 
   return (

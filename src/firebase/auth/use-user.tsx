@@ -1,29 +1,18 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, type User, type AuthError } from 'firebase/auth';
-import { useAuth } from '../provider';
 
 export function useUser() {
-  const auth = useAuth();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{ uid: string, email: string, displayName: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth,
-      (user) => {
-        setUser(user);
-        setLoading(false);
-      },
-      (error: AuthError) => {
-        console.error("useUser auth state error:", error);
-        setUser(null);
-        setLoading(false);
-      }
-    );
-    return () => unsubscribe();
-  }, [auth]);
+    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('mockUser') : null;
+    if (storedUser) {
+        setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
 
   return { user, loading };
 }

@@ -1,8 +1,6 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'firebase/auth';
-
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,29 +9,44 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useUser, useAuth } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from 'react';
+
+const useUser = () => {
+    const [user, setUser] = useState<{ email: string; } | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const userJson = localStorage.getItem('mockUser');
+        if (userJson) {
+            setUser(JSON.parse(userJson));
+        }
+        setLoading(false);
+    }, []);
+
+    return { user, loading };
+};
+
 
 export function UserNav() {
-  const { user, loading: userLoading } = useUser();
-  const auth = useAuth();
+  const { user, loading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    localStorage.removeItem('mockUser');
     router.push('/');
   };
 
   const handleProfileClick = () => {
-    if (pathname.startsWith('/root')) {
-        router.push('/root/profile');
+    if (pathname.startsWith('/admin')) {
+        router.push('/admin/profile');
     } else {
         router.push('/dashboard/profile');
     }
   };
 
-  if (userLoading) {
+  if (loading) {
     return <Skeleton className="h-10 w-24" />;
   }
 

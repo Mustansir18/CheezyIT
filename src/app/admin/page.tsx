@@ -3,12 +3,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Megaphone } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
-import { useMemo, useEffect, useRef } from 'react';
-import { doc } from 'firebase/firestore';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
 
 const baseNavItems = [
   {
@@ -38,27 +35,30 @@ const adminNavItem = {
     description: 'Manage user accounts and roles.',
 };
 
-type UserProfile = {
-  role?: string;
-};
-
 export default function AdminDashboardPage() {
-  const { user, loading: userLoading } = useUser();
-  const firestore = useFirestore();
+  const [user, setUser] = useState<{email: string, role: string} | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const hasRedirected = useRef(false);
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+  useEffect(() => {
+    const userJson = localStorage.getItem('mockUser');
+    if (userJson) {
+      const parsed = JSON.parse(userJson);
+      if (isAdmin(parsed.email)) {
+        parsed.role = 'Admin';
+      } else {
+        parsed.role = 'it-support';
+      }
+      setUser(parsed);
+    }
+    setLoading(false);
+  }, []);
 
   const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
-  const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
-  
-  const loading = userLoading || profileLoading;
+  const userIsSupport = useMemo(() => user?.role === 'it-support', [user]);
   
   useEffect(() => {
-    if (!loading && userIsSupport && !hasRedirected.current) {
-        hasRedirected.current = true;
+    if (!loading && userIsSupport) {
         router.replace('/admin/tickets');
     }
   }, [loading, userIsSupport, router]);

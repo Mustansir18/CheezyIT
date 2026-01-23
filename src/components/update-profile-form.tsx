@@ -6,9 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useAuth, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -40,9 +37,6 @@ export default function UpdateProfileForm({
     backLinkText: string
 }) {
   const { toast } = useToast();
-  const { user } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormData>({
@@ -61,43 +55,14 @@ export default function UpdateProfileForm({
   }, [currentDisplayName, currentPhoneNumber, form]);
 
   const onSubmit = async (data: FormData) => {
-    if (!user || !auth.currentUser) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to update your profile.' });
-        return;
-    }
-
     setIsSubmitting(true);
-    const userDocRef = doc(firestore, 'users', user.uid);
-    const updateData = { 
-        displayName: data.displayName,
-        phoneNumber: data.phoneNumber || '' 
-    };
-
-    try {
-        if (auth.currentUser.displayName !== data.displayName) {
-          await updateProfile(auth.currentUser, { displayName: data.displayName });
-        }
-
-        setDoc(userDocRef, updateData, { merge: true })
-            .then(() => {
-                toast({ title: 'Success!', description: 'Your profile has been updated.' });
-            })
-            .catch(async (error: any) => {
-                const permissionError = new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'write',
-                    requestResourceData: updateData
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                toast({ variant: 'destructive', title: 'Database Error', description: 'Could not save profile changes. You may not have permission.' });
-            });
-
-    } catch (error: any) {
-        console.error("Error updating profile auth:", error);
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'Failed to update your main display name.' });
-    } finally {
+    setTimeout(() => {
+        const user = JSON.parse(localStorage.getItem('mockUser') || '{}');
+        user.displayName = data.displayName;
+        localStorage.setItem('mockUser', JSON.stringify(user));
+        toast({ title: 'Success! (Mock)', description: 'Your profile has been updated.' });
         setIsSubmitting(false);
-    }
+    }, 1000);
   }
 
   return (

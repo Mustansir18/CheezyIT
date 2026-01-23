@@ -4,39 +4,42 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
-import { useMemo, useEffect } from 'react';
-import { doc } from 'firebase/firestore';
+import { useMemo, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-type UserProfile = {
-  role?: string;
-};
-
 export default function AdminReportsPage() {
-  const { user, loading: userLoading } = useUser();
-  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
-  const firestore = useFirestore();
-  const router = useRouter();
+  const [user, setUser] = useState<{email: string; role: string} | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+  useEffect(() => {
+    const userJson = localStorage.getItem('mockUser');
+    if (userJson) {
+      const parsed = JSON.parse(userJson);
+      if (isAdmin(parsed.email)) parsed.role = 'Admin';
+      else parsed.role = 'it-support';
+      setUser(parsed);
+    }
+    setLoading(false);
+  }, []);
+
+  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
+  const router = useRouter();
 
   const isAuthorized = useMemo(() => {
     if (user && isAdmin(user.email)) return true;
-    if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
+    if (user && (user.role === 'Admin' || user.role === 'it-support')) return true;
     return false;
-  }, [user, userProfile]);
+  }, [user]);
 
   useEffect(() => {
-    if (!userLoading && !profileLoading && !isAuthorized) {
+    if (!loading && !isAuthorized) {
       router.push('/admin');
     }
-  }, [userLoading, profileLoading, isAuthorized, router]);
+  }, [loading, isAuthorized, router]);
 
-  if (userLoading || profileLoading || !isAuthorized) {
+  if (loading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />

@@ -5,8 +5,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useAuth, useUser } from '@/firebase';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -18,76 +16,69 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [isResetting, setIsResetting] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
-  const auth = useAuth();
-  const { user, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (loading) {
-      return; // Wait for auth state to be confirmed
-    }
+    const user = localStorage.getItem('mockUser');
     if (user) {
-      // Redirect to the dashboard page, which will handle role-based redirection.
-      router.push('/dashboard');
+      const parsedUser = JSON.parse(user);
+      if (parsedUser.email === 'mustansir133@gmail.com') {
+          router.push('/admin');
+      } else {
+          router.push('/dashboard');
+      }
     }
-  }, [user, loading, router]);
+  }, [router]);
   
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) return;
     setIsResetting(true);
-    try {
-        await sendPasswordResetEmail(auth, resetEmail);
+    // Mock password reset
+    setTimeout(() => {
         toast({
             title: 'Password Reset Email Sent',
             description: `If an account with ${resetEmail} exists, an email has been sent with reset instructions.`,
         });
+        setIsResetting(false);
         setIsResetDialogOpen(false);
         setResetEmail('');
-    } catch (error: any) {
-        console.error('Password reset error', error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: error.message || 'Failed to send reset email.',
-        });
-    } finally {
-        setIsResetting(false);
-    }
+    }, 1000);
   }
 
   const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // Redirect is handled by the useEffect hook
-    } catch (err: any) {
-      setError(err.message);
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: err.message,
-      });
-    }
+    // Mock login
+    setTimeout(() => {
+        if (email === 'mustansir133@gmail.com' && password === 'PAK!7tan') {
+            localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Admin' }));
+            router.push('/admin');
+        } else if (email && password) {
+            localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Demo User' }));
+            router.push('/dashboard');
+        } else {
+            const errMessage = 'Invalid credentials';
+            setError(errMessage);
+            toast({
+                variant: 'destructive',
+                title: 'Authentication Error',
+                description: errMessage,
+            });
+        }
+        setLoading(false);
+    }, 1000);
   };
-
-  // While loading auth state, or if user is logged in (and we are waiting for redirect), show spinner.
-  if (loading || user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-950">
-        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-950 px-4">
@@ -124,7 +115,8 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full !mt-5">
+            <Button type="submit" className="w-full !mt-5" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
           </form>

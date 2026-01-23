@@ -1,39 +1,40 @@
 'use client';
 import UserManagement from '@/components/user-management';
 import SystemSettings from '@/components/system-settings';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { doc } from 'firebase/firestore';
-
-type UserProfile = {
-  role?: string;
-};
 
 export default function AdminSettingsPage() {
-  const { user, loading: userLoading } = useUser();
-  const router = useRouter();
-  const firestore = useFirestore();
+    const [user, setUser] = useState<{email: string; role: string} | null>(null);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+    useEffect(() => {
+        const userJson = localStorage.getItem('mockUser');
+        if(userJson) {
+            const parsed = JSON.parse(userJson);
+             if (isAdmin(parsed.email)) parsed.role = 'Admin';
+             else parsed.role = 'it-support';
+            setUser(parsed);
+        }
+        setLoading(false);
+    }, []);
 
   const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
   
   const isAuthorized = useMemo(() => {
     if (userIsAdmin) return true;
-    if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
+    if (user && (user.role === 'Admin' || user.role === 'it-support')) return true;
     return false;
-  }, [userIsAdmin, userProfile]);
+  }, [userIsAdmin, user]);
 
-  const loading = userLoading || profileLoading;
 
   useEffect(() => {
     if (!loading && !isAuthorized) {

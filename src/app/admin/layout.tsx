@@ -1,47 +1,55 @@
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, Timestamp, setDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
 import { formatDistanceToNow } from 'date-fns';
 import { isAdmin } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 
 type UserProfile = {
   role: string;
-  blockedUntil?: Timestamp;
+  blockedUntil?: Date;
 }
 
+// Mock useUser hook
+const useUser = () => {
+    const [user, setUser] = useState<{ email: string; displayName: string, role: string} | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const userJson = localStorage.getItem('mockUser');
+        if (userJson) {
+            const parsed = JSON.parse(userJson);
+            if (isAdmin(parsed.email)) {
+                parsed.role = 'Admin';
+            } else {
+                 parsed.role = 'it-support'; // Assume non-admin is support in this layout
+            }
+            setUser(parsed);
+        }
+        setLoading(false);
+    }, []);
+    return { user, loading };
+}
+
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading: userLoading } = useUser();
-  const auth = useAuth();
+  const { user, loading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
-
-  const loading = userLoading || profileLoading;
 
   const isAuthorized = useMemo(() => {
     if (!user) return false;
     if (isAdmin(user.email)) return true;
-    if (userProfile && (userProfile.role === 'it-support' || userProfile.role === 'Admin')) return true;
+    if (user.role === 'it-support' || user.role === 'Admin') return true;
     return false;
-  }, [user, userProfile]);
+  }, [user]);
   
-  const isBlocked = useMemo(() => {
-      return userProfile?.blockedUntil && userProfile.blockedUntil.toDate() > new Date();
-  }, [userProfile]);
+  const isBlocked = false; // Mocking this as there's no live data
 
   useEffect(() => {
     if (loading) {
@@ -54,55 +62,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [user, loading, isAuthorized, router]);
 
-  useEffect(() => {
-    if (user && !profileLoading && !userProfile) {
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const isCurrentUserAdmin = isAdmin(user.email);
-
-      const defaultProfileData = {
-        displayName: user.displayName || user.email,
-        email: user.email,
-        role: isCurrentUserAdmin ? 'Admin' : 'User',
-        regions: isCurrentUserAdmin ? ['all'] : [],
-        region: isCurrentUserAdmin ? '' : 'unassigned',
-        phoneNumber: user.phoneNumber || '',
-      };
-
-      setDoc(userDocRef, defaultProfileData)
-        .then(() => {
-          toast({
-            title: "Profile Synced",
-            description: "Your user profile was created in the database.",
-          });
-        })
-        .catch((error) => {
-          console.error("Error syncing user profile:", error);
-          toast({
-            variant: "destructive",
-            title: "Sync Error",
-            description: "Could not create your user profile in the database.",
-          });
-        });
-    }
-  }, [user, userProfile, profileLoading, firestore, toast]);
-
   if (loading || !user || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
       </div>
-    );
-  }
-  
-  if (isBlocked) {
-    const blockExpires = formatDistanceToNow(userProfile.blockedUntil!.toDate(), { addSuffix: true });
-    return (
-        <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
-            <h1 className="text-2xl font-bold">Account Blocked</h1>
-            <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
-            <p>Access will be restored {blockExpires}.</p>
-            <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
-        </div>
     );
   }
   

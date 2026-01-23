@@ -5,8 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from '@/components/ui/dialog';
@@ -38,9 +36,6 @@ const ticketSchema = z.object({
 });
 
 type FormData = z.infer<typeof ticketSchema>;
-type UserProfile = {
-    region?: string;
-}
 
 function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
   return (
@@ -53,14 +48,8 @@ function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
 
 export default function ReportIssueForm({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const playNewTicketSound = useSound('/sounds/new-ticket.mp3');
-
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   const form = useForm<FormData>({
     resolver: zodResolver(ticketSchema),
@@ -86,79 +75,14 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   }
   
   const onSubmit = (data: FormData) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to create a ticket.' });
-        return;
-    }
-    if (!userProfile?.region) {
-        toast({ variant: 'destructive', title: 'Region Not Set', description: 'Your account is not assigned to a region. Please contact an administrator.' });
-        return;
-    }
-
     setIsSubmitting(true);
-    runTransaction(firestore, async (transaction) => {
-        const counterRef = doc(firestore, 'system_settings', 'ticketCounter');
-        const counterDoc = await transaction.get(counterRef);
-        let count = 1;
-        if (counterDoc.exists()) {
-            count = counterDoc.data().count + 1;
-            transaction.update(counterRef, { count: count });
-        } else {
-            transaction.set(counterRef, { count: 1 });
-        }
-        return count;
-    })
-    .then((newCount) => {
-        const ticketId = `TKT-${String(newCount).padStart(6, '0')}`;
-        
-        const ticketData = {
-            userId: user.uid,
-            ticketId,
-            title: data.title,
-            issueType: data.issueType,
-            customIssueType: data.customIssueType || '',
-            description: data.description,
-            anydesk: data.anydesk || '',
-            status: 'Open' as const,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            unreadByAdmin: true,
-            unreadByUser: false,
-            region: userProfile.region,
-        };
-        const collectionRef = collection(firestore, 'users', user.uid, 'issues');
-        
-        return addDoc(collectionRef, ticketData).catch((addDocError) => {
-            const permissionError = new FirestorePermissionError({
-                path: collectionRef.path,
-                operation: 'create',
-                requestResourceData: ticketData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            throw new Error(`Failed to add ticket document: ${addDocError.message}`);
-        });
-    })
-    .then(() => {
-        toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
-        playNewTicketSound();
+    // Mock submission
+    setTimeout(() => {
+        toast({ title: 'Success! (Mock)', description: 'Your ticket has been created successfully.' });
         resetFormState();
         closeButtonRef.current?.click();
-    })
-    .catch((error: any) => {
-        console.error("Error creating ticket:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create ticket. You may not have permissions.' });
-
-        if (!error.message.includes('Failed to add ticket document')) {
-             const permissionError = new FirestorePermissionError({
-                path: 'system_settings/ticketCounter',
-                operation: 'update',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        }
-    })
-    .finally(() => {
         setIsSubmitting(false);
-    });
+    }, 1000);
   }
 
   return (
