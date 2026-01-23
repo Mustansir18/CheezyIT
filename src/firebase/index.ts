@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 
@@ -24,8 +23,8 @@ export const useFirestore = () => null;
 export const useFirebaseApp = () => null;
 export const useFirebase = () => ({});
 
-export const FirebaseProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-export const FirebaseClientProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+export const FirebaseProvider = ({ children }: { children: React.ReactNode }) => children;
+export const FirebaseClientProvider = ({ children }: { children: React.ReactNode }) => children;
 export const useMemoFirebase = (fn: any) => useMemo(fn, []);
 
 export class FirestorePermissionError extends Error { constructor() { super("Firebase is detached."); this.name = 'FirebaseError' } };
