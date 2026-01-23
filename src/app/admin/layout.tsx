@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -24,10 +24,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
-  const hasRedirected = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const loading = userLoading || profileLoading;
 
   const isAuthorized = useMemo(() => {
     if (!user) return false;
@@ -35,31 +36,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (userProfile && (userProfile.role === 'it-support' || userProfile.role === 'Admin')) return true;
     return false;
   }, [user, userProfile]);
-
-  const isAdminHomePage = pathname === '/admin';
   
   const isBlocked = useMemo(() => {
       return userProfile?.blockedUntil && userProfile.blockedUntil.toDate() > new Date();
   }, [userProfile]);
 
   useEffect(() => {
-    if (userLoading || profileLoading || hasRedirected.current) {
+    if (loading) {
         return;
     }
-
     if (!user) {
-      hasRedirected.current = true;
-      router.push('/');
-      return;
+      router.replace('/');
+    } else if (!isAuthorized) {
+      router.replace('/dashboard');
     }
-    
-    if (!isAuthorized) {
-      hasRedirected.current = true;
-      router.push('/dashboard');
-    }
-  }, [user, userLoading, profileLoading, isAuthorized, router]);
+  }, [user, loading, isAuthorized, router]);
 
-  if (userLoading || profileLoading || (user && !isAuthorized)) {
+  if (loading || !user || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -78,15 +71,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
     );
   }
-
-  if (!user) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
-        </div>
-    );
-  }
   
+  const isAdminHomePage = pathname === '/admin';
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-gray-100 dark:bg-gray-950">
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b bg-white px-4 text-card-foreground sm:px-6">

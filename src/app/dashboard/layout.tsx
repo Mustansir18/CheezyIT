@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { doc, Timestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -27,10 +27,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const pathname = usePathname();
     const firestore = useFirestore();
-    const hasRedirected = useRef(false);
 
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+    const loading = userLoading || profileLoading;
 
     const isPrivilegedUser = useMemo(() => {
         if (!user) return false;
@@ -46,23 +47,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [userProfile]);
 
     useEffect(() => {
-        if (userLoading || profileLoading || hasRedirected.current) {
+        if (loading) {
             return;
         }
-        
         if (!user) {
-            hasRedirected.current = true;
-            router.push('/');
-            return;
+            router.replace('/');
+        } else if (isPrivilegedUser && !isBlocked) {
+            router.replace('/admin');
         }
-
-        if (isPrivilegedUser && !isBlocked) {
-            hasRedirected.current = true;
-            router.push('/admin');
-        }
-    }, [user, userLoading, profileLoading, isPrivilegedUser, isBlocked, router]);
+    }, [user, loading, isPrivilegedUser, isBlocked, router]);
     
-    if (userLoading || profileLoading || (user && !isBlocked && isPrivilegedUser)) {
+    if (loading || !user || (isPrivilegedUser && !isBlocked)) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -78,15 +73,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
                 <p>Access will be restored {blockExpires}.</p>
                 <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
-            </div>
-        );
-    }
-
-    if (!user) {
-        // This case is primarily for the initial render before the redirect effect runs.
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-              <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
             </div>
         );
     }
