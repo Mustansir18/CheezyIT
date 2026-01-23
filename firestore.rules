@@ -21,6 +21,10 @@ service cloud.firestore {
       if (request.auth == null) {
         return false;
       }
+      // If user is root user, they are privileged.
+      if (isRootUser()) {
+        return true;
+      }
       if (exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
         let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
         return userRole in ['Admin', 'it-support'];
