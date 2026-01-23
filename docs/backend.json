@@ -114,10 +114,12 @@
         },
         "role": {
           "type": "string",
-          "description": "Role of the user, defining their access level. Can be User or Branch.",
+          "description": "Role of the user, defining their access level. Can be User, Branch, it-support, or Admin.",
           "enum": [
             "User",
-            "Branch"
+            "Branch",
+            "it-support",
+            "Admin"
           ]
         },
         "phoneNumber": {
