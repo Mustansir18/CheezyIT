@@ -42,7 +42,7 @@ export function UserNav() {
 
   const handleProfileClick = () => {
     if (isPrivilegedUser) {
-      router.push('/admin/profile');
+      router.push('/root/profile');
     } else {
       router.push('/dashboard/profile');
     }

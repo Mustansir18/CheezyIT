@@ -47,34 +47,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [userProfile]);
 
     useEffect(() => {
-        if (loading) {
-            return;
-        }
+        if (loading) return;
+        
         if (!user) {
             router.replace('/');
-        } else if (isPrivilegedUser && !isBlocked) {
-            router.replace('/admin');
+            return;
         }
+
+        if (isPrivilegedUser && !isBlocked) {
+            router.replace('/root');
+        }
+
     }, [user, loading, isPrivilegedUser, isBlocked, router]);
     
-    if (loading || !user || (isPrivilegedUser && !isBlocked)) {
+    const shouldRender = !loading && user && !isPrivilegedUser && !isBlocked;
+
+    if (!shouldRender) {
+      if (isBlocked && userProfile?.blockedUntil) {
+          const blockExpires = formatDistanceToNow(userProfile.blockedUntil!.toDate(), { addSuffix: true });
+          return (
+              <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
+                  <h1 className="text-2xl font-bold">Account Blocked</h1>
+                  <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
+                  <p>Access will be restored {blockExpires}.</p>
+                  <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
+              </div>
+          );
+      }
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
       );
-    }
-    
-    if (isBlocked) {
-        const blockExpires = formatDistanceToNow(userProfile.blockedUntil!.toDate(), { addSuffix: true });
-        return (
-            <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
-                <h1 className="text-2xl font-bold">Account Blocked</h1>
-                <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
-                <p>Access will be restored {blockExpires}.</p>
-                <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
-            </div>
-        );
     }
     
     return (

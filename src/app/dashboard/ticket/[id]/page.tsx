@@ -127,7 +127,7 @@ export default function TicketDetailPage() {
         return user.uid === effectiveUserId;
     }, [user, effectiveUserId]);
     
-    const backLink = canManageTicket && ownerId ? '/admin/tickets' : '/dashboard';
+    const backLink = canManageTicket && ownerId ? '/root/tickets' : '/dashboard';
 
     const handleStatusChange = (newStatus: TicketStatus) => {
         if (ticket?.status === 'Closed') {
@@ -313,7 +313,7 @@ export default function TicketDetailPage() {
         updateDoc(ticketRef, updateData)
             .then(() => {
                 toast({ title: 'Ticket Returned', description: 'Ticket returned to the general queue.' });
-                router.push('/admin/tickets');
+                router.push('/root/tickets');
             })
             .catch(async (error: any) => {
               const permissionError = new FirestorePermissionError({
