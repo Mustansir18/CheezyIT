@@ -11,9 +11,13 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
+const initialRegions = ['Region A', 'Region B', 'Region C'];
+
+
 export default function AdminSettingsPage() {
     const [user, setUser] = useState<{email: string; role: string} | null>(null);
     const [loading, setLoading] = useState(true);
+    const [regions, setRegions] = useState<string[]>(initialRegions);
     const router = useRouter();
 
     useEffect(() => {
@@ -65,13 +69,13 @@ export default function AdminSettingsPage() {
       </div>
       
       <div className="space-y-8">
-        <UserManagement userIsAdminOrRoot={isAuthorized} />
+        <UserManagement userIsAdminOrRoot={isAuthorized} regions={regions} />
         {userIsAdmin && (
           <>
             <Separator />
             <div>
                 <h2 className="text-2xl font-headline font-bold mb-4">System Settings</h2>
-                <SystemSettings />
+                <SystemSettings regions={regions} setRegions={setRegions} />
             </div>
           </>
         )}

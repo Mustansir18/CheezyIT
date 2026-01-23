@@ -54,19 +54,17 @@ const mockUsersList: User[] = [
     { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', region: 'Region A', blockedUntil: null },
 ];
 
-const mockRegions: MultiSelectOption[] = [
-    { value: 'Region A', label: 'Region A' },
-    { value: 'Region B', label: 'Region B' },
-    { value: 'Region C', label: 'Region C' },
-];
-
-export default function UserManagement({ userIsAdminOrRoot: isPrivileged }: { userIsAdminOrRoot: boolean }) {
+export default function UserManagement({ userIsAdminOrRoot: isPrivileged, regions: regionList }: { userIsAdminOrRoot: boolean, regions: string[] }) {
     const { toast } = useToast();
     const [users, setUsers] = useState<User[]>(mockUsersList);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [blockingUser, setBlockingUser] = useState<User | null>(null);
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
     const isLoading = false;
+    
+    const regionOptions: MultiSelectOption[] = useMemo(() => (
+      regionList.map(r => ({ value: r, label: r }))
+    ), [regionList]);
 
     const handleOpenAddDialog = () => {
         setEditingUser(null);
@@ -176,6 +174,7 @@ export default function UserManagement({ userIsAdminOrRoot: isPrivileged }: { us
                 setIsOpen={setIsUserDialogOpen} 
                 user={editingUser} 
                 onSave={handleSaveUser}
+                regions={regionOptions}
             />
 
             {blockingUser && (
@@ -198,7 +197,7 @@ export default function UserManagement({ userIsAdminOrRoot: isPrivileged }: { us
     );
 }
 
-function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, setIsOpen: (open: boolean) => void, user: User | null, onSave: (data: z.infer<typeof userSchema>) => void }) {
+function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: boolean, setIsOpen: (open: boolean) => void, user: User | null, onSave: (data: z.infer<typeof userSchema>) => void, regions: MultiSelectOption[] }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<z.infer<typeof userSchema>>({
@@ -278,7 +277,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
                     <FormItem><FormLabel>Regions</FormLabel>
                         <FormControl>
                             <MultiSelect 
-                                options={mockRegions}
+                                options={regions}
                                 selected={field.value || []}
                                 onChange={field.onChange}
                                 placeholder="Select regions..."
@@ -294,7 +293,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {mockRegions.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                                {regions.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     <FormMessage /></FormItem>

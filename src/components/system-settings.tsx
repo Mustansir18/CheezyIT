@@ -13,23 +13,23 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 interface SettingsListManagerProps {
   title: string;
   description: string;
+  items: string[];
+  onAddItem: (item: string) => void;
+  onDeleteItem: (item: string) => void;
+  isLoading?: boolean;
   docPath: string;
 }
 
-const mockRegions = ['Region A', 'Region B', 'Region C'];
-
-const SettingsListManager = React.memo(function SettingsListManager({ title, description, docPath }: SettingsListManagerProps) {
-  const { toast } = useToast();
+const SettingsListManager = React.memo(function SettingsListManager({ title, description, items, onAddItem, onDeleteItem, isLoading, docPath }: SettingsListManagerProps) {
   const [newItem, setNewItem] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [settingsData, setSettingsData] = useState({ list: mockRegions });
-  const isLoading = false;
-
+  const { toast } = useToast();
+  
   const handleAddItem = async () => {
     if (!newItem.trim()) return;
     setIsSubmitting(true);
     setTimeout(() => {
-        setSettingsData(prev => ({ list: [...(prev?.list || []), newItem.trim()] }));
+        onAddItem(newItem.trim());
         toast({ title: 'Success (Mock)', description: `${newItem.trim()} added.` });
         setNewItem('');
         setIsSubmitting(false);
@@ -37,7 +37,7 @@ const SettingsListManager = React.memo(function SettingsListManager({ title, des
   };
 
   const handleDeleteItem = async (item: string) => {
-    setSettingsData(prev => ({ list: prev.list.filter(i => i !== item) }));
+    onDeleteItem(item);
     toast({ title: 'Success (Mock)', description: `${item} removed.` });
   };
 
@@ -67,7 +67,7 @@ const SettingsListManager = React.memo(function SettingsListManager({ title, des
               <Skeleton className="h-8 w-full" />
             </>
           ) : (
-            settingsData?.list?.map((item) => (
+            items.map((item) => (
               <div key={item} className="flex items-center justify-between rounded-md border p-2">
                 <span className="text-sm">{item}</span>
                 <AlertDialog>
@@ -100,13 +100,25 @@ const SettingsListManager = React.memo(function SettingsListManager({ title, des
   );
 });
 
-export default function SystemSettings() {
+export default function SystemSettings({ regions, setRegions }: { regions: string[], setRegions: (regions: string[]) => void }) {
+  
+  const addRegion = (region: string) => {
+      setRegions([...regions, region]);
+  };
+
+  const deleteRegion = (regionToDelete: string) => {
+      setRegions(regions.filter(region => region !== regionToDelete));
+  };
+  
   return (
     <div className="grid gap-4 md:grid-cols-1 max-w-md">
       <SettingsListManager
         title="Manage Regions"
         description="Add or remove regions available for user assignment."
         docPath="regions"
+        items={regions}
+        onAddItem={addRegion}
+        onDeleteItem={deleteRegion}
       />
     </div>
   );
