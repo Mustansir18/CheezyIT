@@ -5,7 +5,7 @@ import { isAdmin } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -55,7 +55,7 @@ export default function AdminSettingsPage() {
     }
   }, [loading, isAuthorized, router]);
 
-  const handleSaveUser = (data: any) => {
+  const handleSaveUser = useCallback((data: any) => {
     if (data.id) { // Editing
         setUsers(currentUsers => currentUsers.map(u => u.id === data.id ? { ...u, ...data } : u));
         toast({ title: "User Updated (Mock)", description: `${data.displayName}'s profile has been updated.` });
@@ -64,13 +64,13 @@ export default function AdminSettingsPage() {
         setUsers(currentUsers => [...currentUsers, newUser]);
         toast({ title: "User Added (Mock)", description: `${data.displayName} has been added.` });
     }
-  };
+  }, [toast]);
 
-  const handleBlockUser = (userToBlock: User) => {
+  const handleBlockUser = useCallback((userToBlock: User) => {
       const isCurrentlyBlocked = userToBlock.blockedUntil && userToBlock.blockedUntil > new Date();
       setUsers(currentUsers => currentUsers.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u));
       toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'} (Mock)`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
-  };
+  }, [toast]);
 
   if (loading || !isAuthorized) {
     return (

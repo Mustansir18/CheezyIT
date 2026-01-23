@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 
@@ -25,7 +25,7 @@ const SettingsListManager = React.memo(function SettingsListManager({ title, des
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   
-  const handleAddItem = async () => {
+  const handleAddItem = () => {
     if (!newItem.trim()) return;
     setIsSubmitting(true);
     setTimeout(() => {
@@ -36,7 +36,7 @@ const SettingsListManager = React.memo(function SettingsListManager({ title, des
     }, 500);
   };
 
-  const handleDeleteItem = async (item: string) => {
+  const handleDeleteItem = (item: string) => {
     onDeleteItem(item);
     toast({ title: 'Success (Mock)', description: `${item} removed.` });
   };
@@ -100,15 +100,15 @@ const SettingsListManager = React.memo(function SettingsListManager({ title, des
   );
 });
 
-export default function SystemSettings({ regions, setRegions }: { regions: string[], setRegions: (regions: string[]) => void }) {
+export default function SystemSettings({ regions, setRegions }: { regions: string[], setRegions: (updater: (regions: string[]) => string[]) => void }) {
   
-  const addRegion = (region: string) => {
-      setRegions([...regions, region]);
-  };
+  const addRegion = useCallback((region: string) => {
+      setRegions(currentRegions => [...currentRegions, region]);
+  }, [setRegions]);
 
-  const deleteRegion = (regionToDelete: string) => {
-      setRegions(regions.filter(region => region !== regionToDelete));
-  };
+  const deleteRegion = useCallback((regionToDelete: string) => {
+      setRegions(currentRegions => currentRegions.filter(region => region !== regionToDelete));
+  }, [setRegions]);
   
   return (
     <div className="grid gap-4 md:grid-cols-1 max-w-md">
