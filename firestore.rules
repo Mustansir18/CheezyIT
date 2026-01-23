@@ -5,12 +5,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isOwner(uid) {
-      return request.auth.uid == uid;
+      return request.auth != null && request.auth.uid == uid;
     }
 
     function isRootUser() {
       // Check if the user's email is a designated root email, ignoring case.
-      return request.auth.token.email.toLowerCase() == 'mustansir133@gmail.com';
+      return request.auth != null && request.auth.token.email != null && request.auth.token.email.toLowerCase() == 'mustansir133@gmail.com';
     }
     
     function isPrivilegedUser() {
@@ -19,6 +19,9 @@ service cloud.firestore {
         return true;
       }
       // For other users, they must have a profile doc and a privileged role.
+      if (request.auth == null) {
+        return false;
+      }
       let userProfile = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return userProfile.exists && userProfile.data.role in ['Admin', 'it-support'];
     }
