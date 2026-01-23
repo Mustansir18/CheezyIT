@@ -51,7 +51,12 @@ export default function RootDashboardPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  // This check is definitive. isRoot() checks the email against a hardcoded list.
+  const userIsActuallyRoot = useMemo(() => {
+    if (!user || !user.email) return false;
+    return isRoot(user.email);
+  }, [user]);
+  
   const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   
   const loading = userLoading || profileLoading;
@@ -72,7 +77,9 @@ export default function RootDashboardPage() {
   }
 
   const navItems = [...baseNavItems];
-  if (userIsRoot) {
+  // This condition is the gatekeeper for the settings link.
+  // It will ONLY be true if the user's email is in the ROOT_EMAILS list.
+  if (userIsActuallyRoot) {
     navItems.push(rootNavItem);
   }
 

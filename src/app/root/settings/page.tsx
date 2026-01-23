@@ -16,17 +16,25 @@ export default function RootSettingsPage() {
   const { user, loading } = useUser();
   const router = useRouter();
 
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
-  
-  const isAuthorized = useMemo(() => userIsRoot, [userIsRoot]);
+  // This check is the definitive guard for this page.
+  const userIsActuallyRoot = useMemo(() => {
+      if (!user || !user.email) return false;
+      return isRoot(user.email);
+  }, [user]);
 
   useEffect(() => {
-    if (!loading && !isAuthorized) {
-      router.push('/root');
+    // Wait until loading is false.
+    if (!loading) {
+        // If the user is NOT a root user, redirect them away.
+        if (!userIsActuallyRoot) {
+            router.push('/root');
+        }
     }
-  }, [user, loading, isAuthorized, router]);
+  }, [user, loading, userIsActuallyRoot, router]);
 
-  if (loading || !isAuthorized) {
+  // Show a loading screen while checking auth or if the user is not authorized.
+  // This prevents any content from flashing before the redirect happens.
+  if (loading || !userIsActuallyRoot) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -34,6 +42,7 @@ export default function RootSettingsPage() {
     );
   }
 
+  // Only root users will reach this point.
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -43,14 +52,14 @@ export default function RootSettingsPage() {
                 <span className="sr-only">Back to Dashboard</span>
             </Link>
         </Button>
-        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
+        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsActuallyRoot && "text-primary")}>
           Root
         </h1>
       </div>
       
       <div className="space-y-8">
-        <UserManagement userIsAdminOrRoot={isAuthorized} />
-        {userIsRoot && (
+        <UserManagement userIsAdminOrRoot={userIsActuallyRoot} />
+        {userIsActuallyRoot && (
           <>
             <Separator />
             <div>
