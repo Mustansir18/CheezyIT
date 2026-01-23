@@ -9,16 +9,19 @@ service cloud.firestore {
     }
     
     function isPrivilegedUser() {
-      // This check must be kept in sync with the application's authorization logic.
-      // It allows access for users with 'Admin', 'it-support' roles, or root user emails.
-      let userProfile = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return userProfile.data.role in ['Admin', 'it-support']
-             || request.auth.token.email == 'mustansir133@gmail.com';
+      // Safely check for privileged role from the user's profile document
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let hasPrivilegedRole = userDoc.exists && userDoc.data.role in ['Admin', 'it-support'];
+      
+      // Check if the user's email is a designated root email
+      let isRootEmail = request.auth.token.email == 'mustansir133@gmail.com';
+
+      return hasPrivilegedRole || isRootEmail;
     }
 
     // Path rules
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get: if isOwner(userId) || isPrivilegedUser();
       // Let privileged users update user roles/profiles.
       allow update: if isOwner(userId) || isPrivilegedUser();
       // Creating users is handled via a separate auth instance in the app.
@@ -29,6 +32,8 @@ service cloud.firestore {
     match /users/{userId}/issues/{issueId} {
       // User can create their own issue. Privileged users can manage all issues.
       allow create: if isOwner(userId);
+      // isPrivilegedUser() allows read access to all tickets for admins/root.
+      // This is necessary for the collectionGroup query in the admin dashboard.
       allow read, update: if isOwner(userId) || isPrivilegedUser();
       // Deleting issues is not allowed from the client for now.
       allow delete: if false;
