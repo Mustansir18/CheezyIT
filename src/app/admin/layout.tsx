@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -24,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
+  const hasRedirected = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -42,11 +43,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [userProfile]);
 
   useEffect(() => {
-    if (userLoading || profileLoading) return; // Wait for all data to be loaded
+    if (userLoading || profileLoading || hasRedirected.current) return; 
 
     if (!user) {
+      hasRedirected.current = true;
       router.push('/');
     } else if (!isAuthorized) {
+      hasRedirected.current = true;
       router.push('/dashboard');
     }
   }, [user, userLoading, profileLoading, isAuthorized, router]);
