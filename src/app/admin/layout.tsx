@@ -43,18 +43,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [userProfile]);
 
   useEffect(() => {
-    if (userLoading || profileLoading || hasRedirected.current) return; 
+    if (userLoading || profileLoading || hasRedirected.current) {
+        return;
+    }
 
     if (!user) {
       hasRedirected.current = true;
       router.push('/');
-    } else if (!isAuthorized) {
+      return;
+    }
+    
+    if (!isAuthorized) {
       hasRedirected.current = true;
       router.push('/dashboard');
     }
   }, [user, userLoading, profileLoading, isAuthorized, router]);
 
-  if (userLoading || profileLoading || !user || !isAuthorized) {
+  if (userLoading || profileLoading || (user && !isAuthorized)) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -70,6 +75,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
             <p>Access will be restored {blockExpires}.</p>
             <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
+        </div>
+    );
+  }
+
+  if (!user) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
     );
   }

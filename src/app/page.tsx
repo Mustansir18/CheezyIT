@@ -34,8 +34,8 @@ export default function LoginPage() {
       return; // Wait for auth state to be confirmed
     }
     if (user) {
-      // Redirect to the gatekeeper page to handle role-based redirection.
-      router.push('/auth-gate');
+      // Redirect to the dashboard page, which will handle role-based redirection.
+      router.push('/dashboard');
     }
   }, [user, loading, router]);
   

@@ -46,18 +46,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [userProfile]);
 
     useEffect(() => {
-        if (userLoading || profileLoading || hasRedirected.current) return;
+        if (userLoading || profileLoading || hasRedirected.current) {
+            return;
+        }
         
         if (!user) {
             hasRedirected.current = true;
             router.push('/');
-        } else if (!isBlocked && isPrivilegedUser) {
+            return;
+        }
+
+        if (isPrivilegedUser && !isBlocked) {
             hasRedirected.current = true;
             router.push('/admin');
         }
     }, [user, userLoading, profileLoading, isPrivilegedUser, isBlocked, router]);
     
-    if (userLoading || profileLoading || !user || (!isBlocked && isPrivilegedUser)) {
+    if (userLoading || profileLoading || (user && !isBlocked && isPrivilegedUser)) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -73,6 +78,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
                 <p>Access will be restored {blockExpires}.</p>
                 <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
+            </div>
+        );
+    }
+
+    if (!user) {
+        // This case is primarily for the initial render before the redirect effect runs.
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+              <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
             </div>
         );
     }
