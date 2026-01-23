@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Ticket, BarChart, Settings, Megaphone } from 'lucide-react';
+import { Ticket, BarChart, Settings, Megaphone, History } from 'lucide-react';
 import { isAdmin } from '@/lib/admins';
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,12 @@ const baseNavItems = [
     icon: Megaphone,
     title: 'Announcements',
     description: 'Send broadcast messages to users and staff.',
+  },
+  {
+    href: '/admin/activity-log',
+    icon: History,
+    title: 'Activity Log',
+    description: 'Track all actions and events in the app.',
   },
 ];
 
