@@ -4,11 +4,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2, UserPlus, MoreHorizontal, Pencil, ShieldBan, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
@@ -48,15 +47,19 @@ const userSchema = z.object({
 }, { message: 'At least one region is required for this role.', path: ['regions']});
 
 
-const mockUsersList: User[] = [
-    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
-    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', regions: ['Region A', 'Region B'], blockedUntil: null },
-    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', region: 'Region A', blockedUntil: null },
-];
-
-export default function UserManagement({ userIsAdminOrRoot: isPrivileged, regions: regionList }: { userIsAdminOrRoot: boolean, regions: string[] }) {
-    const { toast } = useToast();
-    const [users, setUsers] = useState<User[]>(mockUsersList);
+export default function UserManagement({ 
+    userIsAdminOrRoot: isPrivileged, 
+    regions: regionList,
+    users,
+    onSaveUser,
+    onBlockUser
+}: { 
+    userIsAdminOrRoot: boolean, 
+    regions: string[],
+    users: User[],
+    onSaveUser: (data: z.infer<typeof userSchema>) => void,
+    onBlockUser: (user: User) => void
+}) {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [blockingUser, setBlockingUser] = useState<User | null>(null);
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
@@ -77,24 +80,13 @@ export default function UserManagement({ userIsAdminOrRoot: isPrivileged, region
     };
     
     const handleSaveUser = (data: z.infer<typeof userSchema>) => {
-        // Mock saving user
-        if (data.id) { // Editing existing user
-            setUsers(users.map(u => u.id === data.id ? { ...u, ...data } : u));
-            toast({ title: "User Updated (Mock)", description: `${data.displayName}'s profile has been updated.` });
-        } else { // Adding new user
-            const newUser: User = { ...data, id: `mock-user-${Date.now()}` };
-            setUsers([...users, newUser]);
-            toast({ title: "User Added (Mock)", description: `${data.displayName} has been added.` });
-        }
+        onSaveUser(data);
         setIsUserDialogOpen(false);
     };
     
-    const handleBlockUser = () => {
+    const handleConfirmBlock = () => {
         if (!blockingUser) return;
-        const isCurrentlyBlocked = blockingUser.blockedUntil && blockingUser.blockedUntil > new Date();
-        const updatedUsers = users.map(u => u.id === blockingUser.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u);
-        setUsers(updatedUsers);
-        toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'} (Mock)`, description: `${blockingUser.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
+        onBlockUser(blockingUser);
         setBlockingUser(null);
     };
     
@@ -188,7 +180,7 @@ export default function UserManagement({ userIsAdminOrRoot: isPrivileged, region
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setBlockingUser(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleBlockUser}>Confirm</AlertDialogAction>
+                            <AlertDialogAction onClick={handleConfirmBlock}>Confirm</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>

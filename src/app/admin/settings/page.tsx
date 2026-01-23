@@ -10,15 +10,24 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import type { User } from '@/components/user-management';
 
 const initialRegions = ['Region A', 'Region B', 'Region C'];
 
+const mockUsersList: User[] = [
+    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
+    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', regions: ['Region A', 'Region B'], blockedUntil: null },
+    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', region: 'Region A', blockedUntil: null },
+];
 
 export default function AdminSettingsPage() {
     const [user, setUser] = useState<{email: string; role: string} | null>(null);
     const [loading, setLoading] = useState(true);
     const [regions, setRegions] = useState<string[]>(initialRegions);
+    const [users, setUsers] = useState<User[]>(mockUsersList);
     const router = useRouter();
+    const { toast } = useToast();
 
     useEffect(() => {
         const userJson = localStorage.getItem('mockUser');
@@ -46,6 +55,23 @@ export default function AdminSettingsPage() {
     }
   }, [loading, isAuthorized, router]);
 
+  const handleSaveUser = (data: any) => {
+    if (data.id) { // Editing
+        setUsers(currentUsers => currentUsers.map(u => u.id === data.id ? { ...u, ...data } : u));
+        toast({ title: "User Updated (Mock)", description: `${data.displayName}'s profile has been updated.` });
+    } else { // Adding
+        const newUser: User = { ...data, id: `mock-user-${Date.now()}` };
+        setUsers(currentUsers => [...currentUsers, newUser]);
+        toast({ title: "User Added (Mock)", description: `${data.displayName} has been added.` });
+    }
+  };
+
+  const handleBlockUser = (userToBlock: User) => {
+      const isCurrentlyBlocked = userToBlock.blockedUntil && userToBlock.blockedUntil > new Date();
+      setUsers(currentUsers => currentUsers.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u));
+      toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'} (Mock)`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
+  };
+
   if (loading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -69,7 +95,13 @@ export default function AdminSettingsPage() {
       </div>
       
       <div className="space-y-8">
-        <UserManagement userIsAdminOrRoot={isAuthorized} regions={regions} />
+        <UserManagement 
+            userIsAdminOrRoot={isAuthorized} 
+            regions={regions} 
+            users={users}
+            onSaveUser={handleSaveUser}
+            onBlockUser={handleBlockUser}
+        />
         {userIsAdmin && (
           <>
             <Separator />
