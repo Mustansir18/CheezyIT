@@ -15,6 +15,8 @@ export const useSound = (src: string) => {
 
   // This effect creates the Audio object on the client-side when the component mounts.
   useEffect(() => {
+    if (!src) return;
+    
     const audio = new Audio(src);
     audio.preload = 'auto'; // Explicitly tell the browser to download the whole file
     audioRef.current = audio;
@@ -31,9 +33,6 @@ export const useSound = (src: string) => {
     };
   }, [src]);
 
-  // The play function is memoized with an empty dependency array.
-  // This means the same function instance is returned on every render,
-  // making it safe to use in other hooks' dependency arrays.
   const play = useCallback(() => {
     if (audioRef.current) {
       // Reset the sound to the beginning to allow it to be re-played.
@@ -42,12 +41,4 @@ export const useSound = (src: string) => {
       // browser autoplay policies.
       audioRef.current.play().catch(err => {
         console.warn(
-          `Sound playback was prevented for ${src}. This is usually due to browser autoplay policies requiring user interaction.`,
-          err
-        );
-      });
-    }
-  }, [src]);
-
-  return play;
-};
+          `Sound playback was prevented for ${audioRef.current?.src}. This is usually due to browser

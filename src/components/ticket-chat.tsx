@@ -48,10 +48,16 @@ const mockMessages: ChatMessage[] = [
     },
 ];
 
+const ringtone = 'data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==';
+
 export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onTakeOwnership, onReturnToQueue, onBackToDetail }: any) {
     const { toast } = useToast();
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<any[]>(mockMessages);
+    const [isCalling, setIsCalling] = useState(false);
+    const ringIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const playRing = useSound(ringtone);
+
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const isLocked = ticket.status === 'Closed';
 
@@ -65,6 +71,14 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
     }, [messages]);
+
+    useEffect(() => {
+      return () => {
+        if (ringIntervalRef.current) {
+          clearInterval(ringIntervalRef.current);
+        }
+      };
+    }, []);
 
     const messagesWithDateSeparators = useMemo(() => {
         const items: any[] = [];
@@ -101,7 +115,27 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
     };
 
     const handleStartCall = async () => {
-       toast({ variant: 'destructive', title: 'Error', description: 'This feature is disabled.' });
+       if (isCalling) return;
+
+       setIsCalling(true);
+       toast({ title: 'Calling...', description: `Attempting to call ${ticketOwnerProfile?.displayName || 'User'}` });
+
+       playRing();
+       ringIntervalRef.current = setInterval(playRing, 4000); // Ring every 4 seconds
+
+       // Simulate call timeout
+       setTimeout(() => {
+         if (ringIntervalRef.current) {
+           clearInterval(ringIntervalRef.current);
+           ringIntervalRef.current = null;
+         }
+         setIsCalling(false);
+         toast({
+           variant: 'destructive',
+           title: 'Call Unanswered',
+           description: 'The user did not answer the call.',
+         });
+       }, 10000); // Stop ringing after 10 seconds
     };
 
 
@@ -136,8 +170,8 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
                 <div className="flex items-center gap-1">
                     {canManageTicket && (
                         <>
-                            <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!ticketOwnerProfile?.phoneNumber}>
-                                <Phone className="h-5 w-5" />
+                            <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!ticketOwnerProfile?.phoneNumber || isCalling}>
+                                <Phone className={cn("h-5 w-5", isCalling && 'animate-bounce')} />
                             </Button>
                             
                             {(ticket.status === 'Open') && !ticket.assignedTo && (
