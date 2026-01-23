@@ -56,16 +56,30 @@ type User = {
     regions?: string[];
 }
 
+type UserProfile = {
+  role?: string;
+}
+
 export default function AnnouncementForm() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
   const [isPending, startTransition] = useTransition();
 
+  const userProfileRef = useMemoFirebase(() => (currentUser ? doc(firestore, 'users', currentUser.uid) : null), [firestore, currentUser]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+  const isAuthorizedToQueryUsers = useMemo(() => {
+      if (!currentUser) return false;
+      if (isRoot(currentUser.email)) return true;
+      if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
+      return false;
+  }, [currentUser, userProfile]);
+
   const regionsRef = useMemoFirebase(() => doc(firestore, 'system_settings', 'regions'), [firestore]);
   const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
 
-  const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+  const usersQuery = useMemoFirebase(() => (isAuthorizedToQueryUsers ? collection(firestore, 'users') : null), [firestore, isAuthorizedToQueryUsers]);
   const { data: usersData, isLoading: usersLoading } = useCollection<WithId<User>>(usersQuery);
 
   const availableRegions = regionsData?.list?.map(r => ({ value: r, label: r })) || [];

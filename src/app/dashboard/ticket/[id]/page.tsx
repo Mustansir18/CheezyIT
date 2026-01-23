@@ -71,7 +71,7 @@ export default function TicketDetailPage() {
     const { data: ticketOwnerProfile, isLoading: ownerProfileLoading } = useDoc<UserProfile>(ticketOwnerProfileRef);
     
     // Fetch all users to find assignable staff
-    const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const usersQuery = useMemoFirebase(() => (canManageTicket ? collection(firestore, 'users') : null), [firestore, canManageTicket]);
     const { data: allUsers, isLoading: usersLoading } = useCollection<WithId<UserProfile>>(usersQuery);
 
     const assignableUsers = useMemo(() => {

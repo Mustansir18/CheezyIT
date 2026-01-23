@@ -2,12 +2,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useFirestore, useCollection, useMemoFirebase, type WithId } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, type WithId, useDoc, useUser } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from './ui/skeleton';
+import { isRoot } from '@/lib/admins';
 
 type Announcement = {
     id: string;
@@ -20,12 +21,27 @@ type User = {
     displayName: string;
 };
 
+type UserProfile = {
+  role?: string;
+};
+
 export default function ReadStatusList({ announcement }: { announcement: Announcement }) {
     const firestore = useFirestore();
+    const { user: currentUser } = useUser();
+
+    const userProfileRef = useMemoFirebase(() => (currentUser ? doc(firestore, 'users', currentUser.uid) : null), [firestore, currentUser]);
+    const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+    const isAuthorizedToQueryUsers = useMemo(() => {
+        if (!currentUser) return false;
+        if (isRoot(currentUser.email)) return true;
+        if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
+        return false;
+    }, [currentUser, userProfile]);
 
     const usersQuery = useMemoFirebase(
-        () => query(collection(firestore, 'users')),
-        [firestore]
+        () => (isAuthorizedToQueryUsers ? query(collection(firestore, 'users')) : null),
+        [firestore, isAuthorizedToQueryUsers]
     );
     const { data: allUsers, isLoading: usersLoading, error: usersError } = useCollection<User>(usersQuery);
 
