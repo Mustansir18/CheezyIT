@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, Timestamp } from 'firebase/firestore';
+import { doc, Timestamp, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { formatDistanceToNow } from 'date-fns';
 import { isRoot } from '@/lib/admins';
@@ -12,6 +12,7 @@ import { UserNav } from '@/components/user-nav';
 import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 type UserProfile = {
   role: string;
@@ -24,6 +25,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -51,6 +53,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/dashboard');
     }
   }, [user, loading, isAuthorized, router]);
+
+  useEffect(() => {
+    if (user && !profileLoading && !userProfile) {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const isCurrentUserRoot = isRoot(user.email);
+
+      const defaultProfileData = {
+        displayName: user.displayName || user.email,
+        email: user.email,
+        role: isCurrentUserRoot ? 'Admin' : 'User',
+        regions: isCurrentUserRoot ? ['all'] : [],
+        region: isCurrentUserRoot ? '' : 'unassigned',
+        phoneNumber: user.phoneNumber || '',
+      };
+
+      setDoc(userDocRef, defaultProfileData)
+        .then(() => {
+          toast({
+            title: "Profile Synced",
+            description: "Your user profile was created in the database.",
+          });
+        })
+        .catch((error) => {
+          console.error("Error syncing user profile:", error);
+          toast({
+            variant: "destructive",
+            title: "Sync Error",
+            description: "Could not create your user profile in the database.",
+          });
+        });
+    }
+  }, [user, userProfile, profileLoading, firestore, toast]);
 
   if (loading || !user || !isAuthorized) {
     return (

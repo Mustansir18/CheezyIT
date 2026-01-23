@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { doc, Timestamp } from 'firebase/firestore';
+import { doc, Timestamp, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
 import { cn } from '@/lib/utils';
 import WhatsAppFAB from '@/components/whatsapp-fab';
+import { useToast } from '@/hooks/use-toast';
 
 type UserProfile = {
   role: string;
@@ -27,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const pathname = usePathname();
     const firestore = useFirestore();
     const hasRedirected = useRef(false);
+    const { toast } = useToast();
 
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -56,6 +58,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             router.replace('/admin');
         }
     }, [user, loading, router, isPrivilegedUser]);
+
+    useEffect(() => {
+      if (user && !profileLoading && !userProfile) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const isCurrentUserRoot = isRoot(user.email);
+  
+        const defaultProfileData = {
+          displayName: user.displayName || user.email,
+          email: user.email,
+          role: isCurrentUserRoot ? 'Admin' : 'User',
+          regions: isCurrentUserRoot ? ['all'] : [],
+          region: isCurrentUserRoot ? '' : 'unassigned',
+          phoneNumber: user.phoneNumber || '',
+        };
+  
+        setDoc(userDocRef, defaultProfileData)
+          .then(() => {
+            toast({
+              title: "Profile Synced",
+              description: "Your user profile was created in the database.",
+            });
+          })
+          .catch((error) => {
+            console.error("Error syncing user profile:", error);
+            toast({
+              variant: "destructive",
+              title: "Sync Error",
+              description: "Could not create your user profile in the database.",
+            });
+          });
+      }
+    }, [user, userProfile, profileLoading, firestore, toast]);
     
     if (loading || !user || isPrivilegedUser) {
       return (
