@@ -27,11 +27,9 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isPrivilegedUser();
       allow list: if isPrivilegedUser();
-      // Let privileged users update user roles/profiles.
-      allow update: if isOwner(userId) || isPrivilegedUser();
-      // Creating users is handled via a separate auth instance in the app.
+      // Allow users to update their own profile, and privileged users to create/update any profile.
+      allow create, update: if isOwner(userId) || isPrivilegedUser();
       // Deleting users from the client is unsafe unless it's the root user.
-      allow create: if false; // Creation is handled via backend function for security
       allow delete: if isRootUser();
     }
 
@@ -59,7 +57,7 @@ service cloud.firestore {
 
     match /users/{userId}/notifications/{notificationId} {
       // User can read, update (isRead), and delete their own notifications.
-      allow read, update, delete: if isOwner(userId) || isPrivilegedUser();
+      allow read, update, delete: if isOwner(userId);
       // Privileged users can create notifications when sending announcements.
       allow create: if isPrivilegedUser();
     }

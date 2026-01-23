@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -389,7 +388,6 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
 
 export default function UserManagement({ userIsAdminOrRoot }: { userIsAdminOrRoot: boolean }) {
     const firestore = useFirestore();
-    const { user: currentUser } = useUser();
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [blockingUser, setBlockingUser] = useState<User | null>(null);
@@ -398,33 +396,12 @@ export default function UserManagement({ userIsAdminOrRoot }: { userIsAdminOrRoo
     const { data: regionsData, isLoading: regionsLoading } = useDoc<{ list: string[] }>(regionsRef);
     const availableRegions = useMemo(() => regionsData?.list || [], [regionsData]);
     
-    const { data: usersFromFirestore, isLoading: usersDataLoading } = useCollection<WithId<User>>(
+    const { data: users, isLoading: usersDataLoading } = useCollection<WithId<User>>(
         useMemoFirebase(
             () => (userIsAdminOrRoot ? query(collection(firestore, 'users')) : null),
             [firestore, userIsAdminOrRoot]
         )
     );
-
-    const users = useMemo(() => {
-        if (!usersFromFirestore) return [];
-        if (!currentUser) return usersFromFirestore;
-
-        const isCurrentUserRoot = isRoot(currentUser.email);
-        const isCurrentUserInList = usersFromFirestore.some(u => u.id === currentUser.uid);
-
-        if (isCurrentUserRoot && !isCurrentUserInList) {
-            const rootUserForList: WithId<User> = {
-                id: currentUser.uid,
-                email: currentUser.email || 'N/A',
-                displayName: currentUser.displayName || 'Root User (From Auth)',
-                role: 'Admin',
-                regions: ['all'],
-            };
-            return [rootUserForList, ...usersFromFirestore];
-        }
-
-        return usersFromFirestore;
-    }, [usersFromFirestore, currentUser]);
       
     const isLoading = usersDataLoading || regionsLoading;
 
