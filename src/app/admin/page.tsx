@@ -56,8 +56,6 @@ export default function AdminDashboardPage() {
   
   const loading = userLoading || profileLoading;
   
-  // This useEffect now ONLY handles the redirection for 'it-support' users.
-  // Authorization for other roles is handled by the AdminLayout.
   useEffect(() => {
     if (!loading && userIsSupport && !hasRedirected.current) {
         hasRedirected.current = true;
@@ -73,8 +71,6 @@ export default function AdminDashboardPage() {
     return items;
   }, [userIsRoot]);
 
-  // The loading guard now only waits for loading to finish and for the 'it-support' redirect to be processed.
-  // It no longer tries to guess if the user is authorized, as the layout handles that.
   if (loading || userIsSupport) {
       return (
         <div className="flex h-full w-full items-center justify-center">

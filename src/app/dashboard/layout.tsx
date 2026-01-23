@@ -45,17 +45,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [userProfile]);
 
     useEffect(() => {
-        if (userLoading || profileLoading) return; // Wait until all data is loaded.
+        if (userLoading || profileLoading) return;
         
         if (!user) {
             router.push('/');
-        } else if (!isBlocked && isPrivilegedUser && !isTicketPage) {
+        } else if (!isBlocked && isPrivilegedUser) {
             router.push('/admin');
         }
-    }, [user, userLoading, profileLoading, isPrivilegedUser, isTicketPage, isBlocked, router, pathname]);
+    }, [user, userLoading, profileLoading, isPrivilegedUser, isBlocked, router]);
     
-    // This is a crucial guard. It shows a loading screen while the redirect effect is being processed.
-    if (userLoading || profileLoading || !user || (!isBlocked && isPrivilegedUser && !isTicketPage)) {
+    if (userLoading || profileLoading || !user || (!isBlocked && isPrivilegedUser)) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
