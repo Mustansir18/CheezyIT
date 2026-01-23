@@ -7,16 +7,18 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth.uid == uid;
     }
+
+    function isRootUser() {
+      // Check if the user's email is a designated root email
+      return request.auth.token.email == 'mustansir133@gmail.com';
+    }
     
     function isPrivilegedUser() {
       // Safely check for privileged role from the user's profile document
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       let hasPrivilegedRole = userDoc.exists && userDoc.data.role in ['Admin', 'it-support'];
       
-      // Check if the user's email is a designated root email
-      let isRootEmail = request.auth.token.email == 'mustansir133@gmail.com';
-
-      return hasPrivilegedRole || isRootEmail;
+      return hasPrivilegedRole || isRootUser();
     }
 
     // Path rules
@@ -26,30 +28,31 @@ service cloud.firestore {
       // Let privileged users update user roles/profiles.
       allow update: if isOwner(userId) || isPrivilegedUser();
       // Creating users is handled via a separate auth instance in the app.
-      // Deleting users from the client is unsafe.
-      allow create, delete: if false;
+      // Deleting users from the client is unsafe unless it's the root user.
+      allow create: if false; // Creation is handled via backend function for security
+      allow delete: if isRootUser();
     }
 
     match /users/{userId}/issues/{issueId} {
       // User can create their own issue. Privileged users can manage all issues.
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId) || isPrivilegedUser();
       // isPrivilegedUser() allows read access to all tickets for admins/root.
       // This is necessary for the collectionGroup query in the admin dashboard.
       allow read, update: if isOwner(userId) || isPrivilegedUser();
-      // Deleting issues is not allowed from the client for now.
-      allow delete: if false;
+      // Deleting issues is not allowed from the client for now, unless root user.
+      allow delete: if isRootUser();
     }
     
     match /users/{userId}/issues/{issueId}/messages/{messageId} {
       // Only the user who owns the parent issue or a privileged user can read/create messages.
       allow read, create: if isOwner(userId) || isPrivilegedUser();
-      // Messages are immutable once created.
-      allow update, delete: if false;
+      // Messages are immutable once created, unless root user needs to intervene.
+      allow update, delete: if isRootUser();
     }
 
     match /users/{userId}/notifications/{notificationId} {
       // User can read, update (isRead), and delete their own notifications.
-      allow read, update, delete: if isOwner(userId);
+      allow read, update, delete: if isOwner(userId) || isPrivilegedUser();
       // Privileged users can create notifications when sending announcements.
       allow create: if isPrivilegedUser();
     }
@@ -63,8 +66,8 @@ service cloud.firestore {
     match /announcements/{announcementId} {
       // Only privileged users can create, read and update announcements.
       allow read, create, update: if isPrivilegedUser();
-      // Deleting announcements is not allowed from the client.
-      allow delete: if false;
+      // Deleting announcements is not allowed from the client, unless root.
+      allow delete: if isRootUser();
     }
     
     // Catch-all for other system settings that admins might need to manage.
