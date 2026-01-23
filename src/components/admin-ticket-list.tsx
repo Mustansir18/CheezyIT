@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
@@ -6,8 +5,8 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format, formatDistanceToNowStrict, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
 import { Filter, FileDown, Loader2, MoreHorizontal, ShieldCheck, ShieldX, Info, AlertTriangle, User, Clock, CalendarIcon as DateIcon, MapPin, UserCheck, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
-import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, doc, getDocs, collectionGroup, updateDoc, serverTimestamp, writeBatch, onSnapshot } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection, type WithId, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, query, doc, collectionGroup, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
@@ -28,7 +27,6 @@ import { exportData } from '@/lib/export';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useSound } from '@/hooks/use-sound';
-
 
 type UserProfile = {
   role: string;
@@ -96,13 +94,6 @@ export default function AdminTicketList() {
   const { toast } = useToast();
   const { user, loading: userLoading } = useUser();
 
-  const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
-  const allTicketsRef = useRef(allTickets);
-  allTicketsRef.current = allTickets;
-
-  const [allUsers, setAllUsers] = useState<WithId<UserWithDisplayName>[]>([]);
-  const [ticketsLoading, setTicketsLoading] = useState(true);
-  
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -119,6 +110,7 @@ export default function AdminTicketList() {
   const playResolvedSound = useSound('/sounds/new-ticket.mp3');
   const playClosedSound = useSound('/sounds/new-announcement.mp3');
   const isInitialLoadComplete = useRef(false);
+  const prevTicketsRef = useRef<WithId<Ticket>[]>([]);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -126,96 +118,88 @@ export default function AdminTicketList() {
   const isUserRoot = useMemo(() => user && isRoot(user.email), [user]);
   const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
+  const isAuthorized = useMemo(() => isUserRoot || isUserAdminRole || isUserSupport, [isUserRoot, isUserAdminRole, isUserSupport]);
 
-  const issuesQuery = useMemoFirebase(() => collectionGroup(firestore, 'issues'), [firestore]);
+  const issuesQuery = useMemoFirebase(() => isAuthorized ? collectionGroup(firestore, 'issues') : null, [firestore, isAuthorized]);
+  const usersQuery = useMemoFirebase(() => isAuthorized ? query(collection(firestore, 'users')) : null, [firestore, isAuthorized]);
 
-  useEffect(() => {
-    if (userLoading || profileLoading || !user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
-      setTicketsLoading(false);
-      return;
-    }
-    
-    setTicketsLoading(true);
-
-    const usersQueryRef = query(collection(firestore, 'users'));
-    getDocs(usersQueryRef).then(usersSnapshot => {
-        const usersData = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as WithId<UserWithDisplayName>[];
-        setAllUsers(usersData);
-    }).catch(err => {
-        console.error("Error fetching users:", err);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch user data.' });
+  const { data: allTicketsData, isLoading: ticketsLoading, error: ticketsError } = useCollection<WithId<Ticket>>(issuesQuery);
+  const { data: allUsers, isLoading: usersLoading, error: usersError } = useCollection<WithId<UserWithDisplayName>>(usersQuery);
+  
+  const allTickets = useMemo(() => {
+    if (!allTicketsData) return [];
+    return [...allTicketsData].sort((a,b) => {
+        const timeA = a.createdAt?.toMillis() || 0;
+        const timeB = b.createdAt?.toMillis() || 0;
+        return timeB - timeA;
     });
-    
-    const unsubscribe = onSnapshot(issuesQuery,
-      (snapshot) => {
-        let newTicketSoundToPlay = false;
-
-        // On subsequent updates (not the initial load), check for changes.
-        if (isInitialLoadComplete.current) {
-            snapshot.docChanges().forEach((change) => {
-                if (change.type === "added") {
-                    newTicketSoundToPlay = true;
-                }
-                if (change.type === "modified") {
-                    const oldTicket = allTicketsRef.current.find(t => t.id === change.doc.id);
-                    const newTicket = change.doc.data() as Ticket;
-                    if (oldTicket && oldTicket.status !== newTicket.status) {
-                        switch (newTicket.status) {
-                            case 'In-Progress':
-                                playInProgressSound();
-                                break;
-                            case 'Resolved':
-                                playResolvedSound();
-                                break;
-                            case 'Closed':
-                                playClosedSound();
-                                break;
-                        }
-                    }
-                }
-            });
-        }
-
-        if (newTicketSoundToPlay) {
-            playNewTicketSound();
-        }
-
-        const fetchedTickets = snapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
-        
-        const sortedTickets = fetchedTickets.sort((a,b) => {
-            const timeA = a.createdAt?.toMillis() || 0;
-            const timeB = b.createdAt?.toMillis() || 0;
-            return timeB - timeA;
-        });
-
-        setAllTickets(sortedTickets);
-        setTicketsLoading(false);
-        
-        // Mark initial load as complete after the first snapshot is processed.
-        if (!isInitialLoadComplete.current) {
-            isInitialLoadComplete.current = true;
-        }
-      },
-      (error) => {
-        console.error("Error fetching tickets for admin/support:", error);
+  }, [allTicketsData]);
+  
+  useEffect(() => {
+    if (ticketsError) {
+        console.error("Error fetching tickets for admin/support:", ticketsError);
         toast({
             variant: 'destructive',
             title: 'Error Fetching Tickets',
-            description: error.code === 'permission-denied' 
+            description: (ticketsError as any).code === 'permission-denied'
                 ? 'You do not have the required permissions to view all tickets.'
                 : 'Could not fetch all tickets. Please check permissions and console for details.',
         });
-        setTicketsLoading(false);
-      }
-    );
+    }
+  }, [ticketsError, toast]);
+
+  useEffect(() => {
+    if (usersError) {
+        console.error("Error fetching users:", usersError);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch user data.' });
+    }
+  }, [usersError, toast]);
+
+  useEffect(() => {
+    if (ticketsLoading || !allTickets) {
+      return;
+    }
     
-    return () => {
-        unsubscribe();
-        isInitialLoadComplete.current = false;
-    };
-  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast, playNewTicketSound, playInProgressSound, playResolvedSound, playClosedSound, issuesQuery]);
+    // On first successful load, set the baseline and exit.
+    if (!isInitialLoadComplete.current) {
+        prevTicketsRef.current = allTickets;
+        isInitialLoadComplete.current = true;
+        return;
+    }
+
+    // Check for new tickets on subsequent updates.
+    if (allTickets.length > prevTicketsRef.current.length) {
+        const newTickets = allTickets.filter(t => !prevTicketsRef.current.some(pt => pt.id === t.id));
+        if (newTickets.length > 0) {
+            playNewTicketSound();
+        }
+    }
+
+    // Check for status changes on existing tickets.
+    const prevTicketsMap = new Map(prevTicketsRef.current.map(t => [t.id, t.status]));
+    allTickets.forEach(currentTicket => {
+        const prevStatus = prevTicketsMap.get(currentTicket.id);
+        if (prevStatus && prevStatus !== currentTicket.status) {
+            switch (currentTicket.status) {
+                case 'In-Progress':
+                    playInProgressSound();
+                    break;
+                case 'Resolved':
+                    playResolvedSound();
+                    break;
+                case 'Closed':
+                    playClosedSound();
+                    break;
+            }
+        }
+    });
+
+    // Update the ref for the next render.
+    prevTicketsRef.current = allTickets;
+
+  }, [allTickets, ticketsLoading, playNewTicketSound, playInProgressSound, playResolvedSound, playClosedSound]);
   
-  const loading = userLoading || profileLoading || ticketsLoading;
+  const loading = userLoading || profileLoading || ticketsLoading || usersLoading;
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -223,6 +207,7 @@ export default function AdminTicketList() {
   });
 
   const usersMap = useMemo(() => {
+    if (!allUsers) return {};
     return allUsers.reduce((acc, user) => {
         acc[user.id] = user;
         return acc;
@@ -263,7 +248,7 @@ export default function AdminTicketList() {
         );
     }
 
-    if (userFilter !== 'all') {
+    if (userFilter !== 'all' && allUsers) {
         tickets = tickets.filter(ticket => ticket.userId === userFilter);
     }
     if (statusFilter !== 'all') {
@@ -274,7 +259,7 @@ export default function AdminTicketList() {
     }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, regionFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
+  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, regionFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile, allUsers]);
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   
@@ -430,7 +415,7 @@ const handleSendComment = () => {
                     <DropdownMenuContent align="start">
                         <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
                             <DropdownMenuRadioItem value="all">All Users</DropdownMenuRadioItem> <DropdownMenuSeparator />
-                            {allUsers.sort((a, b) => a.displayName.localeCompare(b.displayName)).map(user => (<DropdownMenuRadioItem key={user.id} value={user.id}>{user.displayName}</DropdownMenuRadioItem>))}
+                            {allUsers && allUsers.sort((a, b) => a.displayName.localeCompare(b.displayName)).map(user => (<DropdownMenuRadioItem key={user.id} value={user.id}>{user.displayName}</DropdownMenuRadioItem>))}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -498,7 +483,3 @@ const handleSendComment = () => {
     </>
   );
 }
-
-    
-
-    
