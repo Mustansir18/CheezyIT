@@ -63,20 +63,17 @@ export default function AdminDashboardPage() {
     }
   }, [loading, userIsSupport, router]);
 
-  const navItems = useMemo(() => {
-    let items = [...baseNavItems];
-    if (userIsRoot) {
-      items.push(rootNavItem);
-    }
-    return items;
-  }, [userIsRoot]);
-
   if (loading || userIsSupport) {
       return (
         <div className="flex h-full w-full items-center justify-center">
             <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
       );
+  }
+
+  const navItems = [...baseNavItems];
+  if (userIsRoot) {
+    navItems.push(rootNavItem);
   }
 
   return (
