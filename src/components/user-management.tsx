@@ -19,7 +19,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -347,7 +347,7 @@ const BlockUserDialog = React.memo(function BlockUserDialog({ user, open, onOpen
 
 const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }: { user: WithId<User>; onEdit: (user: WithId<User>) => void; onBlock: (user: WithId<User>) => void; }) {
   const isBlocked = user.blockedUntil && user.blockedUntil.toDate() > new Date();
-  const isThisUserRoot = useMemo(() => isRoot(user.email), [user.email]);
+  const isThisUserAdmin = useMemo(() => isAdmin(user.email), [user.email]);
 
   const displayedRegions = useMemo(() => {
     if (user.role === 'User' || user.role === 'Branch') {
@@ -374,8 +374,8 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
                 <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => onEdit(user)} disabled={isThisUserRoot}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onBlock(user)} disabled={isThisUserRoot}><ShieldBan className="mr-2 h-4 w-4" /> Block/Unblock</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onEdit(user)} disabled={isThisUserAdmin}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onBlock(user)} disabled={isThisUserAdmin}><ShieldBan className="mr-2 h-4 w-4" /> Block/Unblock</DropdownMenuItem>
                 <DropdownMenuItem className="text-red-500" disabled>
                     <Trash2 className="mr-2 h-4 w-4" /> Delete (Not available)
                 </DropdownMenuItem>
@@ -386,7 +386,7 @@ const UserTableRow = React.memo(function UserTableRow({ user, onEdit, onBlock }:
   );
 });
 
-export default function UserManagement({ userIsAdminOrRoot }: { userIsAdminOrRoot: boolean }) {
+export default function UserManagement({ userIsAdminOrRoot: isPrivileged }: { userIsAdminOrRoot: boolean }) {
     const firestore = useFirestore();
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -398,8 +398,8 @@ export default function UserManagement({ userIsAdminOrRoot }: { userIsAdminOrRoo
     
     const { data: users, isLoading: usersDataLoading } = useCollection<WithId<User>>(
         useMemoFirebase(
-            () => (userIsAdminOrRoot ? query(collection(firestore, 'users')) : null),
-            [firestore, userIsAdminOrRoot]
+            () => (isPrivileged ? query(collection(firestore, 'users')) : null),
+            [firestore, isPrivileged]
         )
     );
       
@@ -458,7 +458,7 @@ export default function UserManagement({ userIsAdminOrRoot }: { userIsAdminOrRoo
                             ) : (
                             <TableRow>
                                 <TableCell colSpan={5} className="h-24 text-center">
-                                    {userIsAdminOrRoot ? 'No users found.' : 'You do not have permission to view users.'}
+                                    {isPrivileged ? 'No users found.' : 'You do not have permission to view users.'}
                                 </TableCell>
                             </TableRow>
                             )}

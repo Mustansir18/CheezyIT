@@ -7,7 +7,7 @@ import { doc, Timestamp, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { formatDistanceToNow } from 'date-fns';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     
     const isPrivilegedUser = useMemo(() => {
         if (!user) return false;
-        if (isRoot(user.email)) return true;
+        if (isAdmin(user.email)) return true;
         if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
         return false;
     }, [user, userProfile]);
@@ -62,14 +62,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     useEffect(() => {
       if (user && !profileLoading && !userProfile) {
         const userDocRef = doc(firestore, 'users', user.uid);
-        const isCurrentUserRoot = isRoot(user.email);
+        const isCurrentUserAdmin = isAdmin(user.email);
   
         const defaultProfileData = {
           displayName: user.displayName || user.email,
           email: user.email,
-          role: isCurrentUserRoot ? 'Admin' : 'User',
-          regions: isCurrentUserRoot ? ['all'] : [],
-          region: isCurrentUserRoot ? '' : 'unassigned',
+          role: isCurrentUserAdmin ? 'Admin' : 'User',
+          regions: isCurrentUserAdmin ? ['all'] : [],
+          region: isCurrentUserAdmin ? '' : 'unassigned',
           phoneNumber: user.phoneNumber || '',
         };
   

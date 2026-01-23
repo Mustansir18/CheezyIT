@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, type WithId, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, collection, getDocs, query, writeBatch, serverTimestamp, addDoc, collectionGroup } from 'firebase/firestore';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { format } from 'date-fns';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 
@@ -71,7 +71,7 @@ export default function AnnouncementForm() {
 
   const isAuthorizedToQueryUsers = useMemo(() => {
       if (!currentUser) return false;
-      if (isRoot(currentUser.email)) return true;
+      if (isAdmin(currentUser.email)) return true;
       if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
       return false;
   }, [currentUser, userProfile]);
@@ -142,7 +142,7 @@ export default function AnnouncementForm() {
         }
         
         const recipientUids = targetUsers.map(user => user.id);
-        const senderDisplayName = isRoot(currentUser.email) ? 'Root' : (currentUser.displayName || 'N/A');
+        const senderDisplayName = isAdmin(currentUser.email) ? 'Admin' : (currentUser.displayName || 'N/A');
 
         const announcementPayload = {
             title: data.title,

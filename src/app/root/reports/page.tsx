@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { useMemo, useEffect } from 'react';
 import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -17,7 +17,7 @@ type UserProfile = {
 
 export default function RootReportsPage() {
   const { user, loading: userLoading } = useUser();
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
   const firestore = useFirestore();
   const router = useRouter();
 
@@ -25,7 +25,7 @@ export default function RootReportsPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const isAuthorized = useMemo(() => {
-    if (user && isRoot(user.email)) return true;
+    if (user && isAdmin(user.email)) return true;
     if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
     return false;
   }, [user, userProfile]);
@@ -53,7 +53,7 @@ export default function RootReportsPage() {
                 <span className="sr-only">Back to Dashboard</span>
             </Link>
         </Button>
-        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
+        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
           Reports Dashboard
         </h1>
       </div>

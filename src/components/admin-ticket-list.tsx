@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import type { Ticket, TicketStatus } from '@/lib/data';
 import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -115,10 +115,10 @@ export default function AdminTicketList() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  const isUserRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const isUserAdmin = useMemo(() => user && isAdmin(user.email), [user]);
   const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
-  const isAuthorized = useMemo(() => isUserRoot || isUserAdminRole || isUserSupport, [isUserRoot, isUserAdminRole, isUserSupport]);
+  const isAuthorized = useMemo(() => isUserAdmin || isUserAdminRole || isUserSupport, [isUserAdmin, isUserAdminRole, isUserSupport]);
 
   const issuesQuery = useMemoFirebase(() => isAuthorized ? collectionGroup(firestore, 'issues') : null, [firestore, isAuthorized]);
   const usersQuery = useMemoFirebase(() => isAuthorized ? query(collection(firestore, 'users')) : null, [firestore, isAuthorized]);
@@ -221,7 +221,7 @@ export default function AdminTicketList() {
   const filteredTickets = useMemo(() => {
     let tickets = allTickets;
 
-    if (!isUserRoot && (isUserAdminRole || isUserSupport)) {
+    if (!isUserAdmin && (isUserAdminRole || isUserSupport)) {
         const userRegions = userProfile?.regions || [];
         if (!userRegions.includes('all')) {
             tickets = tickets.filter(ticket => ticket.region && userRegions.includes(ticket.region));
@@ -259,7 +259,7 @@ export default function AdminTicketList() {
     }
 
     return tickets;
-  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, regionFilter, isUserRoot, isUserAdminRole, isUserSupport, userProfile, allUsers]);
+  }, [allTickets, date, ticketIdFilter, userFilter, statusFilter, regionFilter, isUserAdmin, isUserAdminRole, isUserSupport, userProfile, allUsers]);
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
   

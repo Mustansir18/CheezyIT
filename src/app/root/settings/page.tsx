@@ -2,7 +2,7 @@
 import UserManagement from '@/components/user-management';
 import SystemSettings from '@/components/system-settings';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -25,13 +25,13 @@ export default function RootSettingsPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
   
   const isAuthorized = useMemo(() => {
-    if (userIsRoot) return true;
+    if (userIsAdmin) return true;
     if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
     return false;
-  }, [userIsRoot, userProfile]);
+  }, [userIsAdmin, userProfile]);
 
   const loading = userLoading || profileLoading;
 
@@ -58,14 +58,14 @@ export default function RootSettingsPage() {
                 <span className="sr-only">Back to Dashboard</span>
             </Link>
         </Button>
-        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
-          {userIsRoot ? 'Root' : 'User Management'}
+        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
+          {userIsAdmin ? 'Admin Settings' : 'User Management'}
         </h1>
       </div>
       
       <div className="space-y-8">
         <UserManagement userIsAdminOrRoot={isAuthorized} />
-        {userIsRoot && (
+        {userIsAdmin && (
           <>
             <Separator />
             <div>

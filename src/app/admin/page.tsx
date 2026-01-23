@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Megaphone } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { useMemo, useEffect, useRef } from 'react';
 import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -31,10 +31,10 @@ const baseNavItems = [
   },
 ];
 
-const rootNavItem = {
+const adminNavItem = {
     href: '/admin/settings',
     icon: Settings,
-    title: 'Root Settings',
+    title: 'Admin Settings',
     description: 'Manage user accounts and roles.',
 };
 
@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
   const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   
   const loading = userLoading || profileLoading;
@@ -72,8 +72,8 @@ export default function AdminDashboardPage() {
   }
 
   const navItems = [...baseNavItems];
-  if (userIsRoot) {
-    navItems.push(rootNavItem);
+  if (userIsAdmin) {
+    navItems.push(adminNavItem);
   }
 
   return (

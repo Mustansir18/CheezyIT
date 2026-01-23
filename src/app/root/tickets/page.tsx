@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { doc } from 'firebase/firestore';
@@ -21,7 +21,7 @@ export default function RootTicketsPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
   const userIsSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
 
   const loading = userLoading || profileLoading;
@@ -45,7 +45,7 @@ export default function RootTicketsPage() {
                     </Link>
                 </Button>
             )}
-            <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
+            <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
                 All Tickets
             </h1>
         </div>

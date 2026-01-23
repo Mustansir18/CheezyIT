@@ -19,7 +19,7 @@ import { ChartContainer, ChartTooltipContent, ChartTooltip } from '@/components/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Ticket } from '@/lib/data';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { exportData } from '@/lib/export';
@@ -115,12 +115,12 @@ export default function AdminAnalytics() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
   
-  const isUserRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const isUserAdmin = useMemo(() => user && isAdmin(user.email), [user]);
   const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   const isMobile = useIsMobile();
   
-  const isAuthorized = useMemo(() => user && (isUserRoot || isUserAdminRole || isUserSupport), [user, isUserRoot, isUserAdminRole, isUserSupport]);
+  const isAuthorized = useMemo(() => user && (isUserAdmin || isUserAdminRole || isUserSupport), [user, isUserAdmin, isUserAdminRole, isUserSupport]);
 
   const issuesQueryRef = useMemoFirebase(() => isAuthorized ? collectionGroup(firestore, 'issues') : null, [firestore, isAuthorized]);
   const usersQueryRef = useMemoFirebase(() => isAuthorized ? query(collection(firestore, 'users')) : null, [firestore, isAuthorized]);
@@ -173,7 +173,7 @@ export default function AdminAnalytics() {
     let tickets = allTickets;
 
     // Filter by region for non-root admins/support
-    if (!isUserRoot && (isUserAdminRole || isUserSupport)) {
+    if (!isUserAdmin && (isUserAdminRole || isUserSupport)) {
         const userRegions = userProfile?.regions || [];
         if (!userRegions.includes('all')) {
             tickets = tickets.filter(ticket => ticket.region && userRegions.includes(ticket.region));
@@ -189,7 +189,7 @@ export default function AdminAnalytics() {
         toDate.setHours(23, 59, 59, 999);
         return ticketDate >= date.from && ticketDate <= toDate;
     });
-  }, [allTickets, date, isUserRoot, isUserAdminRole, isUserSupport, userProfile]);
+  }, [allTickets, date, isUserAdmin, isUserAdminRole, isUserSupport, userProfile]);
 
   const userCreatedTickets = useMemo(() => {
     return filteredTickets.filter(ticket => userRolesMap[ticket.userId] === 'User' || userRolesMap[ticket.userId] === 'Branch');

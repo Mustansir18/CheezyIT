@@ -7,7 +7,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/fireb
 import { doc, Timestamp, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { formatDistanceToNow } from 'date-fns';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { UserNav } from '@/components/user-nav';
 import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
@@ -34,7 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isAuthorized = useMemo(() => {
     if (!user) return false;
-    if (isRoot(user.email)) return true;
+    if (isAdmin(user.email)) return true;
     if (userProfile && (userProfile.role === 'it-support' || userProfile.role === 'Admin')) return true;
     return false;
   }, [user, userProfile]);
@@ -57,14 +57,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (user && !profileLoading && !userProfile) {
       const userDocRef = doc(firestore, 'users', user.uid);
-      const isCurrentUserRoot = isRoot(user.email);
+      const isCurrentUserAdmin = isAdmin(user.email);
 
       const defaultProfileData = {
         displayName: user.displayName || user.email,
         email: user.email,
-        role: isCurrentUserRoot ? 'Admin' : 'User',
-        regions: isCurrentUserRoot ? ['all'] : [],
-        region: isCurrentUserRoot ? '' : 'unassigned',
+        role: isCurrentUserAdmin ? 'Admin' : 'User',
+        regions: isCurrentUserAdmin ? ['all'] : [],
+        region: isCurrentUserAdmin ? '' : 'unassigned',
         phoneNumber: user.phoneNumber || '',
       };
 

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 import { useMemo, useEffect } from 'react';
 import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -25,13 +25,13 @@ export default function AdminAnnouncementsPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
+  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
 
   const isAuthorized = useMemo(() => {
-    if (userIsRoot) return true;
+    if (userIsAdmin) return true;
     if (userProfile && userProfile.role === 'Admin') return true;
     return false;
-  }, [userIsRoot, userProfile]);
+  }, [userIsAdmin, userProfile]);
 
   useEffect(() => {
     if (!userLoading && !profileLoading && !isAuthorized) {
@@ -39,7 +39,7 @@ export default function AdminAnnouncementsPage() {
     }
   }, [userLoading, profileLoading, isAuthorized, router]);
 
-  if (userLoading || (!userIsRoot && profileLoading) || !isAuthorized) {
+  if (userLoading || (!userIsAdmin && profileLoading) || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -57,7 +57,7 @@ export default function AdminAnnouncementsPage() {
               <span className="sr-only">Back to Dashboard</span>
             </Link>
           </Button>
-          <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
+          <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
             Announcements
           </h1>
         </div>

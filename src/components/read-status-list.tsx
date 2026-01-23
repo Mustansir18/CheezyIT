@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from './ui/skeleton';
-import { isRoot } from '@/lib/admins';
+import { isAdmin } from '@/lib/admins';
 
 type Announcement = {
     id: string;
@@ -34,7 +34,7 @@ export default function ReadStatusList({ announcement }: { announcement: Announc
 
     const isAuthorizedToQueryUsers = useMemo(() => {
         if (!currentUser) return false;
-        if (isRoot(currentUser.email)) return true;
+        if (isAdmin(currentUser.email)) return true;
         if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
         return false;
     }, [currentUser, userProfile]);

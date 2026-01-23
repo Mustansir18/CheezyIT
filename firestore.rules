@@ -12,12 +12,12 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    function isRootUser() {
+    function isAdmin() {
       return request.auth != null && request.auth.token.email != null && request.auth.token.email.toLowerCase() == 'mustansir133@gmail.com';
     }
     
     function isPrivilegedUser() {
-      // NOTE: This function does NOT check for root. isRootUser() should be checked separately.
+      // NOTE: This function does NOT check for the admin user. isAdmin() should be checked separately.
       if (request.auth == null) {
         return false;
       }
@@ -29,11 +29,11 @@ service cloud.firestore {
     }
 
     // =================================
-    // Root User Override
+    // Admin User Override
     // =================================
-    // The root user has blanket read/write access to everything. This is the ultimate override.
+    // The admin user has blanket read/write access to everything. This is the ultimate override.
     match /{path=**} {
-      allow read, write: if isRootUser();
+      allow read, write: if isAdmin();
     }
 
     // =================================
