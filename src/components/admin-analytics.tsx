@@ -124,6 +124,9 @@ export default function AdminAnalytics() {
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   const isMobile = useIsMobile();
 
+  const issuesQueryRef = useMemoFirebase(() => collectionGroup(firestore, 'issues'), [firestore]);
+  const usersQueryRef = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+
   useEffect(() => {
     if (!user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
       setTicketsLoading(false);
@@ -134,7 +137,6 @@ export default function AdminAnalytics() {
 
     setTicketsLoading(true);
 
-    const usersQueryRef = query(collection(firestore, 'users'));
     const usersUnsubscribe = onSnapshot(usersQueryRef,
         (usersSnapshot) => {
             const usersData = usersSnapshot.docs.map(docSnap => ({ ...(docSnap.data()), id: docSnap.id })) as WithId<User>[];
@@ -146,7 +148,6 @@ export default function AdminAnalytics() {
         }
     );
 
-    const issuesQueryRef = collectionGroup(firestore, 'issues');
     const issuesUnsubscribe = onSnapshot(issuesQueryRef,
       (issuesSnapshot) => {
         const fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
@@ -170,7 +171,7 @@ export default function AdminAnalytics() {
         usersUnsubscribe();
         issuesUnsubscribe();
     };
-  }, [user, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast]);
+  }, [user, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast, issuesQueryRef, usersQueryRef]);
 
   const loading = ticketsLoading;
 
@@ -612,6 +613,8 @@ export default function AdminAnalytics() {
     </div>
   );
 }
+
+    
 
     
 

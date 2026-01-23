@@ -127,6 +127,8 @@ export default function AdminTicketList() {
   const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
 
+  const issuesQuery = useMemoFirebase(() => collectionGroup(firestore, 'issues'), [firestore]);
+
   useEffect(() => {
     if (userLoading || profileLoading || !user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
       setTicketsLoading(false);
@@ -143,8 +145,6 @@ export default function AdminTicketList() {
         console.error("Error fetching users:", err);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch user data.' });
     });
-    
-    const issuesQuery = collectionGroup(firestore, 'issues');
     
     const unsubscribe = onSnapshot(issuesQuery,
       (snapshot) => {
@@ -213,7 +213,7 @@ export default function AdminTicketList() {
         unsubscribe();
         isInitialLoadComplete.current = false;
     };
-  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast, playNewTicketSound, playInProgressSound, playResolvedSound, playClosedSound]);
+  }, [user, userLoading, profileLoading, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast, playNewTicketSound, playInProgressSound, playResolvedSound, playClosedSound, issuesQuery]);
   
   const loading = userLoading || profileLoading || ticketsLoading;
 
@@ -498,5 +498,7 @@ const handleSendComment = () => {
     </>
   );
 }
+
+    
 
     
