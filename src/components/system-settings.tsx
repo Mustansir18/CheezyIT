@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 
@@ -20,7 +20,7 @@ interface SettingsListManagerProps {
   docPath: string;
 }
 
-const SettingsListManager = React.memo(function SettingsListManager({ title, description, items, onAddItem, onDeleteItem, isLoading, docPath }: SettingsListManagerProps) {
+const SettingsListManager = ({ title, description, items, onAddItem, onDeleteItem, isLoading, docPath }: SettingsListManagerProps) => {
   const [newItem, setNewItem] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -98,17 +98,17 @@ const SettingsListManager = React.memo(function SettingsListManager({ title, des
       </CardContent>
     </Card>
   );
-});
+};
 
 export default function SystemSettings({ regions, setRegions }: { regions: string[], setRegions: (updater: (regions: string[]) => string[]) => void }) {
   
-  const addRegion = useCallback((region: string) => {
+  const addRegion = (region: string) => {
       setRegions(currentRegions => [...currentRegions, region]);
-  }, [setRegions]);
+  };
 
-  const deleteRegion = useCallback((regionToDelete: string) => {
+  const deleteRegion = (regionToDelete: string) => {
       setRegions(currentRegions => currentRegions.filter(region => region !== regionToDelete));
-  }, [setRegions]);
+  };
   
   return (
     <div className="grid gap-4 md:grid-cols-1 max-w-md">
