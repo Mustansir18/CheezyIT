@@ -46,7 +46,7 @@ service cloud.firestore {
 
     // This rule allows admins and support to query across all users' tickets.
     match /{path=**}/issues/{issueId} {
-      allow list: if isPrivilegedUser();
+      allow list, read: if isPrivilegedUser();
     }
 
     match /users/{userId}/issues/{issueId} {
