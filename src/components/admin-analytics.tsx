@@ -7,8 +7,8 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
 import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser } from '@/firebase';
-import { collection, query, doc, onSnapshot, collectionGroup } from 'firebase/firestore';
+import { useFirestore, useDoc, useMemoFirebase, type WithId, useUser, useCollection } from '@/firebase';
+import { collection, query, doc, collectionGroup } from 'firebase/firestore';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ type UserProfile = {
 type User = {
     id: string;
     displayName: string;
-    role: 'User' | 'it-support' | 'Admin';
+    role: 'User' | 'it-support' | 'Admin' | 'Branch';
 };
 
 
@@ -110,10 +110,6 @@ export default function AdminAnalytics() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
-  
-  const [allTickets, setAllTickets] = useState<WithId<Ticket>[]>([]);
-  const [allUsers, setAllUsers] = useState<WithId<User>[]>([]);
-  const [ticketsLoading, setTicketsLoading] = useState(true);
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
@@ -123,57 +119,36 @@ export default function AdminAnalytics() {
   const isUserAdminRole = useMemo(() => userProfile?.role === 'Admin', [userProfile]);
   const isUserSupport = useMemo(() => userProfile?.role === 'it-support', [userProfile]);
   const isMobile = useIsMobile();
+  
+  const isAuthorized = useMemo(() => user && (isUserRoot || isUserAdminRole || isUserSupport), [user, isUserRoot, isUserAdminRole, isUserSupport]);
 
-  const issuesQueryRef = useMemoFirebase(() => collectionGroup(firestore, 'issues'), [firestore]);
-  const usersQueryRef = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+  const issuesQueryRef = useMemoFirebase(() => isAuthorized ? collectionGroup(firestore, 'issues') : null, [firestore, isAuthorized]);
+  const usersQueryRef = useMemoFirebase(() => isAuthorized ? query(collection(firestore, 'users')) : null, [firestore, isAuthorized]);
+
+  const { data: allTicketsData, isLoading: ticketsLoading, error: ticketsError } = useCollection<Ticket>(issuesQueryRef);
+  const { data: allUsersData, isLoading: usersLoading, error: usersError } = useCollection<User>(usersQueryRef);
+
+  const allTickets = useMemo(() => allTicketsData || [], [allTicketsData]);
+  const allUsers = useMemo(() => allUsersData || [], [allUsersData]);
 
   useEffect(() => {
-    if (!user || (!isUserRoot && !isUserAdminRole && !isUserSupport)) {
-      setTicketsLoading(false);
-      setAllTickets([]);
-      setAllUsers([]);
-      return;
+    if (usersError) {
+        console.error("Error fetching users for analytics:", usersError);
+        toast({ variant: 'destructive', title: 'User Data Error', description: 'Could not fetch users in real-time.' });
     }
-
-    setTicketsLoading(true);
-
-    const usersUnsubscribe = onSnapshot(usersQueryRef,
-        (usersSnapshot) => {
-            const usersData = usersSnapshot.docs.map(docSnap => ({ ...(docSnap.data()), id: docSnap.id })) as WithId<User>[];
-            setAllUsers(usersData);
-        },
-        (error) => {
-            console.error("Error fetching users for analytics:", error);
-            toast({ variant: 'destructive', title: 'User Data Error', description: 'Could not fetch users in real-time.' });
-        }
-    );
-
-    const issuesUnsubscribe = onSnapshot(issuesQueryRef,
-      (issuesSnapshot) => {
-        const fetchedTickets = issuesSnapshot.docs.map(issueDoc => ({ ...(issueDoc.data() as Ticket), id: issueDoc.id } as WithId<Ticket>));
-        setAllTickets(fetchedTickets);
-        setTicketsLoading(false);
-      }, 
-      (error: any) => {
-        console.error("Error fetching tickets for analytics:", error);
+    if (ticketsError) {
+        console.error("Error fetching tickets for analytics:", ticketsError);
         toast({
             variant: 'destructive',
             title: 'Ticket Data Error',
-            description: error.code === 'permission-denied' 
+            description: (ticketsError as any).code === 'permission-denied' 
                 ? 'You do not have required permissions to view ticket analytics.'
                 : 'Could not fetch ticket analytics in real-time.',
         });
-        setTicketsLoading(false);
-      }
-    );
+    }
+  }, [usersError, ticketsError, toast]);
 
-    return () => {
-        usersUnsubscribe();
-        issuesUnsubscribe();
-    };
-  }, [user, isUserRoot, isUserAdminRole, isUserSupport, firestore, toast, issuesQueryRef, usersQueryRef]);
-
-  const loading = ticketsLoading;
+  const loading = ticketsLoading || usersLoading;
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -191,7 +166,7 @@ export default function AdminAnalytics() {
     return allUsers.reduce((acc, user) => {
         acc[user.id] = user.role;
         return acc;
-    }, {} as Record<string, 'User' | 'it-support' | 'Admin'>);
+    }, {} as Record<string, 'User' | 'it-support' | 'Admin' | 'Branch'>);
   }, [allUsers]);
 
   const filteredTickets = useMemo(() => {
@@ -613,9 +588,3 @@ export default function AdminAnalytics() {
     </div>
   );
 }
-
-    
-
-    
-
-    
