@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { doc, Timestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -27,7 +27,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const pathname = usePathname();
     const firestore = useFirestore();
-    const hasRedirected = useRef(false);
 
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -40,36 +39,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return userProfile?.role === 'it-support' || userProfile?.role === 'Admin';
     }, [user, userProfile]);
     
-    const isTicketPage = pathname.startsWith('/dashboard/ticket/');
-    const isDashboardHomePage = pathname === '/dashboard';
-    
     const isBlocked = useMemo(() => {
       return userProfile?.blockedUntil && userProfile.blockedUntil.toDate() > new Date();
     }, [userProfile]);
 
     useEffect(() => {
-        if (loading || hasRedirected.current) {
-            return;
+        if (loading) {
+            return; // Wait until user and profile are loaded
         }
-        
         if (!user) {
-            hasRedirected.current = true;
             router.replace('/');
-            return;
-        }
-
-        if (isPrivilegedUser && !isBlocked) {
-            hasRedirected.current = true;
+        } else if (isPrivilegedUser && !isBlocked) {
             router.replace('/root');
         }
-
     }, [user, loading, isPrivilegedUser, isBlocked, router]);
     
-    const shouldRender = !loading && user && !isPrivilegedUser && !isBlocked;
-
-    if (!shouldRender) {
-      if (isBlocked && userProfile?.blockedUntil) {
-          const blockExpires = formatDistanceToNow(userProfile.blockedUntil!.toDate(), { addSuffix: true });
+    // This guard is crucial. It prevents rendering children until the final destination is certain.
+    if (loading || !user || isPrivilegedUser) {
+      if (!loading && isBlocked && userProfile?.blockedUntil) {
+          const blockExpires = formatDistanceToNow(userProfile.blockedUntil.toDate(), { addSuffix: true });
           return (
               <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
                   <h1 className="text-2xl font-bold">Account Blocked</h1>
@@ -85,6 +73,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       );
     }
+    
+    // Only non-privileged users will render the content below
+    const isTicketPage = pathname.startsWith('/dashboard/ticket/');
+    const isDashboardHomePage = pathname === '/dashboard';
     
     return (
         <div className="flex min-h-screen w-full flex-col bg-gray-100 dark:bg-gray-950">

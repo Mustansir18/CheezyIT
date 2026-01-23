@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -24,7 +24,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
-  const hasRedirected = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -42,22 +41,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, [userProfile]);
 
   useEffect(() => {
-    if (loading || hasRedirected.current) {
-      return;
+    if (loading) {
+      return; // Wait until all data is loaded
     }
     if (!user) {
-      hasRedirected.current = true;
       router.replace('/');
     } else if (!isAuthorized) {
-      hasRedirected.current = true;
       router.replace('/dashboard');
     }
   }, [user, loading, isAuthorized, router]);
   
-  const shouldRender = !loading && user && isAuthorized && !isBlocked;
-
-  if (!shouldRender) {
-    if (isBlocked && userProfile?.blockedUntil) {
+  // This guard is crucial. It prevents rendering children until the final destination is certain.
+  if (loading || !user || !isAuthorized) {
+    if (!loading && isBlocked && userProfile?.blockedUntil) {
       const blockExpires = formatDistanceToNow(userProfile.blockedUntil.toDate(), { addSuffix: true });
       return (
           <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
@@ -75,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     );
   }
   
+  // Only authorized users will render the content below
   const isRootHomePage = pathname === '/root';
 
   return (
