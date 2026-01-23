@@ -36,9 +36,16 @@ service cloud.firestore {
     match /users/{userId}/issues/{issueId} {
       // User can create their own issue. Privileged users can manage all issues.
       allow create: if isOwner(userId) || isPrivilegedUser();
-      // isPrivilegedUser() allows read access to all tickets for admins/root.
-      // This is necessary for the collectionGroup query in the admin dashboard.
-      allow read, update: if isOwner(userId) || isPrivilegedUser();
+      
+      // Rules for reading/updating. `get` is for single documents, `list` is for queries.
+      // A regular user can `get` their own ticket.
+      // A privileged user can `get` any ticket.
+      allow get, update: if isOwner(userId) || isPrivilegedUser();
+
+      // Only privileged users can `list` tickets (e.g., in the admin ticket view).
+      // This is essential for collection group queries.
+      allow list: if isPrivilegedUser();
+      
       // Deleting issues is not allowed from the client for now, unless root user.
       allow delete: if isRootUser();
     }
