@@ -9,8 +9,8 @@ service cloud.firestore {
     }
 
     function isRootUser() {
-      // Check if the user's email is a designated root email
-      return request.auth.token.email == 'mustansir133@gmail.com';
+      // Check if the user's email is a designated root email, ignoring case.
+      return request.auth.token.email.toLowerCase() == 'mustansir133@gmail.com';
     }
     
     function isPrivilegedUser() {
