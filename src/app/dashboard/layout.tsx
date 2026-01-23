@@ -7,6 +7,7 @@ import { doc, Timestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { formatDistanceToNow } from 'date-fns';
+import { isRoot } from '@/lib/admins';
 
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const loading = userLoading || profileLoading;
     
+    const isPrivilegedUser = useMemo(() => {
+        if (!user) return false;
+        if (isRoot(user.email)) return true;
+        if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
+        return false;
+    }, [user, userProfile]);
+
     const isBlocked = useMemo(() => {
       return userProfile?.blockedUntil && userProfile.blockedUntil.toDate() > new Date();
     }, [userProfile]);
@@ -43,10 +51,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (!user) {
             hasRedirected.current = true;
             router.replace('/');
+        } else if (isPrivilegedUser) {
+            hasRedirected.current = true;
+            router.replace('/admin');
         }
-    }, [user, loading, router]);
+    }, [user, loading, router, isPrivilegedUser]);
     
-    if (loading || !user) {
+    if (loading || !user || isPrivilegedUser) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
