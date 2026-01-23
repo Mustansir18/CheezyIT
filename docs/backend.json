@@ -101,7 +101,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user of the IssueTrackr application. Roles define access: 'User'/'Branch' roles can only manage their own tickets. 'it-support' and 'Admin' can manage tickets across multiple users based on their assigned regions. The 'Admin' role has more efficient data fetching capabilities for reports and listings compared to 'it-support'.",
+      "description": "Represents a user of the IssueTrackr application. Roles define access: 'User'/'Branch' roles can only manage their own tickets.",
       "properties": {
         "email": {
           "type": "string",
@@ -114,12 +114,10 @@
         },
         "role": {
           "type": "string",
-          "description": "Role of the user, defining their access level. Can be User, Branch, it-support, or Admin.",
+          "description": "Role of the user, defining their access level. Can be User or Branch.",
           "enum": [
             "User",
-            "Branch",
-            "it-support",
-            "Admin"
+            "Branch"
           ]
         },
         "phoneNumber": {
@@ -130,13 +128,6 @@
         "region": {
             "type": "string",
             "description": "The geographical region of a standard user."
-        },
-        "regions": {
-            "type": "array",
-            "description": "For Admin/Support roles, a list of assigned regions. Can include 'all'.",
-            "items": {
-                "type": "string"
-            }
         },
         "blockedUntil": {
           "type": "string",
@@ -196,57 +187,6 @@
         "createdAt"
       ]
     },
-    "Announcement": {
-      "title": "Announcement",
-      "type": "object",
-      "description": "Represents a single master announcement sent by an admin. This serves as a central log.",
-      "properties": {
-        "title": { "type": "string", "description": "The title of the announcement." },
-        "message": { "type": "string", "description": "The message content of the announcement." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the announcement was created." },
-        "startDate": { "type": "string", "format": "date-time", "description": "The start date and time for the announcement to be visible. Optional." },
-        "endDate": { "type": "string", "format": "date-time", "description": "The end date and time after which the announcement will be hidden. Optional." },
-        "createdByUid": { "type": "string", "description": "The UID of the admin who sent the announcement." },
-        "createdByDisplayName": { "type": "string", "description": "The display name of the admin who sent the announcement." },
-        "target": {
-          "type": "object",
-          "description": "The targeting criteria for the announcement.",
-          "properties": {
-            "roles": { "type": "array", "items": { "type": "string" } },
-            "regions": { "type": "array", "items": { "type": "string" } },
-            "users": { "type": "array", "items": { "type": "string" } }
-          }
-        },
-        "recipientCount": { "type": "number", "description": "The number of users the announcement was sent to." },
-        "recipientUids": {
-            "type": "array",
-            "description": "The UIDs of all users who received the announcement.",
-            "items": { "type": "string" }
-        },
-        "readBy": {
-            "type": "array",
-            "description": "The UIDs of all users who have read the announcement.",
-            "items": { "type": "string" }
-        }
-      },
-      "required": ["title", "message", "createdAt", "createdByUid", "createdByDisplayName", "target", "recipientCount", "recipientUids"]
-    },
-    "UserNotification": {
-      "title": "User Notification",
-      "type": "object",
-      "description": "Represents a single notification or announcement sent to a user.",
-      "properties": {
-        "title": { "type": "string", "description": "The title of the notification." },
-        "message": { "type": "string", "description": "The message content of the notification." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the notification was created." },
-        "startDate": { "type": "string", "format": "date-time", "description": "The start date and time for the announcement to be visible. Optional." },
-        "endDate": { "type": "string", "format": "date-time", "description": "The end date and time after which the announcement will be hidden. Optional." },
-        "isRead": { "type": "boolean", "description": "True if the user has read the notification." },
-        "announcementId": { "type": "string", "description": "A reference to the master announcement document, if applicable." },
-        "createdByDisplayName": { "type": "string", "description": "The display name of the user who sent the announcement." }
-      },
-      "required": ["title", "message", "createdAt", "isRead", "createdByDisplayName"]
-    },
     "TicketCounter": {
         "title": "Ticket Counter",
         "type": "object",
@@ -258,30 +198,6 @@
             }
         },
         "required": ["count"]
-    },
-    "RegionSettings": {
-        "title": "Region Settings",
-        "type": "object",
-        "description": "Stores the list of available regions in the application.",
-        "properties": {
-            "list": {
-                "type": "array",
-                "description": "An array of region names.",
-                "items": { "type": "string" }
-            }
-        }
-    },
-    "RoleSettings": {
-        "title": "Role Settings",
-        "type": "object",
-        "description": "Stores the list of assignable user roles.",
-        "properties": {
-            "list": {
-                "type": "array",
-                "description": "An array of role names.",
-                "items": { "type": "string" }
-            }
-        }
     }
   },
   "auth": {
@@ -295,7 +211,7 @@
       "schema": {
         "$ref": "#/backend/entities/User"
       },
-      "description": "Stores user profiles. Listing of users is disabled to prevent unauthorized access. The 'userId' parameter represents the unique identifier for a user."
+      "description": "Stores user profiles. The 'userId' parameter represents the unique identifier for a user."
     },
     "/users/{userId}/issues/{issueId}": {
       "schema": {
@@ -307,29 +223,13 @@
       "schema": {
         "$ref": "#/backend/entities/ChatMessage"
       },
-      "description": "Stores chat messages for a specific issue. Both the user and support staff can post messages here."
-    },
-    "/users/{userId}/notifications/{notificationId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UserNotification"
-      },
-      "description": "Stores notifications and announcements for a specific user."
-    },
-    "/announcements/{announcementId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Announcement"
-      },
-      "description": "Stores a central log of all announcements sent. Only accessible by Admin/Root users."
+      "description": "Stores chat messages for a specific issue."
     },
     "/system_settings/{settingId}": {
       "schema": {
-        "oneOf": [
-            { "$ref": "#/backend/entities/RegionSettings" },
-            { "$ref": "#/backend/entities/RoleSettings" },
-            { "$ref": "#/backend/entities/TicketCounter" }
-        ]
+        "$ref": "#/backend/entities/TicketCounter"
       },
-      "description": "Stores global system settings like available regions, roles, and counters. Only accessible by Root users."
+      "description": "Stores global system settings like counters. The settingId for the ticket counter must be 'ticketCounter'."
     }
   }
 }

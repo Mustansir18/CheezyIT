@@ -4,90 +4,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
-    function isRoot() {
-      return request.auth.token.email == 'mustansir133@gmail.com' || request.auth.token.email == 'mustansir131@gmail.com';
-    }
-
-    function getUserData(uid) {
-      return get(/databases/$(database)/documents/users/$(uid)).data;
-    }
-    
-    function getUserRole(uid) {
-        return getUserData(uid).role;
-    }
-
     function isOwner(uid) {
       return request.auth.uid == uid;
-    }
-    
-    function isAdmin() {
-      // Check for existence of user doc before accessing role
-      return isRoot() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole(request.auth.uid) == 'Admin');
-    }
-    
-    function isSupport() {
-        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole(request.auth.uid) == 'it-support';
-    }
-
-    function canManageTickets() {
-      return isAdmin() || isSupport();
-    }
-
-    // Rule for collection group queries on 'issues'.
-    // This allows admins and support to query across all users' tickets.
-    match /{path=**}/issues/{issueId} {
-      allow read: if canManageTickets();
     }
 
     // Path rules
     match /users/{userId} {
-      // Any support staff can view a user's profile (e.g. on a ticket page)
-      // and users can view their own.
-      allow get: if isOwner(userId) || canManageTickets();
-      
-      // Admin/support can list users for reports and ticket filtering.
-      allow list: if isAdmin() || isSupport();
-
-      // Admin/root can create new users.
-      allow create: if isAdmin();
-      // Admin/root can update any user. A user can update their own profile.
-      allow update: if isAdmin() || isOwner(userId);
-      // Only root users can delete other users.
-      allow delete: if isRoot();
+      allow get: if isOwner(userId);
+      allow update: if isOwner(userId);
+      // Creating and deleting users must be done via the Firebase Console
+      // or a trusted server environment, not from the client.
+      allow create, delete: if false;
     }
 
     match /users/{userId}/issues/{issueId} {
+      // Any authenticated user can create an issue for themselves.
       allow create: if isOwner(userId);
-      // This allows individual document reads for owners or admins.
-      // The collection group rule above handles broad queries for admins.
-      allow read: if isOwner(userId) || canManageTickets();
-      // Users can re-open tickets. Admins can do anything.
-      allow update: if canManageTickets() || (isOwner(userId) && resource.data.status in ['Resolved', 'Closed']);
-      allow delete: if canManageTickets();
+      // Only the user who owns the issue can read or update it.
+      allow read, update: if isOwner(userId);
+      // Deleting issues is not allowed from the client.
+      allow delete: if false;
     }
     
     match /users/{userId}/issues/{issueId}/messages/{messageId} {
-      allow read, create: if isOwner(userId) || canManageTickets();
-      allow update, delete: if false; // Messages should be immutable
+      // Only the user who owns the parent issue can read or create messages.
+      allow read, create: if isOwner(userId);
+      // Messages are immutable once created.
+      allow update, delete: if false;
     }
     
-    match /users/{userId}/notifications/{notificationId} {
-      allow read, delete: if isOwner(userId);
-      allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow create: if isAdmin(); // Fanned out by admins
-    }
-
-    match /announcements/{announcementId} {
-      allow read, write: if isAdmin();
-    }
-    
-    match /system_settings/{settingId} {
-        // All auth'd users can read settings like regions.
-        allow read: if request.auth != null;
-        // Only root can change region/role settings.
-        // Any user can write to ticketCounter as part of a transaction.
-        allow write: if (settingId == 'regions' || settingId == 'roles') && isRoot() ||
-                     (settingId == 'ticketCounter' && request.auth != null);
+    match /system_settings/ticketCounter {
+        // Any authenticated user can read and write to the ticket counter
+        // as part of a transaction to generate a new ticket ID.
+        allow read, write: if request.auth != null;
     }
   }
 }

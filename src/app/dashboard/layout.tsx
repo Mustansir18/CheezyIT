@@ -1,19 +1,17 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { doc, Timestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { formatDistanceToNow } from 'date-fns';
-import { isRoot } from '@/lib/admins';
 
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
 import { cn } from '@/lib/utils';
-import AnnouncementBell from '@/components/announcement-bell';
 import WhatsAppFAB from '@/components/whatsapp-fab';
 
 type UserProfile = {
@@ -27,46 +25,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const pathname = usePathname();
     const firestore = useFirestore();
+    const hasRedirected = useRef(false);
 
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
     const loading = userLoading || profileLoading;
-
-    const isPrivilegedUser = useMemo(() => {
-        if (!user) return false;
-        if (isRoot(user.email)) return true;
-        return userProfile?.role === 'it-support' || userProfile?.role === 'Admin';
-    }, [user, userProfile]);
     
     const isBlocked = useMemo(() => {
       return userProfile?.blockedUntil && userProfile.blockedUntil.toDate() > new Date();
     }, [userProfile]);
 
     useEffect(() => {
-        if (loading) {
-            return; // Wait until user and profile are loaded
+        if (loading || hasRedirected.current) {
+            return;
         }
         if (!user) {
+            hasRedirected.current = true;
             router.replace('/');
-        } else if (isPrivilegedUser && !isBlocked) {
-            router.replace('/root');
         }
-    }, [user, loading, isPrivilegedUser, isBlocked, router]);
+    }, [user, loading, router]);
     
-    // This guard is crucial. It prevents rendering children until the final destination is certain.
-    if (loading || !user || isPrivilegedUser) {
-      if (!loading && isBlocked && userProfile?.blockedUntil) {
-          const blockExpires = formatDistanceToNow(userProfile.blockedUntil.toDate(), { addSuffix: true });
-          return (
-              <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
-                  <h1 className="text-2xl font-bold">Account Blocked</h1>
-                  <p className="text-muted-foreground">Your account has been temporarily blocked by an administrator.</p>
-                  <p>Access will be restored {blockExpires}.</p>
-                  <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
-              </div>
-          );
-      }
+    if (loading || !user) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -74,7 +54,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       );
     }
     
-    // Only non-privileged users will render the content below
+    if (isBlocked && userProfile?.blockedUntil) {
+        const blockExpires = formatDistanceToNow(userProfile.blockedUntil.toDate(), { addSuffix: true });
+        return (
+            <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-center">
+                <h1 className="text-2xl font-bold">Account Blocked</h1>
+                <p className="text-muted-foreground">Your account has been temporarily blocked.</p>
+                <p>Access will be restored {blockExpires}.</p>
+                <Button onClick={() => signOut(auth)} variant="outline">Sign Out</Button>
+            </div>
+        );
+    }
+    
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
     const isDashboardHomePage = pathname === '/dashboard';
     
@@ -93,7 +84,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                     </Link>
                     <div className="flex items-center gap-2">
-                        <AnnouncementBell />
                         <ReportIssueForm>
                             <Button className="rounded-md">Report an Issue</Button>
                         </ReportIssueForm>
