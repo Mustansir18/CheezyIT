@@ -1,7 +1,7 @@
 'use client';
 import UserManagement from '@/components/user-management';
 import SystemSettings from '@/components/system-settings';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isRoot } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -11,20 +11,35 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { doc } from 'firebase/firestore';
+
+type UserProfile = {
+  role?: string;
+};
 
 export default function AdminSettingsPage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const userIsRoot = useMemo(() => user && isRoot(user.email), [user]);
   
-  const isAuthorized = useMemo(() => userIsRoot, [userIsRoot]);
+  const isAuthorized = useMemo(() => {
+    if (userIsRoot) return true;
+    if (userProfile && (userProfile.role === 'Admin' || userProfile.role === 'it-support')) return true;
+    return false;
+  }, [userIsRoot, userProfile]);
+
+  const loading = userLoading || profileLoading;
 
   useEffect(() => {
     if (!loading && !isAuthorized) {
       router.push('/admin');
     }
-  }, [user, loading, isAuthorized, router]);
+  }, [loading, isAuthorized, router]);
 
   if (loading || !isAuthorized) {
     return (
@@ -44,7 +59,7 @@ export default function AdminSettingsPage() {
             </Link>
         </Button>
         <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsRoot && "text-primary")}>
-          Root
+          {userIsRoot ? 'Root Settings' : 'User Management'}
         </h1>
       </div>
       
