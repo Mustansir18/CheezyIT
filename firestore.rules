@@ -17,13 +17,9 @@ service cloud.firestore {
     }
     
     function isPrivilegedUser() {
-      // A non-root user must be authenticated to be privileged.
+      // NOTE: This function does NOT check for root. isRootUser() should be checked separately.
       if (request.auth == null) {
         return false;
-      }
-      // If user is root user, they are privileged.
-      if (isRootUser()) {
-        return true;
       }
       if (exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
         let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
@@ -35,24 +31,18 @@ service cloud.firestore {
     // =================================
     // Root User Override
     // =================================
-    // The root user has blanket read/write access to everything. This rule will grant
-    // access if the user is the root user, regardless of other rules.
+    // The root user has blanket read/write access to everything. This is the ultimate override.
     match /{path=**} {
       allow read, write: if isRootUser();
     }
 
     // =================================
-    // Path Rules for Non-Root Users
+    // Path Rules
     // =================================
 
     match /users/{userId} {
-      // Allow privileged users to list/read user profiles.
-      // Allow users to read their own profile.
       allow get: if isOwner(userId) || isPrivilegedUser();
       allow list: if isPrivilegedUser();
-      
-      // Allow privileged users to create profiles.
-      // Allow users to update their own profile.
       allow create: if isPrivilegedUser();
       allow update: if isOwner(userId) || isPrivilegedUser();
     }
