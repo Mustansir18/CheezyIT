@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import WhatsAppFAB from '@/components/whatsapp-fab';
 
 const useUser = () => {
-    const [user, setUser] = useState<{ email: string; } | null>(null);
+    const [user, setUser] = useState<{ email: string; role: string; } | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const isPrivilegedUser = useMemo(() => {
         if (!user) return false;
-        if (isAdmin(user.email)) return true;
+        if (['Admin', 'it-support', 'Head'].includes(user.role)) return true;
         return false;
     }, [user]);
 
@@ -49,7 +49,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             router.replace('/');
         } else if (isPrivilegedUser) {
             hasRedirected.current = true;
-            router.replace('/admin');
+            if (user.role === 'it-support') {
+              router.replace('/admin/tickets');
+            } else {
+              router.replace('/admin');
+            }
         }
     }, [user, loading, router, isPrivilegedUser]);
     

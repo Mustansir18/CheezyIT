@@ -23,7 +23,7 @@ export type User = {
   id: string;
   displayName: string;
   email: string;
-  role: 'User' | 'it-support' | 'Admin' | 'Branch';
+  role: 'User' | 'it-support' | 'Admin' | 'Branch' | 'Head';
   region?: string;
   regions?: string[];
   blockedUntil?: Date | null;
@@ -34,7 +34,7 @@ const userSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
-  role: z.enum(['User', 'it-support', 'Admin', 'Branch']),
+  role: z.enum(['User', 'it-support', 'Admin', 'Branch', 'Head']),
   region: z.string().optional(),
   regions: z.array(z.string()).optional(),
 }).refine(data => {
@@ -42,7 +42,7 @@ const userSchema = z.object({
     return true;
 }, { message: 'Region is required for User role.', path: ['region']})
 .refine(data => {
-    if ((data.role === 'it-support' || data.role === 'Admin' || data.role === 'Branch') && (!data.regions || data.regions.length === 0)) return false;
+    if ((data.role === 'it-support' || data.role === 'Admin' || data.role === 'Branch' || data.role === 'Head') && (!data.regions || data.regions.length === 0)) return false;
     return true;
 }, { message: 'At least one region is required for this role.', path: ['regions']});
 
@@ -258,13 +258,14 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                             <SelectItem value="User">User</SelectItem>
                             <SelectItem value="Branch">Branch</SelectItem>
                             <SelectItem value="it-support">IT Support</SelectItem>
+                            <SelectItem value="Head">Head</SelectItem>
                             <SelectItem value="Admin">Admin</SelectItem>
                         </SelectContent>
                     </Select>
                 <FormMessage /></FormItem>
              )}/>
              
-             {['Admin', 'it-support', 'Branch'].includes(watchedRole) && (
+             {['Admin', 'it-support', 'Branch', 'Head'].includes(watchedRole) && (
                 <FormField control={form.control} name="regions" render={({ field }) => (
                     <FormItem><FormLabel>Regions</FormLabel>
                         <FormControl>

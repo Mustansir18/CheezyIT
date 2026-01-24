@@ -14,6 +14,7 @@ import type { User } from '@/components/user-management';
 
 const mockUsersList: User[] = [
     { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
+    { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', regions: ['all'], blockedUntil: null },
     { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', regions: ['Region A', 'Region B'], blockedUntil: null },
     { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', region: 'Region A', blockedUntil: null },
 ];
@@ -36,7 +37,7 @@ export default function AdminAnnouncementsPage() {
   const router = useRouter();
 
   const isAuthorized = useMemo(() => {
-    if (user && user.role === 'Admin') return true;
+    if (user && (user.role === 'Admin' || user.role === 'Head')) return true;
     return false;
   }, [user]);
 

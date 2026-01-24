@@ -5,7 +5,7 @@ import { isAdmin } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -15,8 +15,9 @@ import type { User } from '@/components/user-management';
 
 const initialRegions = ['Region A', 'Region B', 'Region C'];
 
-const mockUsersList: User[] = [
+const initialUsers: User[] = [
     { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
+    { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', regions: ['all'], blockedUntil: null },
     { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', regions: ['Region A', 'Region B'], blockedUntil: null },
     { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', region: 'Region A', blockedUntil: null },
 ];
@@ -25,7 +26,7 @@ export default function AdminSettingsPage() {
     const [user, setUser] = useState<{email: string; role: string} | null>(null);
     const [loading, setLoading] = useState(true);
     const [regions, setRegions] = useState<string[]>(initialRegions);
-    const [users, setUsers] = useState<User[]>(mockUsersList);
+    const [users, setUsers] = useState<User[]>(initialUsers);
     const router = useRouter();
     const { toast } = useToast();
 
@@ -67,6 +68,10 @@ export default function AdminSettingsPage() {
       setUsers(currentUsers => currentUsers.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u));
       toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'} (Mock)`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
   };
+  
+   const handleSetRegions = (updater: (prevRegions: string[]) => string[]) => {
+    setRegions(updater);
+  };
 
   if (loading || !isAuthorized) {
     return (
@@ -103,7 +108,7 @@ export default function AdminSettingsPage() {
             <Separator />
             <div>
                 <h2 className="text-2xl font-headline font-bold mb-4">System Settings</h2>
-                <SystemSettings regions={regions} setRegions={setRegions} />
+                <SystemSettings regions={regions} setRegions={handleSetRegions} />
             </div>
           </>
         )}

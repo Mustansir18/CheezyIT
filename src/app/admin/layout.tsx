@@ -38,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isAuthorized = useMemo(() => {
     if (!user) return false;
-    if (user.role === 'Admin' || user.role === 'it-support') return true;
+    if (user.role === 'Admin' || user.role === 'it-support' || user.role === 'Head') return true;
     return false;
   }, [user]);
   

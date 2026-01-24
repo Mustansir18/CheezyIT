@@ -25,7 +25,7 @@ export default function AdminReportsPage() {
   const router = useRouter();
 
   const isAuthorized = useMemo(() => {
-    if (user && user.role === 'Admin') return true;
+    if (user && (user.role === 'Admin' || user.role === 'Head')) return true;
     return false;
   }, [user]);
 
