@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown } from 'lucide-react';
+import { ChevronsUpDown, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,10 +25,26 @@ interface MultiSelectProps {
   onChange: (selected: string[]) => void;
   className?: string;
   placeholder?: string;
+  mode?: 'single' | 'multiple'; 
 }
 
 const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
-  ({ options, selected, onChange, className, placeholder = "Select..." }, ref) => {
+  ({ options, selected, onChange, className, placeholder = "Select...", mode = "multiple" }, ref) => {
+    
+    const handleSelect = (optionValue: string) => {
+      const isCurrentlySelected = selected.includes(optionValue);
+
+      if (mode === 'single') {
+        onChange(isCurrentlySelected ? [] : [optionValue]);
+      } else {
+        if (!isCurrentlySelected) {
+          onChange([...selected, optionValue]);
+        } else {
+          onChange(selected.filter((item) => item !== optionValue));
+        }
+      }
+    };
+
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -36,51 +52,54 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
             ref={ref}
             variant="outline"
             role="combobox"
-            aria-expanded={true}
-            className={cn('w-full justify-between h-auto min-h-10', className)}
+            className={cn('w-full justify-between h-auto min-h-10 px-3 py-2', className)}
           >
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1 flex-wrap items-center">
               {selected.length > 0 ? (
                 options
                   .filter((option) => selected.includes(option.value))
                   .map((option) => (
-                    <Badge variant="secondary" key={option.value}>
+                    <Badge 
+                      variant="secondary" 
+                      key={option.value}
+                      className="flex items-center gap-1"
+                    >
                       {option.label}
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelect(option.value);
+                        }}
+                      />
                     </Badge>
                   ))
               ) : (
                 <span className="text-muted-foreground">{placeholder}</span>
               )}
             </div>
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
           <ScrollArea className="max-h-72">
             <div className="p-2 space-y-1">
               {options.map((option) => (
-                <label
+                <div
                   key={option.value}
-                  htmlFor={`ms-option-${option.value}`}
-                  className="flex items-center p-2 rounded-md hover:bg-accent cursor-pointer"
+                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
+                  onClick={() => handleSelect(option.value)}
                 >
                   <Checkbox
                     id={`ms-option-${option.value}`}
                     checked={selected.includes(option.value)}
-                    onCheckedChange={(checked) => {
-                      const isCurrentlySelected = selected.includes(option.value);
-                      if (checked && !isCurrentlySelected) {
-                        onChange([...selected, option.value]);
-                      } else if (!checked && isCurrentlySelected) {
-                        onChange(selected.filter((item) => item !== option.value));
-                      }
-                    }}
-                    className="mr-2"
+                    onCheckedChange={() => handleSelect(option.value)}
+                    onClick={(e) => e.stopPropagation()} 
                   />
-                  <span className="w-full text-sm font-medium">
+                  <span className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     {option.label}
                   </span>
-                </label>
+                </div>
               ))}
             </div>
           </ScrollArea>

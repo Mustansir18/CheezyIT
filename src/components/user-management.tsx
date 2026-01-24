@@ -44,10 +44,10 @@ const userSchema = z.object({
             path: ['regions'],
         });
     }
-    if (data.role === 'User' && data.regions && data.regions.length > 1) {
+    if ((data.role === 'User' || data.role === 'Branch') && data.regions && data.regions.length > 1) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Users can only be assigned to one region.',
+            message: 'Users and branches can only be assigned to one region.',
             path: ['regions'],
         });
     }
@@ -231,12 +231,11 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    // Default values are set in the useEffect hook
   });
 
   useEffect(() => {
     if (isOpen) {
-      const initialRegions = user ? (user.role === 'User' ? (user.region ? [user.region] : []) : (user.regions || [])) : [];
+      const initialRegions = user ? (user.role === 'User' || user.role === 'Branch' ? (user.region ? [user.region] : []) : (user.regions || [])) : [];
       form.reset({
         id: user?.id || undefined,
         displayName: user?.displayName || '',
@@ -304,27 +303,26 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                       <FormLabel>Region(s)</FormLabel>
                       <FormControl>
                         <MultiSelect
-                          options={watchedRole === 'User' ? regions.filter(r => r.value !== 'all') : regions}
-                          selected={field.value || []}
-                          onChange={(selected) => {
-                            if (watchedRole === 'User') {
-                              // For 'User' role, only allow a single selection.
-                              field.onChange(selected.length > 0 ? [selected[selected.length - 1]] : []);
-                            } else {
-                              // For other roles, handle 'all' selection logic.
-                              const currentValue = field.value || [];
-                              const isNowSelectingAll = selected.includes('all');
-                              
-                              if (isNowSelectingAll && !currentValue.includes('all')) {
-                                field.onChange(['all']);
-                              } else if (currentValue.includes('all') && selected.length > 1) {
-                                field.onChange(selected.filter(v => v !== 'all'));
-                              } else {
+                            options={['User', 'Branch'].includes(watchedRole) ? regions.filter(r => r.value !== 'all') : regions}
+                            selected={field.value || []}
+                            onChange={(selected) => {
+                                if (['it-support', 'Head'].includes(watchedRole)) {
+                                    const oldSelection = field.value || [];
+                                    const isSelectingAll = selected.includes('all');
+                                    
+                                    if (isSelectingAll && !oldSelection.includes('all')) {
+                                        field.onChange(['all']);
+                                        return;
+                                    }
+                                    if (oldSelection.includes('all') && selected.length > 1) {
+                                        field.onChange(selected.filter(item => item !== 'all'));
+                                        return;
+                                    }
+                                }
                                 field.onChange(selected);
-                              }
-                            }
-                          }}
-                          placeholder="Select region(s)..."
+                            }}
+                            mode={['User', 'Branch'].includes(watchedRole) ? 'single' : 'multiple'}
+                            placeholder="Select region(s)..."
                         />
                       </FormControl>
                       <FormMessage />
