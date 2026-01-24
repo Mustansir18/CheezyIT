@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { User } from '@/components/user-management';
 import type { Announcement } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
 
 const mockUsersList: User[] = [
     { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
@@ -25,24 +26,38 @@ export default function AdminAnnouncementsPage() {
   const [user, setUser] = useState<{id: string, email: string; role: string} | null>(null);
   const [loading, setLoading] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const { toast } = useToast();
+
+  const loadData = useCallback(() => {
+      const userJson = localStorage.getItem('mockUser');
+      if (userJson) {
+        setUser(JSON.parse(userJson));
+      }
+      const announcementsJson = localStorage.getItem('mockAnnouncements');
+      if (announcementsJson) {
+        const parsed = JSON.parse(announcementsJson).map((a: any) => ({
+          ...a,
+          createdAt: new Date(a.createdAt),
+          startDate: a.startDate ? new Date(a.startDate) : undefined,
+          endDate: a.endDate ? new Date(a.endDate) : undefined,
+        }));
+        setAnnouncements(parsed);
+      }
+  }, []);
 
   useEffect(() => {
-    const userJson = localStorage.getItem('mockUser');
-    if (userJson) {
-      setUser(JSON.parse(userJson));
-    }
-    const announcementsJson = localStorage.getItem('mockAnnouncements');
-    if (announcementsJson) {
-      const parsed = JSON.parse(announcementsJson).map((a: any) => ({
-        ...a,
-        createdAt: new Date(a.createdAt),
-        startDate: a.startDate ? new Date(a.startDate) : undefined,
-        endDate: a.endDate ? new Date(a.endDate) : undefined,
-      }));
-      setAnnouncements(parsed);
-    }
+    loadData();
     setLoading(false);
-  }, []);
+
+    const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'mockUser' || e.key === 'mockAnnouncements') {
+            loadData();
+        }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [loadData]);
+
 
   const handleAddAnnouncement = useCallback((newAnnouncement: Omit<Announcement, 'id' | 'createdAt' | 'sentBy' | 'readBy'>) => {
     if (!user) return;
@@ -62,6 +77,15 @@ export default function AdminAnnouncementsPage() {
     });
 
   }, [user]);
+
+  const handleDeleteAnnouncement = useCallback((announcementId: string) => {
+    setAnnouncements(prev => {
+        const updatedAnnouncements = prev.filter(a => a.id !== announcementId);
+        localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
+        return updatedAnnouncements;
+    });
+    toast({ title: 'Announcement Deleted', description: 'The announcement has been removed.' });
+  }, [toast]);
 
   const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
   const router = useRouter();
@@ -108,7 +132,11 @@ export default function AdminAnnouncementsPage() {
         <AnnouncementForm users={mockUsersList} regions={initialRegions} onAddAnnouncement={handleAddAnnouncement} currentUser={user} />
       </TabsContent>
       <TabsContent value="history" className="mt-4">
-        <AnnouncementHistory announcements={announcements} />
+        <AnnouncementHistory 
+            announcements={announcements} 
+            onDelete={handleDeleteAnnouncement}
+            canDelete={isAuthorized}
+        />
       </TabsContent>
     </Tabs>
   );
