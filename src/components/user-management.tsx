@@ -23,7 +23,7 @@ export type User = {
   id: string;
   displayName: string;
   email: string;
-  role: 'User' | 'it-support' | 'Admin' | 'Head';
+  role: 'User' | 'it-support' | 'Admin' | 'Head' | 'Branch';
   regions: string[];
   blockedUntil?: Date | null;
 };
@@ -33,10 +33,12 @@ const userSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
-  role: z.enum(['User', 'it-support', 'Admin', 'Head']),
-  regions: z.array(z.string()).optional(),
+  role: z.enum(['User', 'it-support', 'Admin', 'Head', 'Branch']),
+  regions: z.array(z.string()).min(1, { message: 'At least one region is required.' }),
 }).refine(data => {
+    // Admin doesn't need a region
     if (data.role === 'Admin') return true;
+    // Other roles need at least one region
     return data.regions && data.regions.length > 0;
 }, {
     message: 'At least one region is required for this role.',
@@ -259,23 +261,28 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
     }, 500);
   };
   
-  const handleRegionChange = (selected: string[]) => {
-      const currentRegions = form.getValues('regions') || [];
-      const wasAllSelected = currentRegions.includes('all');
-      const isAllNowSelected = selected.includes('all');
+  const handleRegionChange = (selected: string[], currentField: any) => {
+      const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
+      
+      if (isMultiRole) {
+        const wasAllSelected = currentField.value?.includes('all');
+        const isAllNowSelected = selected.includes('all');
 
-      if (isAllNowSelected && !wasAllSelected) {
-        form.setValue('regions', ['all']);
-        return;
+        if (isAllNowSelected && !wasAllSelected) {
+          currentField.onChange(['all']);
+          return;
+        }
+        
+        if (wasAllSelected && selected.length > 1) {
+          currentField.onChange(selected.filter(i => i !== 'all'));
+          return;
+        }
       }
       
-      if (wasAllSelected && selected.length > 1) {
-        form.setValue('regions', selected.filter(i => i !== 'all'));
-        return;
-      }
-      
-      form.setValue('regions', selected);
+      currentField.onChange(selected);
   };
+
+  const isSingleRegionRole = ['User', 'Branch'].includes(watchedRole);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { form.reset(); } setIsOpen(open); }}>
@@ -304,10 +311,9 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                     <Select 
                       onValueChange={(val) => {
                         field.onChange(val);
-                        if (val === 'Admin') {
-                            form.setValue('regions', ['all']);
-                        } else {
-                            form.setValue('regions', []);
+                        if (['User', 'Branch'].includes(val)) {
+                            const currentRegions = form.getValues('regions') || [];
+                            form.setValue('regions', currentRegions.slice(0, 1));
                         }
                       }} 
                       defaultValue={field.value}
@@ -315,6 +321,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
                         <SelectContent>
                             <SelectItem value="User">User</SelectItem>
+                            <SelectItem value="Branch">Branch</SelectItem>
                             <SelectItem value="it-support">IT Support</SelectItem>
                             <SelectItem value="Head">Head</SelectItem>
                             <SelectItem value="Admin">Admin</SelectItem>
@@ -332,10 +339,14 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                       <FormLabel>Region(s)</FormLabel>
                       <FormControl>
                         <MultiSelect
-                            options={regions}
+                            options={isSingleRegionRole
+                                ? regions.filter(r => r.value !== 'all') 
+                                : regions
+                            }
                             selected={field.value || []}
-                            onChange={handleRegionChange}
-                            placeholder="Select region(s)..."
+                            onChange={(selected) => handleRegionChange(selected, field)}
+                            mode={isSingleRegionRole ? 'single' : 'multiple'}
+                            placeholder={isSingleRegionRole ? "Select a region..." : "Select region(s)..."}
                         />
                       </FormControl>
                       <FormMessage />

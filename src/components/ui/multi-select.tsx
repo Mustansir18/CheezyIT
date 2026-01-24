@@ -32,17 +32,18 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
   ({ options, selected, onChange, className, placeholder = "Select...", mode = "multiple" }, ref) => {
     
     const handleSelect = (optionValue: string) => {
-      const isCurrentlySelected = selected.includes(optionValue);
+      let newSelected: string[];
 
       if (mode === 'single') {
-        onChange(isCurrentlySelected ? [] : [optionValue]);
+        newSelected = selected.includes(optionValue) ? [] : [optionValue];
       } else {
-        if (!isCurrentlySelected) {
-          onChange([...selected, optionValue]);
+        if (selected.includes(optionValue)) {
+          newSelected = selected.filter((item) => item !== optionValue);
         } else {
-          onChange(selected.filter((item) => item !== optionValue));
+          newSelected = [...selected, optionValue];
         }
       }
+      onChange(newSelected);
     };
 
     return (
@@ -87,18 +88,19 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
               {options.map((option) => (
                 <div
                   key={option.value}
-                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
-                  onClick={() => handleSelect(option.value)}
+                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent"
                 >
                   <Checkbox
                     id={`ms-option-${option.value}`}
                     checked={selected.includes(option.value)}
                     onCheckedChange={() => handleSelect(option.value)}
-                    onClick={(e) => e.stopPropagation()} 
                   />
-                  <span className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  <label
+                    htmlFor={`ms-option-${option.value}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer py-1"
+                  >
                     {option.label}
-                  </span>
+                  </label>
                 </div>
               ))}
             </div>
