@@ -123,7 +123,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-white text-zinc-900 placeholder:text-zinc-500 border-zinc-300"
+                  className="bg-zinc-800 border-zinc-700 placeholder:text-zinc-500"
                 />
               </div>
               <div className="space-y-2">
@@ -134,7 +134,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-white text-zinc-900 placeholder:text-zinc-500 border-zinc-300"
+                  className="bg-zinc-800 border-zinc-700 placeholder:text-zinc-500"
                 />
               </div>
               <Button type="submit" className="w-full !mt-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
