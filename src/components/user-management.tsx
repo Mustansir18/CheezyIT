@@ -215,9 +215,24 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       regions: user?.regions || [],
       password: '',
     });
-  }, [user, form]);
+  }, [user, form, isOpen]);
   
   const watchedRole = form.watch('role');
+
+  useEffect(() => {
+    // When the role changes, clear the irrelevant region/regions field
+    // to prevent submitting inconsistent data.
+    if (watchedRole === 'User') {
+      if (form.getValues('regions')?.length) {
+        form.setValue('regions', []);
+      }
+    } else if (['Admin', 'it-support', 'Branch', 'Head'].includes(watchedRole)) {
+      if (form.getValues('region')) {
+        form.setValue('region', '');
+      }
+    }
+  }, [watchedRole, form]);
+
 
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
