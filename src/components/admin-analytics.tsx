@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, LineChart, Line, CartesianGrid, Cell, ResponsiveContainer } from 'recharts';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
+import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
 import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltipContent, ChartTooltip, ChartConfig } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltipContent, ChartTooltip } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Ticket } from '@/lib/data';
@@ -21,6 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { exportData } from '@/lib/export';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import type { User as AppUser } from '@/components/user-management';
+
 
 function ExportButtons({ title, columns, data }: { title: string, columns: string[], data: any[][] }) {
     const [exporting, setExporting] = useState<null | 'pdf' | 'excel'>(null);
@@ -62,29 +64,74 @@ function ExportButtons({ title, columns, data }: { title: string, columns: strin
     );
 }
 
-const hourlyChartConfig = {
-     tickets: { label: "Tickets", color: "hsl(var(--chart-1))" },
-} satisfies ChartConfig;
+const getResolutionTime = (createdAt: any, completedAt: any): {time: string, minutes: number} => {
+    if (!completedAt || !createdAt) return { time: 'N/A', minutes: 0 };
+    try {
+        const createdDate = new Date(createdAt);
+        const completedDate = new Date(completedAt);
+        if (isNaN(createdDate.getTime()) || isNaN(completedDate.getTime())) {
+            return { time: 'Invalid Date', minutes: 0 };
+        }
+        const minutes = (completedDate.getTime() - createdDate.getTime()) / (1000 * 60);
+        return { time: formatDistanceStrict(completedDate, createdDate), minutes };
+    } catch (e) {
+        console.error("Error calculating resolution time:", e);
+        return { time: 'Error', minutes: 0 };
+    }
+};
+
+const calculateAverageResolutionTime = (tickets: (Ticket & {id: string})[]) => {
+    const resolvedWithTime = tickets.filter(t => t.status === 'Resolved' && t.completedAt && t.createdAt);
+    if (resolvedWithTime.length === 0) return 'N/A';
+
+    const totalMinutes = resolvedWithTime.reduce((acc, ticket) => {
+        return acc + getResolutionTime(ticket.createdAt, ticket.completedAt).minutes;
+    }, 0);
+
+    const averageMinutes = totalMinutes / resolvedWithTime.length;
+    
+    if (averageMinutes < 1) return 'less than a minute';
+
+    const duration = intervalToDuration({ start: 0, end: averageMinutes * 60 * 1000 });
+    return formatDuration(duration, { format: ['days', 'hours', 'minutes'] }) || 'less than a minute';
+}
 
 
 export default function AdminAnalytics() {
-  const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  
   const [allTickets, setAllTickets] = useState<(Ticket & {id: string})[]>([]);
+  const [allUsers, setAllUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
   
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
-  const [activeDatePreset, setActiveDatePreset] = useState<string | null>('this_month');
-  
+  const isMobile = useIsMobile();
+
   const loadData = useCallback(() => {
+    const userJson = localStorage.getItem('mockUser');
+    const usersJson = localStorage.getItem('mockUsers');
     const ticketsJson = localStorage.getItem('mockTickets');
+
+    if (userJson && usersJson) {
+      const allUsersData = JSON.parse(usersJson);
+      const loggedInUserEmail = JSON.parse(userJson).email;
+      const fullUser = allUsersData.find((u: any) => u.email === loggedInUserEmail);
+      setCurrentUser(fullUser || JSON.parse(userJson));
+      setAllUsers(allUsersData.map((u: any) => ({
+        ...u,
+        blockedUntil: u.blockedUntil ? new Date(u.blockedUntil) : null
+      })));
+    } else if (userJson) {
+        setCurrentUser(JSON.parse(userJson));
+    }
+
     if (ticketsJson) {
         setAllTickets(JSON.parse(ticketsJson).map((t: any) => ({
             ...t,
             createdAt: new Date(t.createdAt),
             updatedAt: new Date(t.updatedAt),
+            completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
         })));
     } else {
         localStorage.setItem('mockTickets', JSON.stringify(initialMockTickets));
@@ -97,7 +144,7 @@ export default function AdminAnalytics() {
     setLoading(false);
     
     const handleStorage = (e: Event) => {
-        if (e instanceof StorageEvent && e.key === 'mockTickets') {
+        if (e instanceof StorageEvent && ['mockTickets', 'mockUsers', 'mockUser'].includes(e.key || '')) {
             loadData();
         } else if (!(e instanceof StorageEvent)) {
             loadData();
@@ -113,50 +160,123 @@ export default function AdminAnalytics() {
     }
   }, [loadData]);
 
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: addDays(new Date(), -29),
+    to: new Date(),
+  });
+
+  const usersMap = useMemo(() => {
+    return allUsers.reduce((acc, user) => {
+        acc[user.email] = user.displayName;
+        return acc;
+    }, {} as Record<string, string>);
+  }, [allUsers]);
+
+  const userRolesMapByEmail = useMemo(() => {
+    return allUsers.reduce((acc, user) => {
+        acc[user.email] = user.role;
+        return acc;
+    }, {} as Record<string, AppUser['role']>);
+  }, [allUsers]);
+
+  const userRolesMapById = useMemo(() => {
+    return allUsers.reduce((acc, user) => {
+        acc[user.id] = user.role;
+        return acc;
+    }, {} as Record<string, AppUser['role']>);
+  }, [allUsers]);
 
   const filteredTickets = useMemo(() => {
-      if (!date?.from) return [];
-      const from = startOfDay(date.from);
-      const to = date.to ? endOfDay(date.to) : endOfDay(date.from);
-      return allTickets.filter(ticket => {
-          const ticketDate = new Date(ticket.createdAt);
-          return ticketDate >= from && ticketDate <= to;
-      });
-  }, [allTickets, date]);
+    if (!currentUser) return [];
 
-  const { hourlyData, regionData, userData } = useMemo(() => {
-    const hourlyCounts: number[] = Array(24).fill(0);
-    const regionCounts: {[key: string]: number} = {};
-    const userStats: { [email: string]: { created: number; resolved: number } } = {};
+    let tickets = allTickets;
+
+    const isAdminOrHead = currentUser.role === 'Admin' || currentUser.role === 'Head';
+
+    if (isAdminOrHead && currentUser.regions?.includes('all')) {
+        // an admin/head with 'all' regions can see everything
+    } else if (['Admin', 'Head', 'it-support'].includes(currentUser.role)) {
+        const userRegions = currentUser.regions || [];
+        if (!userRegions.includes('all')) {
+            tickets = tickets.filter(ticket => ticket.region && userRegions.includes(ticket.region));
+        }
+    }
+
+    return tickets.filter(ticket => {
+        if (!date?.from) return true;
+        if (!ticket.createdAt) return false;
+        const ticketDate = new Date(ticket.createdAt);
+        if (!date.to) return ticketDate >= date.from;
+        const toDate = new Date(date.to);
+        toDate.setHours(23, 59, 59, 999);
+        return ticketDate >= date.from && ticketDate <= toDate;
+    });
+  }, [allTickets, date, currentUser]);
+
+  const userCreatedTickets = useMemo(() => {
+    return filteredTickets.filter(ticket => ['User', 'Branch'].includes(userRolesMapByEmail[ticket.userId]));
+  }, [filteredTickets, userRolesMapByEmail]);
+
+  const resolvedSupportTickets = useMemo(() => {
+    return filteredTickets.filter(ticket => ticket.status === 'Resolved' && ticket.resolvedBy && ['Admin', 'it-support', 'Head'].includes(userRolesMapById[ticket.resolvedBy]));
+  }, [filteredTickets, userRolesMapById]);
+
+  const averageResolutionTime = useMemo(() => calculateAverageResolutionTime(resolvedSupportTickets), [resolvedSupportTickets]);
+
+  const regionData = useMemo(() => {
+    const regionCounts = filteredTickets.reduce((acc, ticket) => {
+        if (ticket.region) {
+            acc[ticket.region] = (acc[ticket.region] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(regionCounts)
+        .map(([region, tickets]) => ({ region, tickets }))
+        .sort((a, b) => b.tickets - a.tickets);
+  }, [filteredTickets]);
+
+  const userCreatedData = useMemo(() => {
+    const counts = userCreatedTickets.reduce((acc, ticket) => {
+        const userName = usersMap[ticket.userId] || ticket.userId;
+        acc[userName] = (acc[userName] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+  }, [userCreatedTickets, usersMap]);
+  
+  const supportResolvedData = useMemo(() => {
+    const counts = resolvedSupportTickets.reduce((acc, ticket) => {
+        const resolverName = ticket.resolvedByDisplayName || 'N/A';
+        if (resolverName !== 'N/A') {
+            acc[resolverName] = (acc[resolverName] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+  }, [resolvedSupportTickets]);
+
+  const hourlyData = useMemo(() => {
+    const hourlyCounts = Array.from({ length: 24 }, (_, i) => ({ hour: i, tickets: 0 }));
 
     filteredTickets.forEach(ticket => {
-        const hour = new Date(ticket.createdAt).getHours();
-        hourlyCounts[hour]++;
-
-        if (ticket.region) {
-            regionCounts[ticket.region] = (regionCounts[ticket.region] || 0) + 1;
-        }
-
-        const userEmail = ticket.userId;
-        if (!userStats[userEmail]) {
-            userStats[userEmail] = { created: 0, resolved: 0 };
-        }
-        userStats[userEmail].created++;
-
-        if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
-            userStats[userEmail].resolved++;
+        if (ticket.createdAt) {
+            const ticketDate = new Date(ticket.createdAt);
+            const hour = ticketDate.getHours();
+            if (hourlyCounts[hour]) {
+                hourlyCounts[hour].tickets++;
+            }
         }
     });
+    
+    return hourlyCounts.map(h => ({ ...h, name: `${h.hour}:00` }));
 
-    return {
-        hourlyData: hourlyCounts.map((count, hour) => {
-            const ampm = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-            return { hour: `${displayHour} ${ampm}`, tickets: count };
-        }),
-        regionData: Object.entries(regionCounts).map(([region, count]) => ({ name: region, tickets: count })),
-        userData: Object.entries(userStats).map(([name, data]) => ({ name, ...data })).sort((a,b) => b.created - a.created)
-    };
   }, [filteredTickets]);
 
 
@@ -175,7 +295,7 @@ export default function AdminAnalytics() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle>Ticket Reports</CardTitle>
-                        <CardDescription>Displaying analytics from mocked ticket data.</CardDescription>
+                        <CardDescription>Analyze ticket data for different periods.</CardDescription>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div className="flex items-center gap-2">
@@ -223,70 +343,265 @@ export default function AdminAnalytics() {
             </CardHeader>
         </Card>
       
-        <Tabs defaultValue="overview">
-            <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="by-region">By Region</TabsTrigger>
-                <TabsTrigger value="by-user">By User</TabsTrigger>
-            </TabsList>
-            <TabsContent value="overview" className="space-y-4 mt-4">
+        <Tabs defaultValue="user_tickets">
+            <div className="w-full overflow-x-auto">
+                <TabsList>
+                    <TabsTrigger value="user_tickets">User Tickets</TabsTrigger>
+                    <TabsTrigger value="support_performance">Support Performance</TabsTrigger>
+                    <TabsTrigger value="region_report">Region Report</TabsTrigger>
+                    <TabsTrigger value="hourly_report">Hourly Report</TabsTrigger>
+                </TabsList>
+            </div>
+            <TabsContent value="user_tickets" className="mt-4">
                  <Card>
                     <CardHeader>
-                        <CardTitle>Hourly Ticket Volume</CardTitle>
-                        <CardDescription>Total number of new tickets created each hour.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ChartContainer config={hourlyChartConfig} className="h-[250px] w-full">
-                            <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid vertical={false} />
-                                <XAxis dataKey="hour" tickLine={false} axisLine={false} tickMargin={8} />
-                                <YAxis />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="tickets" fill="hsl(var(--chart-1))" radius={4} />
-                            </BarChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="by-region" className="space-y-4 mt-4">
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>Tickets by Region</CardTitle>
-                            <CardDescription>Total number of tickets for each region.</CardDescription>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Tickets Created by User</CardTitle>
+                                <CardDescription>Total tickets created by each user in the selected period.</CardDescription>
+                            </div>
+                            {userCreatedData.length > 0 && (
+                                <ExportButtons 
+                                    title="Tickets Created by User"
+                                    columns={['User Name', 'Tickets Created']}
+                                    data={userCreatedData.map(item => [item.name, item.count])}
+                                />
+                            )}
                         </div>
-                         <ExportButtons title="Tickets by Region" columns={['Region', 'Tickets']} data={regionData.map(d => [d.name, d.tickets])} />
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Region</TableHead><TableHead className="text-right">Tickets</TableHead></TableRow></TableHeader>
+                         <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>User Name</TableHead>
+                                    <TableHead className="text-right">Tickets Created</TableHead>
+                                </TableRow>
+                            </TableHeader>
                             <TableBody>
-                                {regionData.map(item => (
-                                    <TableRow key={item.name}><TableCell>{item.name}</TableCell><TableCell className="text-right">{item.tickets}</TableCell></TableRow>
-                                ))}
+                                {userCreatedData.length > 0 ? userCreatedData.map(item => (
+                                    <TableRow key={item.name}>
+                                        <TableCell>{item.name}</TableCell>
+                                        <TableCell className="text-right">{item.count}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="h-24 text-center">No user-created tickets found for this period.</TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="by-user" className="space-y-4 mt-4">
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                         <div>
-                            <CardTitle>Tickets by User</CardTitle>
-                            <CardDescription>Tickets created and resolved per user.</CardDescription>
+            <TabsContent value="support_performance" className="mt-4 space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Average Resolution Time</CardTitle>
+                        <CardDescription>Average time taken by Admin/Support to resolve tickets.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-3xl font-bold">{averageResolutionTime}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Tickets Resolved by Agent</CardTitle>
+                                <CardDescription>Total tickets resolved by each agent in the selected period.</CardDescription>
+                            </div>
+                            {supportResolvedData.length > 0 && (
+                                <ExportButtons
+                                    title="Tickets Resolved by Agent"
+                                    columns={['Agent Name', 'Tickets Resolved']}
+                                    data={supportResolvedData.map(item => [item.name, item.count])}
+                                />
+                            )}
                         </div>
-                        <ExportButtons title="Tickets by User" columns={['User', 'Created', 'Resolved']} data={userData.map(d => [d.name, d.created, d.resolved])} />
                     </CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Tickets Created</TableHead><TableHead>Tickets Resolved</TableHead></TableRow></TableHeader>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Agent Name</TableHead>
+                                    <TableHead className="text-right">Tickets Resolved</TableHead>
+                                </TableRow>
+                            </TableHeader>
                             <TableBody>
-                                {userData.map(item => (
-                                    <TableRow key={item.name}><TableCell>{item.name}</TableCell><TableCell>{item.created}</TableCell><TableCell>{item.resolved}</TableCell></TableRow>
-                                ))}
+                                {supportResolvedData.length > 0 ? supportResolvedData.map(item => (
+                                    <TableRow key={item.name}>
+                                        <TableCell>{item.name}</TableCell>
+                                        <TableCell className="text-right">{item.count}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="h-24 text-center">No resolved tickets found for this period.</TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Resolution Details</CardTitle>
+                                <CardDescription>Details for each ticket resolved by Admin &amp; IT Support.</CardDescription>
+                            </div>
+                            {resolvedSupportTickets.length > 0 && (
+                                <ExportButtons
+                                    title="Ticket Resolution Details"
+                                    columns={['Ticket Title', 'Resolved By', 'Original User', 'Resolution Time']}
+                                    data={resolvedSupportTickets.map(ticket => [
+                                        ticket.title,
+                                        ticket.resolvedByDisplayName || 'N/A',
+                                        usersMap[ticket.userId] || 'Unknown',
+                                        getResolutionTime(ticket.createdAt, ticket.completedAt).time
+                                    ])}
+                                />
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Ticket Title</TableHead>
+                                    <TableHead>Resolved By</TableHead>
+                                    <TableHead>Original User</TableHead>
+                                    <TableHead>Resolution Time</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {resolvedSupportTickets.length > 0 ? resolvedSupportTickets.map(ticket => (
+                                    <TableRow key={ticket.id}>
+                                        <TableCell>{ticket.title}</TableCell>
+                                        <TableCell>{ticket.resolvedByDisplayName || 'N/A'}</TableCell>
+                                        <TableCell>{usersMap[ticket.userId] || 'Unknown'}</TableCell>
+                                        <TableCell>{getResolutionTime(ticket.createdAt, ticket.completedAt).time}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">No resolved tickets found for this period.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="region_report" className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Tickets by Region</CardTitle>
+                                <CardDescription>Total number of tickets created per region in the selected period.</CardDescription>
+                            </div>
+                            {regionData.length > 0 && (
+                                <ExportButtons
+                                    title="Tickets by Region"
+                                    columns={['Region', 'Number of Tickets']}
+                                    data={regionData.map(item => [item.region, item.tickets])}
+                                />
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {regionData.length > 0 ? (
+                            <ChartContainer config={{ tickets: { label: "Tickets", color: "hsl(var(--chart-1))" } }} className="h-[400px] w-full">
+                                <BarChart accessibilityLayer data={regionData} layout="vertical" margin={{ left: 10 }}>
+                                    <YAxis 
+                                        dataKey="region" 
+                                        type="category" 
+                                        tickLine={false} 
+                                        axisLine={false} 
+                                        tickMargin={10}
+                                        width={80}
+                                        className="text-sm"
+                                    />
+                                    <XAxis dataKey="tickets" type="number" hide />
+                                    <ChartTooltip
+                                        cursor={false}
+                                        content={<ChartTooltipContent hideLabel />}
+                                    />
+                                    <Bar dataKey="tickets" layout="vertical" radius={5}>
+                                        {regionData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ChartContainer>
+                        ) : (
+                            <div className="flex h-48 items-center justify-center text-muted-foreground">
+                                No tickets with region data found for this period.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="hourly_report" className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <CardTitle>Hourly Ticket Volume</CardTitle>
+                                <CardDescription>Number of tickets created each hour within the selected date range.</CardDescription>
+                            </div>
+                            {hourlyData.reduce((acc, curr) => acc + curr.tickets, 0) > 0 && (
+                                <ExportButtons
+                                    title="Hourly Ticket Volume"
+                                    columns={['Hour', 'Number of Tickets']}
+                                    data={hourlyData.map(item => [item.name, item.tickets])}
+                                />
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {hourlyData.reduce((acc, curr) => acc + curr.tickets, 0) > 0 ? (
+                            <ChartContainer config={{ tickets: { label: "Tickets", color: "hsl(var(--chart-1))" } }} className="h-[400px] w-full">
+                                <LineChart
+                                    accessibilityLayer
+                                    data={hourlyData}
+                                    margin={{
+                                        top: 5,
+                                        right: 10,
+                                        left: 10,
+                                        bottom: 5,
+                                    }}
+                                >
+                                    <CartesianGrid vertical={false} />
+                                    <XAxis
+                                        dataKey="name"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                    />
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        allowDecimals={false}
+                                    />
+                                    <ChartTooltip
+                                        cursor={false}
+                                        content={<ChartTooltipContent indicator="line" />}
+                                    />
+                                    <Line
+                                        dataKey="tickets"
+                                        type="monotone"
+                                        stroke="hsl(var(--chart-1))"
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
+                                </LineChart>
+                            </ChartContainer>
+                        ) : (
+                            <div className="flex h-48 items-center justify-center text-muted-foreground">
+                                No tickets found for this period to show an hourly report.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </TabsContent>
