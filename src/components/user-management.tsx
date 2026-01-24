@@ -231,11 +231,22 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
+    defaultValues: {
+      displayName: '',
+      email: '',
+      role: 'User',
+      regions: [],
+      password: '',
+    }
   });
 
+  // Reset form when dialog opens or user changes
   useEffect(() => {
     if (isOpen) {
-      const initialRegions = user ? (user.role === 'User' || user.role === 'Branch' ? (user.region ? [user.region] : []) : (user.regions || [])) : [];
+      const initialRegions = user 
+        ? (user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : [])) 
+        : [];
+        
       form.reset({
         id: user?.id || undefined,
         displayName: user?.displayName || '',
@@ -251,10 +262,35 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
 
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
+    // Simulate network delay
     setTimeout(() => {
       onSave(data);
       setIsSubmitting(false);
+      setIsOpen(false);
     }, 500);
+  };
+
+  // Helper to handle complex region selection logic
+  const handleRegionChange = (selected: string[], currentField: any) => {
+    const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
+    
+    if (isMultiRole) {
+      const wasAllSelected = currentField.value?.includes('all');
+      const isAllNowSelected = selected.includes('all');
+
+      // If "All Regions" was just clicked, clear others
+      if (isAllNowSelected && !wasAllSelected) {
+        currentField.onChange(['all']);
+        return;
+      }
+      // If other regions clicked while "All" was active, remove "All"
+      if (wasAllSelected && selected.length > 1) {
+        currentField.onChange(selected.filter(i => i !== 'all'));
+        return;
+      }
+    }
+    
+    currentField.onChange(selected);
   };
   
   return (
@@ -281,7 +317,17 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
             )}
              <FormField control={form.control} name="role" render={({ field }) => (
                 <FormItem><FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                        // Clear regions if switching to a single-select role to prevent validation errors
+                        if (['User', 'Branch'].includes(val)) {
+                          const currentRegions = form.getValues('regions');
+                          form.setValue('regions', currentRegions ? currentRegions.slice(0, 1) : []);
+                        }
+                      }} 
+                      defaultValue={field.value}
+                    >
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
                         <SelectContent>
                             <SelectItem value="User">User</SelectItem>
@@ -303,26 +349,15 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                       <FormLabel>Region(s)</FormLabel>
                       <FormControl>
                         <MultiSelect
-                            options={['User', 'Branch'].includes(watchedRole) ? regions.filter(r => r.value !== 'all') : regions}
+                            // Filter "All Regions" for User/Branch
+                            options={['User', 'Branch'].includes(watchedRole) 
+                              ? regions.filter(r => r.value !== 'all') 
+                              : regions
+                            }
                             selected={field.value || []}
-                            onChange={(selected) => {
-                                if (['it-support', 'Head'].includes(watchedRole)) {
-                                    const oldSelection = field.value || [];
-                                    const isSelectingAll = selected.includes('all');
-                                    
-                                    if (isSelectingAll && !oldSelection.includes('all')) {
-                                        field.onChange(['all']);
-                                        return;
-                                    }
-                                    if (oldSelection.includes('all') && selected.length > 1) {
-                                        field.onChange(selected.filter(item => item !== 'all'));
-                                        return;
-                                    }
-                                }
-                                field.onChange(selected);
-                            }}
+                            onChange={(selected) => handleRegionChange(selected, field)}
                             mode={['User', 'Branch'].includes(watchedRole) ? 'single' : 'multiple'}
-                            placeholder="Select region(s)..."
+                            placeholder={['User', 'Branch'].includes(watchedRole) ? "Select a region..." : "Select region(s)..."}
                         />
                       </FormControl>
                       <FormMessage />
