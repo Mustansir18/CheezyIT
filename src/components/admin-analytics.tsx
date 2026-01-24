@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { Bar, BarChart, XAxis, YAxis, LineChart, Line, CartesianGrid, Cell, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, startOfMonth, endOfMonth, subMonths, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
+import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
 import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -16,7 +16,7 @@ import { ChartContainer, ChartTooltipContent, ChartTooltip, ChartConfig } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Ticket } from '@/lib/data';
-import { initialMockTickets, TICKET_STATUS_LIST } from '@/lib/data';
+import { initialMockTickets } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { exportData } from '@/lib/export';
@@ -62,15 +62,7 @@ function ExportButtons({ title, columns, data }: { title: string, columns: strin
     );
 }
 
-const statusChartConfig = {
-    tickets: { label: "Tickets" },
-    Open: { label: "Open", color: "hsl(var(--chart-1))" },
-    "In-Progress": { label: "In-Progress", color: "hsl(var(--chart-2))" },
-    Resolved: { label: "Resolved", color: "hsl(var(--chart-3))" },
-    Closed: { label: "Closed", color: "hsl(var(--chart-4))" },
-} satisfies ChartConfig;
-
-const dailyChartConfig = {
+const hourlyChartConfig = {
      tickets: { label: "Tickets", color: "hsl(var(--chart-1))" },
 } satisfies ChartConfig;
 
@@ -132,50 +124,40 @@ export default function AdminAnalytics() {
       });
   }, [allTickets, date]);
 
-  const { statusData, dailyData, regionData, assigneeData } = useMemo(() => {
-    const statusCounts = TICKET_STATUS_LIST.reduce((acc, status) => ({...acc, [status]: 0}), {} as Record<TicketStatus, number>);
-    const dailyCounts: {[key: string]: number} = {};
+  const { hourlyData, regionData, userData } = useMemo(() => {
+    const hourlyCounts: number[] = Array(24).fill(0);
     const regionCounts: {[key: string]: number} = {};
-    const assigneeCounts: {[key: string]: { resolved: number, assigned: number }} = {};
-
-    if (date?.from) {
-        const interval = eachDayOfInterval({ start: date.from, end: date.to || date.from });
-        interval.forEach(day => {
-            dailyCounts[format(day, 'yyyy-MM-dd')] = 0;
-        });
-    }
+    const userStats: { [email: string]: { created: number; resolved: number } } = {};
 
     filteredTickets.forEach(ticket => {
-        statusCounts[ticket.status]++;
-        
-        const day = format(new Date(ticket.createdAt), 'yyyy-MM-dd');
-        if (dailyCounts[day] !== undefined) {
-            dailyCounts[day]++;
-        }
+        const hour = new Date(ticket.createdAt).getHours();
+        hourlyCounts[hour]++;
 
         if (ticket.region) {
             regionCounts[ticket.region] = (regionCounts[ticket.region] || 0) + 1;
         }
 
-        if (ticket.assignedToDisplayName) {
-            if (!assigneeCounts[ticket.assignedToDisplayName]) {
-                assigneeCounts[ticket.assignedToDisplayName] = { resolved: 0, assigned: 0 };
-            }
-            assigneeCounts[ticket.assignedToDisplayName].assigned++;
+        const userEmail = ticket.userId;
+        if (!userStats[userEmail]) {
+            userStats[userEmail] = { created: 0, resolved: 0 };
+        }
+        userStats[userEmail].created++;
 
-            if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
-                 assigneeCounts[ticket.assignedToDisplayName].resolved++;
-            }
+        if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
+            userStats[userEmail].resolved++;
         }
     });
 
     return {
-        statusData: TICKET_STATUS_LIST.map(status => ({ name: status, tickets: statusCounts[status], fill: `var(--color-${status})` })),
-        dailyData: Object.entries(dailyCounts).map(([date, count]) => ({ date: format(new Date(date), 'MMM d'), tickets: count })),
+        hourlyData: hourlyCounts.map((count, hour) => {
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+            return { hour: `${displayHour} ${ampm}`, tickets: count };
+        }),
         regionData: Object.entries(regionCounts).map(([region, count]) => ({ name: region, tickets: count })),
-        assigneeData: Object.entries(assigneeCounts).map(([name, data]) => ({...data, name})).sort((a,b) => b.resolved - a.resolved)
+        userData: Object.entries(userStats).map(([name, data]) => ({ name, ...data })).sort((a,b) => b.created - a.created)
     };
-  }, [filteredTickets, date]);
+  }, [filteredTickets]);
 
 
   if (loading) {
@@ -245,38 +227,22 @@ export default function AdminAnalytics() {
             <TabsList>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="by-region">By Region</TabsTrigger>
-                <TabsTrigger value="by-assignee">By Assignee</TabsTrigger>
+                <TabsTrigger value="by-user">By User</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="space-y-4 mt-4">
                  <Card>
                     <CardHeader>
-                        <CardTitle>Daily Ticket Volume</CardTitle>
-                        <CardDescription>Total number of new tickets created each day.</CardDescription>
+                        <CardTitle>Hourly Ticket Volume</CardTitle>
+                        <CardDescription>Total number of new tickets created each hour.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={dailyChartConfig} className="h-[250px] w-full">
-                            <LineChart data={dailyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <ChartContainer config={hourlyChartConfig} className="h-[250px] w-full">
+                            <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <CartesianGrid vertical={false} />
-                                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+                                <XAxis dataKey="hour" tickLine={false} axisLine={false} tickMargin={8} />
                                 <YAxis />
                                 <ChartTooltip content={<ChartTooltipContent />} />
-                                <Line dataKey="tickets" type="monotone" stroke="hsl(var(--primary))" strokeWidth={2} dot={true} />
-                            </LineChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Tickets by Status</CardTitle>
-                        <CardDescription>Breakdown of all tickets by their current status.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ChartContainer config={statusChartConfig} className="h-[250px] w-full">
-                            <BarChart data={statusData} layout="vertical" margin={{left: 10}}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={10} width={80} />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="tickets" layout="vertical" radius={5} />
+                                <Bar dataKey="tickets" fill="hsl(var(--chart-1))" radius={4} />
                             </BarChart>
                         </ChartContainer>
                     </CardContent>
@@ -303,21 +269,21 @@ export default function AdminAnalytics() {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="by-assignee" className="space-y-4 mt-4">
+            <TabsContent value="by-user" className="space-y-4 mt-4">
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                          <div>
-                            <CardTitle>Assignee Performance</CardTitle>
-                            <CardDescription>Tickets assigned to and resolved by each team member.</CardDescription>
+                            <CardTitle>Tickets by User</CardTitle>
+                            <CardDescription>Tickets created and resolved per user.</CardDescription>
                         </div>
-                        <ExportButtons title="Assignee Performance" columns={['Assignee', 'Assigned', 'Resolved']} data={assigneeData.map(d => [d.name, d.assigned, d.resolved])} />
+                        <ExportButtons title="Tickets by User" columns={['User', 'Created', 'Resolved']} data={userData.map(d => [d.name, d.created, d.resolved])} />
                     </CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>Assignee</TableHead><TableHead>Assigned</TableHead><TableHead>Resolved</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Tickets Created</TableHead><TableHead>Tickets Resolved</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {assigneeData.map(item => (
-                                    <TableRow key={item.name}><TableCell>{item.name}</TableCell><TableCell>{item.assigned}</TableCell><TableCell>{item.resolved}</TableCell></TableRow>
+                                {userData.map(item => (
+                                    <TableRow key={item.name}><TableCell>{item.name}</TableCell><TableCell>{item.created}</TableCell><TableCell>{item.resolved}</TableCell></TableRow>
                                 ))}
                             </TableBody>
                         </Table>
