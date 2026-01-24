@@ -23,7 +23,7 @@ export type User = {
   id: string;
   displayName: string;
   email: string;
-  role: 'User' | 'it-support' | 'Admin' | 'Head' | 'Branch';
+  role: 'User' | 'it-support' | 'Admin' | 'Head';
   regions: string[];
   blockedUntil?: Date | null;
   region?: string;
@@ -34,7 +34,7 @@ const userSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
-  role: z.enum(['User', 'it-support', 'Admin', 'Head', 'Branch']),
+  role: z.enum(['User', 'it-support', 'Admin', 'Head']),
   regions: z.array(z.string()),
 }).refine(data => {
     if (data.role === 'Admin') return true;
@@ -238,18 +238,26 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   // Reset form ONLY when dialog opens or the user prop changes.
   useEffect(() => {
     if (isOpen) {
-      const initialRegions = user 
-        ? (user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : [])) 
-        : ['ISL', 'LHR', 'South', 'SUG'];
-        
-      reset({
-        id: user?.id || undefined,
-        displayName: user?.displayName || '',
-        email: user?.email || '',
-        role: user?.role || 'User',
-        regions: initialRegions,
-        password: '',
-      });
+      if (user) { // Editing existing user
+        const currentRole = (user.role === 'Branch' ? 'User' : user.role) as 'User' | 'it-support' | 'Admin' | 'Head';
+        reset({
+          id: user.id,
+          displayName: user.displayName || '',
+          email: user.email || '',
+          role: currentRole,
+          regions: user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : []),
+          password: '',
+        });
+      } else { // Adding new user
+        reset({
+          id: undefined,
+          displayName: '',
+          email: '',
+          role: 'User',
+          regions: ['LHR'], // Default for 'User' role
+          password: '',
+        });
+      }
     }
   }, [user, isOpen, reset]);
   
@@ -263,27 +271,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       setIsSubmitting(false);
       setIsOpen(false);
     }, 500);
-  };
-  
-  const handleRegionChange = (selected: string[], currentField: any) => {
-    const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
-    
-    if (isMultiRole) {
-      const wasAllSelected = currentField.value?.includes('all');
-      const isAllNowSelected = selected.includes('all');
-
-      if (isAllNowSelected && !wasAllSelected) {
-        currentField.onChange(['all']);
-        return;
-      }
-      
-      if (wasAllSelected && selected.length > 1) {
-        currentField.onChange(selected.filter(i => i !== 'all'));
-        return;
-      }
-    }
-    
-    currentField.onChange(selected);
   };
   
   return (
@@ -311,13 +298,14 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
              <FormField control={form.control} name="role" render={({ field }) => (
                 <FormItem><FormLabel>Role</FormLabel>
                     <Select 
-                      onValueChange={(val) => {
+                      onValueChange={(val: 'User' | 'it-support' | 'Admin' | 'Head') => {
                         field.onChange(val);
-                        if (['User', 'Branch'].includes(val)) {
-                            const currentRegions = form.getValues('regions') || [];
-                            if (currentRegions.length > 1) {
-                                form.setValue('regions', currentRegions.slice(0, 1));
-                            }
+                        if (val === 'User') {
+                            form.setValue('regions', ['LHR']);
+                        } else if (val === 'it-support' || val === 'Head') {
+                            form.setValue('regions', ['all']);
+                        } else if (val === 'Admin') {
+                            form.setValue('regions', []);
                         }
                       }} 
                       defaultValue={field.value}
@@ -325,7 +313,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
                         <SelectContent>
                             <SelectItem value="User">User</SelectItem>
-                            <SelectItem value="Branch">Branch</SelectItem>
                             <SelectItem value="it-support">IT Support</SelectItem>
                             <SelectItem value="Head">Head</SelectItem>
                             <SelectItem value="Admin">Admin</SelectItem>
@@ -343,14 +330,11 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                       <FormLabel>Region(s)</FormLabel>
                       <FormControl>
                         <MultiSelect
-                            options={['User', 'Branch'].includes(watchedRole) 
-                              ? regions.filter(r => r.value !== 'all') 
-                              : regions
-                            }
+                            options={regions}
                             selected={field.value || []}
-                            onChange={(selected) => handleRegionChange(selected, field)}
-                            mode={['User', 'Branch'].includes(watchedRole) ? 'single' : 'multiple'}
-                            placeholder={['User', 'Branch'].includes(watchedRole) ? "Select a region..." : "Select region(s)..."}
+                            onChange={field.onChange}
+                            disabled={true}
+                            placeholder="Region is auto-assigned by role"
                         />
                       </FormControl>
                       <FormMessage />

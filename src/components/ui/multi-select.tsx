@@ -26,12 +26,14 @@ interface MultiSelectProps {
   className?: string;
   placeholder?: string;
   mode?: 'single' | 'multiple';
+  disabled?: boolean;
 }
 
 const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
-  ({ options, selected, onChange, className, placeholder = "Select...", mode = "multiple" }, ref) => {
+  ({ options, selected, onChange, className, placeholder = "Select...", mode = "multiple", disabled = false }, ref) => {
 
     const handleSelect = (optionValue: string) => {
+      if (disabled) return;
       let newSelected: string[];
       if (mode === 'single') {
         newSelected = selected.includes(optionValue) ? [] : [optionValue];
@@ -53,6 +55,7 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
             variant="outline"
             role="combobox"
             className={cn('w-full justify-between h-auto min-h-10 px-3 py-2', className)}
+            disabled={disabled}
           >
             <div className="flex gap-1 flex-wrap items-center">
               {selected.length > 0 ? (
@@ -66,7 +69,7 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
                     >
                       {option.label}
                       <X
-                        className="h-3 w-3 cursor-pointer hover:text-destructive"
+                        className={cn("h-3 w-3", !disabled && "cursor-pointer hover:text-destructive")}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSelect(option.value);

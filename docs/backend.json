@@ -16,7 +16,7 @@
         },
         "role": {
           "type": "string",
-          "enum": ["User", "it-support", "Admin", "Head", "Branch"],
+          "enum": ["User", "it-support", "Admin", "Head"],
           "description": "The user's role in the system."
         },
         "regions": {
