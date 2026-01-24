@@ -113,7 +113,7 @@ export default function LoginPage() {
       <div className="absolute bottom-0 translate-y-1/2 left-1/4 -translate-x-1/2 w-96 h-96 bg-purple-500/40 rounded-full blur-3xl opacity-40"></div>
       <div className="absolute bottom-0 translate-y-1/2 right-1/4 translate-x-1/2 w-80 h-80 bg-sky-500/40 rounded-full blur-3xl opacity-40"></div>
       
-      <Card className="w-full max-w-sm z-10 border-white/10 bg-gray-900/60 text-white backdrop-blur-md">
+      <Card className="w-full max-w-sm z-10 border-white/20 bg-gray-900/60 text-white backdrop-blur-md">
         <CardHeader className="text-center items-center p-4 pb-2">
           <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
           <div className="pt-2 text-center">
@@ -148,7 +148,7 @@ export default function LoginPage() {
                 className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
               />
             </div>
-            <Button type="submit" className="w-full !mt-5" disabled={loading}>
+            <Button type="submit" variant="secondary" className="w-full !mt-5" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
@@ -183,7 +183,7 @@ export default function LoginPage() {
                             <DialogClose asChild>
                                 <Button type="button" variant="outline" className="text-white border-white/20 hover:bg-white/10 hover:text-white">Cancel</Button>
                             </DialogClose>
-                            <Button type="submit" disabled={isResetting}>
+                            <Button type="submit" variant="secondary" disabled={isResetting}>
                                 {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Send Reset Link
                             </Button>
