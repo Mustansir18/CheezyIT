@@ -11,7 +11,10 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/components/user-management';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
+import { initializeApp, deleteApp } from 'firebase/app';
 
 
 const regions = ['ISL', 'LHR', 'South', 'SUG'];
@@ -59,20 +62,43 @@ export default function AdminSettingsPage() {
                 await updateDoc(userDocRef, userData);
                 toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
             } else { // Adding
-                // In a real app you'd use Firebase Auth to create a user, then create the doc.
-                // Here we just add the doc. You'd need to set a password separately.
-                // This is a simplified approach for demonstration.
-                await addDoc(collection(firestore, 'users'), userData);
-                toast({ title: "User Added", description: `${data.displayName} has been added.` });
+                 if (!data.password) {
+                    toast({ variant: 'destructive', title: "Error", description: "Password is required for new users." });
+                    return;
+                }
+                
+                // HACK: Use a temporary Firebase app to create a new user without signing out the admin.
+                const tempAppName = `user-creation-${Date.now()}`;
+                const tempApp = initializeApp(firebaseConfig, tempAppName);
+                const tempAuth = getAuth(tempApp);
+
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
+                    const newUserId = userCredential.user.uid;
+                    
+                    const userDocRef = doc(firestore, 'users', newUserId);
+                    await setDoc(userDocRef, userData);
+
+                    toast({ title: "User Added", description: `${data.displayName} has been added.` });
+                } finally {
+                    await deleteApp(tempApp);
+                }
             }
         } catch (error: any) {
-            toast({ variant: 'destructive', title: "Error", description: error.message });
+            let errorMessage = error.message;
+            if (error.code === 'auth/email-already-in-use') {
+                errorMessage = "This email address is already in use by another account.";
+            } else if (error.code === 'auth/weak-password') {
+                errorMessage = "The password is too weak. Please use at least 6 characters.";
+            }
+            toast({ variant: 'destructive', title: "Error creating user", description: errorMessage });
         }
     }, [firestore, toast]);
 
     const handleBlockUser = useCallback(async (userToBlock: User) => {
         if (!firestore) return;
-        const isCurrentlyBlocked = userToBlock.blockedUntil && userToBlock.blockedUntil > new Date();
+        const blockedUntil = (userToBlock.blockedUntil as any)?.toDate ? (userToBlock.blockedUntil as any).toDate() : userToBlock.blockedUntil;
+        const isCurrentlyBlocked = blockedUntil && blockedUntil > new Date();
         const userDocRef = doc(firestore, 'users', userToBlock.id);
         
         try {
@@ -87,10 +113,13 @@ export default function AdminSettingsPage() {
   
     const handleDeleteUser = useCallback(async (userToDelete: User) => {
         if (!firestore) return;
+        // NOTE: This only deletes the user's document in Firestore.
+        // The Firebase Auth user will remain. Deleting Auth users requires admin privileges,
+        // which is typically done from a secure server environment (e.g., Cloud Function).
         const userDocRef = doc(firestore, 'users', userToDelete.id);
         try {
             await deleteDoc(userDocRef);
-            toast({ title: "User Deleted", description: `${userToDelete.displayName} has been permanently deleted.` });
+            toast({ title: "User Record Deleted", description: `${userToDelete.displayName}'s profile has been deleted from Firestore. The user can still log in.` });
         } catch (error: any) {
             toast({ variant: 'destructive', title: "Error", description: error.message });
         }

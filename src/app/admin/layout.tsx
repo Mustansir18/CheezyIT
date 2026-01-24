@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { UserNav } from '@/components/user-nav';
 import AnnouncementBell from '@/components/announcement-bell';
@@ -39,6 +39,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [userProfile]);
   
   const loading = userLoading || profileLoading;
+
+  useEffect(() => {
+    // If the logged-in user is the root admin but doesn't have a profile document in Firestore, create one.
+    if (!loading && user && isAdmin(user.email) && !userProfile && firestore) {
+      console.log('Admin user profile not found, creating one...');
+      const adminProfileData = {
+        displayName: user.displayName || user.email?.split('@')[0] || 'Admin',
+        email: user.email,
+        role: 'Admin',
+        regions: ['all'],
+      };
+      setDoc(doc(firestore, 'users', user.uid), adminProfileData)
+        .then(() => console.log('Admin user profile created successfully.'))
+        .catch(e => console.error("Error creating admin user profile:", e));
+    }
+  }, [loading, user, userProfile, firestore]);
 
   useEffect(() => {
     if (loading) {
