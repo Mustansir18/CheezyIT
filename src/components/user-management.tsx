@@ -35,16 +35,23 @@ const userSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
   role: z.enum(['User', 'it-support', 'Admin', 'Branch', 'Head']),
-  region: z.string().optional(),
   regions: z.array(z.string()).optional(),
-}).refine(data => {
-    if (data.role === 'User' && !data.region) return false;
-    return true;
-}, { message: 'Region is required for User role.', path: ['region']})
-.refine(data => {
-    if ((data.role === 'it-support' || data.role === 'Admin' || data.role === 'Branch' || data.role === 'Head') && (!data.regions || data.regions.length === 0)) return false;
-    return true;
-}, { message: 'At least one region is required for this role.', path: ['regions']});
+}).superRefine((data, ctx) => {
+    if (data.role !== 'Admin' && (!data.regions || data.regions.length === 0)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'At least one region is required.',
+            path: ['regions'],
+        });
+    }
+    if (data.role === 'User' && data.regions && data.regions.length > 1) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Users can only be assigned to one region.',
+            path: ['regions'],
+        });
+    }
+});
 
 
 export default function UserManagement({ 
@@ -224,49 +231,27 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: {
-      id: user?.id || undefined,
-      displayName: user?.displayName || '',
-      email: user?.email || '',
-      role: user?.role || 'User',
-      region: user?.region || '',
-      regions: user?.regions || [],
-      password: '',
-    },
+    // Default values are set in the useEffect hook
   });
 
   useEffect(() => {
-    form.reset({
-      id: user?.id || undefined,
-      displayName: user?.displayName || '',
-      email: user?.email || '',
-      role: user?.role || 'User',
-      region: user?.region || '',
-      regions: user?.regions || [],
-      password: '',
-    });
+    if (isOpen) {
+      const initialRegions = user ? (user.role === 'User' ? (user.region ? [user.region] : []) : (user.regions || [])) : [];
+      form.reset({
+        id: user?.id || undefined,
+        displayName: user?.displayName || '',
+        email: user?.email || '',
+        role: user?.role || 'User',
+        regions: initialRegions,
+        password: '',
+      });
+    }
   }, [user, form, isOpen]);
   
   const watchedRole = form.watch('role');
 
-  useEffect(() => {
-    // When the role changes, clear the irrelevant region/regions field
-    // to prevent submitting inconsistent data.
-    if (watchedRole === 'User') {
-      if (form.getValues('regions')?.length) {
-        form.setValue('regions', []);
-      }
-    } else if (['Admin', 'it-support', 'Branch', 'Head'].includes(watchedRole)) {
-      if (form.getValues('region')) {
-        form.setValue('region', '');
-      }
-    }
-  }, [watchedRole, form]);
-
-
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
-    // Simulate API call
     setTimeout(() => {
       onSave(data);
       setIsSubmitting(false);
@@ -274,7 +259,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { form.reset(); } setIsOpen(open); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
@@ -310,46 +295,42 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                 <FormMessage /></FormItem>
              )}/>
              
-             {['Admin', 'it-support', 'Branch', 'Head'].includes(watchedRole) && (
-                <FormField control={form.control} name="regions" render={({ field }) => (
-                    <FormItem><FormLabel>Regions</FormLabel>
-                        <FormControl>
-                            <MultiSelect 
-                                options={regions}
-                                selected={field.value || []}
-                                onChange={(selected) => {
-                                    const currentValue = field.value || [];
-                                    const isNowSelectingAll = selected.includes('all');
-                                    
-                                    if (isNowSelectingAll && !currentValue.includes('all')) {
-                                        // If 'all' is newly selected, make it the only selection
-                                        field.onChange(['all']);
-                                    } else if (isNowSelectingAll && selected.length > 1) {
-                                        // If 'all' was already selected and something else is added, remove 'all'
-                                        field.onChange(selected.filter(v => v !== 'all'));
-                                    } else {
-                                        // Otherwise, just update with the new selection
-                                        field.onChange(selected);
-                                    }
-                                }}
-                                placeholder="Select regions..."
-                            />
-                        </FormControl>
-                    <FormMessage /></FormItem>
-                )}/>
-             )}
-
-             {watchedRole === 'User' && (
-                <FormField control={form.control} name="region" render={({ field }) => (
-                    <FormItem><FormLabel>Region</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {regions.filter(r => r.value !== 'all').map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    <FormMessage /></FormItem>
-                )}/>
+             {watchedRole !== 'Admin' && (
+                <FormField
+                  control={form.control}
+                  name="regions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Region(s)</FormLabel>
+                      <FormControl>
+                        <MultiSelect
+                          options={watchedRole === 'User' ? regions.filter(r => r.value !== 'all') : regions}
+                          selected={field.value || []}
+                          onChange={(selected) => {
+                            if (watchedRole === 'User') {
+                              // For 'User' role, only allow a single selection.
+                              field.onChange(selected.length > 0 ? [selected[selected.length - 1]] : []);
+                            } else {
+                              // For other roles, handle 'all' selection logic.
+                              const currentValue = field.value || [];
+                              const isNowSelectingAll = selected.includes('all');
+                              
+                              if (isNowSelectingAll && !currentValue.includes('all')) {
+                                field.onChange(['all']);
+                              } else if (currentValue.includes('all') && selected.length > 1) {
+                                field.onChange(selected.filter(v => v !== 'all'));
+                              } else {
+                                field.onChange(selected);
+                              }
+                            }
+                          }}
+                          placeholder="Select region(s)..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
              )}
             
             <DialogFooter>

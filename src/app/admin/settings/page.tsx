@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
   }, [loading, isAuthorized, router]);
 
   const handleSaveUser = (data: any) => {
-    const { region, regions, ...restOfData } = data;
+    const { regions, ...restOfData } = data;
     let updatedUsersList: User[];
 
     if (data.id) { // Editing
@@ -103,7 +103,7 @@ export default function AdminSettingsPage() {
             const updatedUser: any = { ...u, ...restOfData };
             
             if (updatedUser.role === 'User') {
-                updatedUser.region = region;
+                updatedUser.region = regions?.[0];
                 delete updatedUser.regions;
             } else {
                 updatedUser.regions = regions;
@@ -118,7 +118,7 @@ export default function AdminSettingsPage() {
         const newUser: any = { ...restOfData, id: `mock-user-${Date.now()}` };
 
         if (newUser.role === 'User') {
-            newUser.region = region;
+            newUser.region = regions?.[0];
         } else {
             newUser.regions = regions;
         }
