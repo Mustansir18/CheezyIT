@@ -35,7 +35,7 @@ const userSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
   role: z.enum(['User', 'it-support', 'Admin', 'Head', 'Branch']),
-  regions: z.array(z.string()).min(1, { message: 'At least one region is required.' }),
+  regions: z.array(z.string()),
 }).refine(data => {
     if (data.role === 'Admin') return true;
     return data.regions && data.regions.length > 0;
@@ -142,7 +142,7 @@ export default function UserManagement({
                                             </TableCell>
                                             <TableCell>{user.email}</TableCell>
                                             <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
-                                            <TableCell>{(user.regions || [user.region]).join(', ')}</TableCell>
+                                            <TableCell>{(user.regions || []).join(', ')}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isUserAdmin && user.role === 'Admin'}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -233,7 +233,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   // Reset form when dialog opens or user changes
   useEffect(() => {
     if (isOpen) {
-      // For a new user, pre-select all regions. For an existing user, use their saved regions.
       const initialRegions = user 
         ? (user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : [])) 
         : ['ISL', 'LHR', 'South', 'SUG'];
@@ -247,7 +246,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
         password: '',
       });
     }
-  }, [user, form, isOpen]);
+  }, [user, isOpen]);
   
   const watchedRole = form.watch('role');
 
@@ -288,7 +287,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                     <Select 
                       onValueChange={(val) => {
                         field.onChange(val);
-                        // When switching to a single-select role, ensure only one region is selected.
                         if (['User', 'Branch'].includes(val)) {
                             const currentRegions = form.getValues('regions') || [];
                             form.setValue('regions', currentRegions.slice(0, 1));
