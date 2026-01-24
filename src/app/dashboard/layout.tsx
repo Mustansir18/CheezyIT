@@ -40,6 +40,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return false;
     }, [user]);
 
+    const isTicketPage = pathname.startsWith('/dashboard/ticket/');
+
     useEffect(() => {
         if (loading || hasRedirected.current) {
             return;
@@ -47,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (!user) {
             hasRedirected.current = true;
             router.replace('/');
-        } else if (isPrivilegedUser) {
+        } else if (isPrivilegedUser && !isTicketPage) {
             hasRedirected.current = true;
             if (user.role === 'it-support') {
               router.replace('/admin/tickets');
@@ -55,9 +57,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               router.replace('/admin');
             }
         }
-    }, [user, loading, router, isPrivilegedUser]);
+    }, [user, loading, router, isPrivilegedUser, pathname, isTicketPage]);
     
-    if (loading || !user || isPrivilegedUser) {
+    if (loading || !user || (isPrivilegedUser && !isTicketPage)) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
           <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
@@ -65,7 +67,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       );
     }
     
-    const isTicketPage = pathname.startsWith('/dashboard/ticket/');
     const isDashboardHomePage = pathname === '/dashboard';
     
     return (
