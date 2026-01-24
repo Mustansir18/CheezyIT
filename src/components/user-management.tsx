@@ -67,11 +67,7 @@ export default function UserManagement({
     const isLoading = false;
 
     const regionOptions: MultiSelectOption[] = useMemo(() => {
-        const list = regions
-            .filter(r => r.toLowerCase() !== 'all')
-            .map(r => ({ value: r, label: r }));
-        
-        return [{ value: 'all', label: 'All Regions' }, ...list];
+        return regions.map(r => ({ value: r, label: r }));
     }, [regions]);
     
     const handleOpenAddDialog = () => {
@@ -237,6 +233,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   // Reset form when dialog opens or user changes
   useEffect(() => {
     if (isOpen) {
+      // For a new user, pre-select all regions. For an existing user, use their saved regions.
       const initialRegions = user 
         ? (user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : [])) 
         : ['ISL', 'LHR', 'South', 'SUG'];
@@ -253,7 +250,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   }, [user, form, isOpen]);
   
   const watchedRole = form.watch('role');
-  
+
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
     // Simulate network delay
@@ -264,29 +261,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
     }, 500);
   };
   
-  const handleRegionChange = (selected: string[], currentField: any) => {
-      const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
-      
-      if (isMultiRole) {
-        const wasAllSelected = currentField.value?.includes('all');
-        const isAllNowSelected = selected.includes('all');
-
-        if (isAllNowSelected && !wasAllSelected) {
-          currentField.onChange(['all']);
-          return;
-        }
-        
-        if (wasAllSelected && selected.length > 1) {
-          currentField.onChange(selected.filter(i => i !== 'all'));
-          return;
-        }
-      }
-      
-      currentField.onChange(selected);
-  };
-
-  const isSingleRegionRole = ['User', 'Branch'].includes(watchedRole);
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { form.reset(); } setIsOpen(open); }}>
       <DialogContent className="sm:max-w-md">
@@ -314,6 +288,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                     <Select 
                       onValueChange={(val) => {
                         field.onChange(val);
+                        // When switching to a single-select role, ensure only one region is selected.
                         if (['User', 'Branch'].includes(val)) {
                             const currentRegions = form.getValues('regions') || [];
                             form.setValue('regions', currentRegions.slice(0, 1));
@@ -342,14 +317,11 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                       <FormLabel>Region(s)</FormLabel>
                       <FormControl>
                         <MultiSelect
-                            options={isSingleRegionRole
-                                ? regions.filter(r => r.value !== 'all') 
-                                : regions
-                            }
+                            options={regions}
                             selected={field.value || []}
-                            onChange={(selected) => handleRegionChange(selected, field)}
-                            mode={isSingleRegionRole ? 'single' : 'multiple'}
-                            placeholder={isSingleRegionRole ? "Select a region..." : "Select region(s)..."}
+                            onChange={field.onChange}
+                            mode={['User', 'Branch'].includes(watchedRole) ? 'single' : 'multiple'}
+                            placeholder={['User', 'Branch'].includes(watchedRole) ? "Select a region..." : "Select region(s)..."}
                         />
                       </FormControl>
                       <FormMessage />

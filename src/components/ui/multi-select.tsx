@@ -25,15 +25,14 @@ interface MultiSelectProps {
   onChange: (selected: string[]) => void;
   className?: string;
   placeholder?: string;
-  mode?: 'single' | 'multiple'; 
+  mode?: 'single' | 'multiple';
 }
 
 const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
   ({ options, selected, onChange, className, placeholder = "Select...", mode = "multiple" }, ref) => {
-    
+
     const handleSelect = (optionValue: string) => {
       let newSelected: string[];
-
       if (mode === 'single') {
         newSelected = selected.includes(optionValue) ? [] : [optionValue];
       } else {
@@ -60,14 +59,14 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
                 options
                   .filter((option) => selected.includes(option.value))
                   .map((option) => (
-                    <Badge 
-                      variant="secondary" 
+                    <Badge
+                      variant="secondary"
                       key={option.value}
                       className="flex items-center gap-1"
                     >
                       {option.label}
-                      <X 
-                        className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                      <X
+                        className="h-3 w-3 cursor-pointer hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSelect(option.value);
@@ -86,22 +85,22 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
           <ScrollArea className="max-h-72">
             <div className="p-2 space-y-1">
               {options.map((option) => (
-                <div
+                <label
                   key={option.value}
-                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent"
+                  htmlFor={`ms-option-${option.value}`}
+                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
                 >
                   <Checkbox
                     id={`ms-option-${option.value}`}
                     checked={selected.includes(option.value)}
                     onCheckedChange={() => handleSelect(option.value)}
                   />
-                  <label
-                    htmlFor={`ms-option-${option.value}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer py-1"
+                  <span
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
                   >
                     {option.label}
-                  </label>
-                </div>
+                  </span>
+                </label>
               ))}
             </div>
           </ScrollArea>
