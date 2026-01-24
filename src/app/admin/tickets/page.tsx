@@ -22,6 +22,7 @@ export default function AdminTicketsPage() {
 
   
   const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
+  const isSupport = useMemo(() => user?.role === 'it-support', [user]);
 
   if (loading) {
       return (
@@ -34,12 +35,14 @@ export default function AdminTicketsPage() {
   return (
     <div className="space-y-4">
         <div className="flex items-center gap-4">
-            <Button asChild variant="outline" size="icon">
-                <Link href="/admin">
-                    <ArrowLeft className="h-4 w-4" />
-                    <span className="sr-only">Back to Dashboard</span>
-                </Link>
-            </Button>
+            {!isSupport && (
+                <Button asChild variant="outline" size="icon">
+                    <Link href="/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back to Dashboard</span>
+                    </Link>
+                </Button>
+            )}
             <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
                 All Tickets
             </h1>

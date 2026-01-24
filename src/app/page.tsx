@@ -30,8 +30,10 @@ export default function LoginPage() {
     const user = localStorage.getItem('mockUser');
     if (user) {
       const parsedUser = JSON.parse(user);
-      if (parsedUser.role === 'Admin' || parsedUser.role === 'it-support') {
+      if (parsedUser.role === 'Admin') {
           router.push('/admin');
+      } else if (parsedUser.role === 'it-support') {
+          router.push('/admin/tickets');
       } else {
           router.push('/dashboard');
       }
@@ -66,7 +68,7 @@ export default function LoginPage() {
             router.push('/admin');
         } else if (email === 'support@example.com' && password === 'password') {
             localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Support Person', role: 'it-support' }));
-            router.push('/admin');
+            router.push('/admin/tickets');
         } else if (email && password) {
             localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Demo User', role: 'User' }));
             router.push('/dashboard');

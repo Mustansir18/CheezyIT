@@ -20,14 +20,14 @@ const allNavItems = [
     icon: BarChart,
     title: 'Reports',
     description: 'Analyze ticket data with charts and statistics.',
-    roles: ['Admin', 'it-support'],
+    roles: ['Admin'],
   },
   {
     href: '/admin/announcements',
     icon: Megaphone,
     title: 'Announcements',
     description: 'Send broadcast messages to users and staff.',
-    roles: ['Admin', 'it-support'],
+    roles: ['Admin'],
   },
   {
     href: '/admin/activity-log',

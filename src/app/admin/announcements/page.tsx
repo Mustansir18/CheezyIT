@@ -36,7 +36,7 @@ export default function AdminAnnouncementsPage() {
   const router = useRouter();
 
   const isAuthorized = useMemo(() => {
-    if (user && (user.role === 'Admin' || user.role === 'it-support')) return true;
+    if (user && user.role === 'Admin') return true;
     return false;
   }, [user]);
 
