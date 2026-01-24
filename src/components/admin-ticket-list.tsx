@@ -163,10 +163,10 @@ export default function AdminTicketList() {
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
             <Popover>
             <PopoverTrigger asChild>
-                <Button id="date" variant={"outline"} className={cn( "w-full sm:w-[300px] justify-start text-left font-normal", !date && "text-muted-foreground" )}>
+                <Button id="date" variant={"outline"} className={cn( "w-full sm:w-auto sm:min-w-[260px] justify-start text-left font-normal", !date && "text-muted-foreground" )}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date?.from ? ( date.to ? ( <> {format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")} </> ) : ( format(date.from, "LLL dd, y") ) ) : ( <span>Pick a date</span> )}
                 </Button>
@@ -201,7 +201,7 @@ export default function AdminTicketList() {
                     <CardDescription>View, search, and filter all support tickets.</CardDescription>
                 </div>
             </div>
-             <div className="flex items-center gap-2 mt-4">
+             <div className="flex flex-wrap items-center gap-2 mt-4">
                 <Input
                     placeholder="Search by ID, title, or description..."
                     value={ticketIdFilter}

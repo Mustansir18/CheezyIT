@@ -100,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
       {isAdminHomePage && (
-        <div className="relative h-[200px] w-full overflow-hidden">
+        <div className="relative h-[150px] md:h-[200px] w-full overflow-hidden">
             <Image
                 src="/background.png"
                 alt="Dashboard Banner"

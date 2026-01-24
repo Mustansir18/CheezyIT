@@ -103,7 +103,7 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
         <div className="flex items-center gap-2 flex-wrap">
             <Popover>
             <PopoverTrigger asChild>
-                <Button id="date" variant={"outline"} className={cn("w-full sm:w-[260px] justify-start text-left font-normal",!date && "text-muted-foreground")}>
+                <Button id="date" variant={"outline"} className={cn("w-full sm:w-auto sm:min-w-[260px] justify-start text-left font-normal",!date && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date?.from ? (date.to ? (<>{format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}</>) : (format(date.from, "LLL dd, y"))) : (<span>Pick a date</span>)}
                 </Button>
@@ -135,7 +135,7 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
         <CardHeader>
             <CardTitle>My Tickets</CardTitle>
             <CardDescription>A list of your recent support tickets.</CardDescription>
-             <div className="flex items-center gap-2 pt-4">
+             <div className="flex flex-wrap items-center gap-2 pt-4">
                 <Input
                     placeholder="Search by ID or title..."
                     value={ticketIdFilter}

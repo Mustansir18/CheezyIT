@@ -80,14 +80,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                     <div className="flex items-center gap-2">
                         <ReportIssueForm>
-                            <Button className="rounded-md">Report an Issue</Button>
+                            <Button className="rounded-md">Report<span className="hidden sm:inline"> an Issue</span></Button>
                         </ReportIssueForm>
                         <UserNav />
                     </div>
                 </header>
             )}
             {isDashboardHomePage && (
-                 <div className="relative h-[200px] w-full overflow-hidden">
+                 <div className="relative h-[150px] md:h-[200px] w-full overflow-hidden">
                     <Image
                         src="/background.png"
                         alt="Dashboard Banner"

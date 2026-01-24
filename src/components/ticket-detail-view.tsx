@@ -220,25 +220,25 @@ export default function TicketDetailView({
                         )}
                     </div>
                 </CardContent>
-                <CardFooter className="flex items-center justify-between gap-2">
-                     <div className="flex items-center gap-2">
-                         <Button onClick={onChatClick}>
+                <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                     <div className="flex w-full sm:w-auto items-stretch sm:items-center gap-2">
+                         <Button onClick={onChatClick} className="flex-grow sm:flex-grow-0">
                             <MessageSquare className="mr-2 h-4 w-4" />
                             Chat
                          </Button>
                          {canManageTicket && !isLocked && (ticket.status === 'Open') && !ticket.assignedTo && (
-                            <Button onClick={onTakeOwnership} variant="secondary">
+                            <Button onClick={onTakeOwnership} variant="secondary" className="flex-grow sm:flex-grow-0">
                                 <Check className="mr-2 h-4 w-4" /> Take Ownership
                             </Button>
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full sm:w-auto justify-end items-stretch sm:items-center gap-2">
                         {canManageTicket && !isLocked && (
                             <>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="outline">
+                                        <Button variant="outline" className="flex-grow sm:flex-grow-0">
                                             <UserCheck className="mr-2 h-4 w-4" />
                                             {ticket.assignedToDisplayName || 'Assign'}
                                         </Button>
@@ -254,7 +254,7 @@ export default function TicketDetailView({
                                 </DropdownMenu>
 
                                 <Select onValueChange={(value) => onStatusChange(value as TicketStatus)} defaultValue={ticket.status}>
-                                    <SelectTrigger className="w-[160px]">
+                                    <SelectTrigger className="w-full sm:w-[160px]">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>

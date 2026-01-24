@@ -168,9 +168,9 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
     return (
         <div className="flex flex-col h-screen w-full overflow-hidden" style={{ backgroundColor: WA_COLORS.bg }}>
             
-            <header className="flex-none w-full flex items-center justify-between px-4 py-2 z-20 border-b border-white/5" 
+            <header className="flex-none w-full flex items-center justify-between px-2 sm:px-4 py-2 z-20 border-b border-white/5" 
                     style={{ backgroundColor: WA_COLORS.header }}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     {onBackToDetail ? (
                         <Button variant="ghost" size="icon" onClick={onBackToDetail} className="text-[#aebac1] hover:text-white transition-colors h-10 w-10 p-0 rounded-full">
                             <ArrowLeft className="h-6 w-6" />
@@ -190,10 +190,10 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
                              <span className="text-white font-medium text-[16px]">{ticketOwnerProfile?.displayName || 'User'}</span>
                              <span className="text-[12px] text-accent/80 font-semibold">{ticket.ticketId}</span>
                         </div>
-                        <span className="text-[13px] text-[#8696a0] truncate max-w-[200px]">{ticket.title}</span>
+                        <span className="text-[13px] text-[#8696a0] truncate max-w-[150px] sm:max-w-[200px]">{ticket.title}</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0">
                     {canManageTicket && (
                         <>
                             <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!ticketOwnerProfile?.phoneNumber || isCalling}>
