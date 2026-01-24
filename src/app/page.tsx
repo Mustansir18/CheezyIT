@@ -11,8 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { logActivity } from '@/lib/activity-logger';
 
 
 export default function LoginPage() {
@@ -47,14 +48,28 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    if (!auth) {
+    if (!auth || !firestore) {
         setError("Auth service not available.");
         setLoading(false);
         return;
     }
 
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const loggedInUser = userCredential.user;
+
+        // Fetch user profile to log activity with user's name
+        const userProfileDoc = await getDoc(doc(firestore, 'users', loggedInUser.uid));
+
+        if (userProfileDoc.exists()) {
+            const userProfileData = userProfileDoc.data();
+            logActivity(firestore, {
+                userId: loggedInUser.uid,
+                userName: userProfileData.displayName || loggedInUser.email || 'Unknown',
+                action: 'USER_LOGIN',
+                details: `User logged in successfully.`
+            });
+        }
         // On success, the useEffect hook will handle redirection
     } catch (err: any) {
         let errMessage = "An unknown error occurred.";
