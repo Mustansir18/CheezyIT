@@ -64,16 +64,16 @@ export default function LoginPage() {
     // Mock login
     setTimeout(() => {
         if (email === 'mustansir133@gmail.com' && password === 'PAK!7tan') {
-            localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Admin', role: 'Admin', regions: ['all'] }));
+            localStorage.setItem('mockUser', JSON.stringify({ id: 'admin-user-id', email, displayName: 'Admin', role: 'Admin', regions: ['all'] }));
             router.push('/admin');
         } else if (email === 'head@example.com' && password === 'password') {
-            localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Head User', role: 'Head', regions: ['all'] }));
+            localStorage.setItem('mockUser', JSON.stringify({ id: 'head-user-1', email, displayName: 'Head User', role: 'Head', regions: ['all'] }));
             router.push('/admin');
         } else if (email === 'support@example.com' && password === 'password') {
-            localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Support Person', role: 'it-support', regions: ['Region A', 'Region B'] }));
+            localStorage.setItem('mockUser', JSON.stringify({ id: 'support-user-1', email, displayName: 'Support Person', role: 'it-support', regions: ['Region A', 'Region B'] }));
             router.push('/admin/tickets');
         } else if (email && password) {
-            localStorage.setItem('mockUser', JSON.stringify({ email, displayName: 'Demo User', role: 'User', region: 'Region A' }));
+            localStorage.setItem('mockUser', JSON.stringify({ id: `user-${email}`, email, displayName: 'Demo User', role: 'User', region: 'Region A' }));
             router.push('/dashboard');
         } else {
             const errMessage = 'Invalid credentials';

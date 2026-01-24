@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import type { User } from '@/components/user-management';
+import type { Announcement } from '@/lib/data';
 
 const announcementSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
@@ -34,6 +35,8 @@ type FormData = z.infer<typeof announcementSchema>;
 interface AnnouncementFormProps {
   users: User[];
   regions: string[];
+  onAddAnnouncement: (announcement: Omit<Announcement, 'id' | 'createdAt' | 'sentBy' | 'readBy'>) => void;
+  currentUser: { email: string; role: string } | null;
 }
 
 const ROLES: MultiSelectOption[] = [
@@ -45,7 +48,7 @@ const ROLES: MultiSelectOption[] = [
 ];
 
 
-export default function AnnouncementForm({ users, regions }: AnnouncementFormProps) {
+export default function AnnouncementForm({ users, regions, onAddAnnouncement, currentUser }: AnnouncementFormProps) {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
 
@@ -71,7 +74,18 @@ export default function AnnouncementForm({ users, regions }: AnnouncementFormPro
   });
 
   const onSubmit = (data: FormData) => {
+    if (!currentUser) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "You must be logged in to send an announcement."
+        });
+        return;
+    }
     setIsPending(true);
+
+    onAddAnnouncement(data);
+
     let recipientsSummary = [];
     if (data.targetRoles.length) recipientsSummary.push(`Roles: ${data.targetRoles.join(', ')}`);
     if (data.targetRegions.length) recipientsSummary.push(`Regions: ${data.targetRegions.join(', ')}`);
@@ -83,12 +97,12 @@ export default function AnnouncementForm({ users, regions }: AnnouncementFormPro
 
     setTimeout(() => {
         toast({
-            title: 'Announcement Sent (Mock)!',
+            title: 'Announcement Sent!',
             description,
         });
         form.reset();
         setIsPending(false);
-    }, 1000);
+    }, 500);
   };
 
   return (

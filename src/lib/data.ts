@@ -5,6 +5,7 @@ export type TicketStatus = 'Open' | 'In-Progress' | 'Resolved' | 'Closed';
 export const TICKET_STATUS_LIST: TicketStatus[] = ['Open', 'In-Progress', 'Resolved', 'Closed'];
 
 export type Ticket = {
+  id?: string;
   userId: string;
   ticketId: string;
   title: string;
@@ -26,6 +27,7 @@ export type Ticket = {
 };
 
 export type ChatMessage = {
+  id?: string;
   userId: string;
   displayName: string;
   text?: string;
@@ -34,6 +36,20 @@ export type ChatMessage = {
   type?: 'user' | 'call_request';
   createdAt: any; // Firestore Timestamp
   isRead?: boolean;
+};
+
+export type Announcement = {
+  id: string;
+  title: string;
+  message: string;
+  targetRoles: string[];
+  targetRegions: string[];
+  targetUsers: string[];
+  startDate?: Date;
+  endDate?: Date;
+  createdAt: Date;
+  sentBy: string;
+  readBy: string[];
 };
 
 

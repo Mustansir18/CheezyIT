@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
-import { isAdmin } from '@/lib/admins';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { User } from '@/components/user-management';
+import type { Announcement } from '@/lib/data';
 
 const mockUsersList: User[] = [
     { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
@@ -22,16 +22,46 @@ const initialRegions = ['Region A', 'Region B', 'Region C'];
 
 
 export default function AdminAnnouncementsPage() {
-  const [user, setUser] = useState<{email: string; role: string} | null>(null);
+  const [user, setUser] = useState<{id: string, email: string; role: string} | null>(null);
   const [loading, setLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     const userJson = localStorage.getItem('mockUser');
     if (userJson) {
       setUser(JSON.parse(userJson));
     }
+    const announcementsJson = localStorage.getItem('mockAnnouncements');
+    if (announcementsJson) {
+      const parsed = JSON.parse(announcementsJson).map((a: any) => ({
+        ...a,
+        createdAt: new Date(a.createdAt),
+        startDate: a.startDate ? new Date(a.startDate) : undefined,
+        endDate: a.endDate ? new Date(a.endDate) : undefined,
+      }));
+      setAnnouncements(parsed);
+    }
     setLoading(false);
   }, []);
+
+  const handleAddAnnouncement = useCallback((newAnnouncement: Omit<Announcement, 'id' | 'createdAt' | 'sentBy' | 'readBy'>) => {
+    if (!user) return;
+
+    const announcementToAdd: Announcement = {
+      ...newAnnouncement,
+      id: `announcement-${Date.now()}`,
+      createdAt: new Date(),
+      sentBy: user.email,
+      readBy: [],
+    };
+    
+    setAnnouncements(prev => {
+        const updatedAnnouncements = [announcementToAdd, ...prev];
+        localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
+        return updatedAnnouncements;
+    });
+
+  }, [user]);
 
   const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
   const router = useRouter();
@@ -75,10 +105,10 @@ export default function AdminAnnouncementsPage() {
         </TabsList>
       </div>
       <TabsContent value="send" className="mt-4">
-        <AnnouncementForm users={mockUsersList} regions={initialRegions} />
+        <AnnouncementForm users={mockUsersList} regions={initialRegions} onAddAnnouncement={handleAddAnnouncement} currentUser={user} />
       </TabsContent>
       <TabsContent value="history" className="mt-4">
-        <AnnouncementHistory />
+        <AnnouncementHistory announcements={announcements} />
       </TabsContent>
     </Tabs>
   );
