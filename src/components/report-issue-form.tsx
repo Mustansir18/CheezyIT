@@ -53,6 +53,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [user, setUser] = useState<any | null>(null);
+  const playSound = useSound('/sounds/new-announcement.mp3');
 
   useEffect(() => {
     const userJson = localStorage.getItem('mockUser');
@@ -126,6 +127,8 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     const updatedTickets = [...currentTickets, newTicket];
     localStorage.setItem('mockTickets', JSON.stringify(updatedTickets));
     window.dispatchEvent(new Event('local-storage-change'));
+
+    playSound();
 
     toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
     resetFormState();
