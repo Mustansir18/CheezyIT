@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -24,7 +23,7 @@ export default function AnnouncementBell() {
     
     // Using a state to force re-render when local storage changes
     const [lastUpdated, setLastUpdated] = useState(Date.now()); 
-    const playSound = useSound('/sounds/new-announcement.mp3');
+    const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
     const unreadCountRef = useRef(0);
     
     useEffect(() => {
