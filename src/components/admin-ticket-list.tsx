@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceToNowStrict } from 'date-fns';
 import { Filter, FileDown, Loader2 } from 'lucide-react';
@@ -20,6 +20,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { useSound } from '@/hooks/use-sound';
 
 const statusColors: Record<Ticket['status'], string> = {
     'Open': 'bg-blue-500',
@@ -44,6 +45,10 @@ export default function AdminTicketList() {
   });
 
   const [currentUser, setCurrentUser] = useState<{ email: string; role: string; regions?: string[] } | null>(null);
+  
+  const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
+  const ticketCountRef = useRef(0);
+  const isInitialMount = useRef(true);
 
   const loadData = useCallback(() => {
     const userJson = localStorage.getItem('mockUser');
@@ -74,6 +79,19 @@ export default function AdminTicketList() {
     return () => window.removeEventListener('storage', handleStorage);
   }, [loadData]);
   
+  useEffect(() => {
+    if (isInitialMount.current || loading) {
+        ticketCountRef.current = allTickets.length;
+        isInitialMount.current = false;
+        return;
+    }
+
+    if (allTickets.length > ticketCountRef.current) {
+        playSound();
+    }
+
+    ticketCountRef.current = allTickets.length;
+  }, [allTickets, playSound, loading]);
 
   const uniqueUsers = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.userId)))], [allTickets]);
   const uniqueRegions = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.region)))], [allTickets]);

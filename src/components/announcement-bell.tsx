@@ -23,6 +23,7 @@ export default function AnnouncementBell() {
     
     const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
     const unreadCountRef = useRef(0);
+    const isInitialMount = useRef(true);
     
     const loadData = useCallback(() => {
         const userJson = localStorage.getItem('mockUser');
@@ -116,13 +117,12 @@ export default function AnnouncementBell() {
     }, [relevantAnnouncements, currentUser]);
 
     useEffect(() => {
-        // Initialize the ref with the initial count on mount
-        if (unreadCountRef.current === 0) {
+        if (isInitialMount.current) {
             unreadCountRef.current = unreadCount;
+            isInitialMount.current = false;
+            return;
         }
-    }, [unreadCount]);
-    
-    useEffect(() => {
+
         if (unreadCount > unreadCountRef.current) {
             playSound();
         }

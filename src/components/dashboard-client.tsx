@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { TicketStatus, Ticket } from '@/lib/data';
 import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useSound } from '@/hooks/use-sound';
 
 const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: string }> = {
     'Open': { icon: Info, color: 'bg-blue-500' },
@@ -36,6 +37,42 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
+
+  const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
+  const ticketsRef = useRef(new Map<string, TicketStatus>());
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+        tickets.forEach(ticket => ticketsRef.current.set(ticket.id, ticket.status));
+        isInitialMount.current = false;
+        return;
+    }
+
+    let statusChanged = false;
+    const newTicketIds = new Set();
+    
+    tickets.forEach(ticket => {
+        newTicketIds.add(ticket.id);
+        const oldStatus = ticketsRef.current.get(ticket.id);
+        if (oldStatus && oldStatus !== ticket.status) {
+            statusChanged = true;
+        }
+        ticketsRef.current.set(ticket.id, ticket.status);
+    });
+
+    if (statusChanged) {
+        playSound();
+    }
+    
+    // Clean up deleted tickets from the ref map
+    for (const oldId of ticketsRef.current.keys()) {
+        if (!newTicketIds.has(oldId)) {
+            ticketsRef.current.delete(oldId);
+        }
+    }
+    
+  }, [tickets, playSound]);
 
   const filteredTickets = useMemo(() => {
     return tickets

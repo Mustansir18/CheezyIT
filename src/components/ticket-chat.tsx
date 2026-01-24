@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useMemo, useLayoutEffect, useEffect } from 'react';
@@ -61,6 +60,11 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const isLocked = ticket.status === 'Closed';
 
+    const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
+    const messagesCountRef = useRef(messages?.length || 0);
+    const statusRef = useRef(ticket.status);
+    const isInitialMount = useRef(true);
+
     const currentUser = useMemo(() => {
         const userJson = localStorage.getItem('mockUser');
         return userJson ? JSON.parse(userJson) : null;
@@ -79,6 +83,30 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
         }
       };
     }, []);
+
+    useEffect(() => {
+        if (isInitialMount.current) {
+            messagesCountRef.current = messages?.length || 0;
+            statusRef.current = ticket.status;
+            isInitialMount.current = false;
+            return;
+        }
+
+        // New message sound
+        if (messages && messages.length > messagesCountRef.current) {
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage && lastMessage.userId !== currentUser?.email) {
+                playSound();
+            }
+        }
+        messagesCountRef.current = messages?.length || 0;
+
+        // Status change sound
+        if (ticket.status !== statusRef.current) {
+            playSound();
+            statusRef.current = ticket.status;
+        }
+    }, [messages, ticket.status, currentUser?.email, playSound]);
 
     const messagesWithDateSeparators = useMemo(() => {
         const items: any[] = [];

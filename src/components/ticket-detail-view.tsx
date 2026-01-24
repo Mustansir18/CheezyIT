@@ -42,6 +42,8 @@ import type { Ticket, TicketStatus } from '@/lib/data';
 import { TICKET_STATUS_LIST } from '@/lib/data';
 import { WithId } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect, useRef } from 'react';
+import { useSound } from '@/hooks/use-sound';
 
 const statusConfig: Record<TicketStatus, { color: string }> = {
     'Open': { color: 'bg-blue-500' },
@@ -98,6 +100,23 @@ export default function TicketDetailView({
 
     const { toast } = useToast();
     const isLocked = ticket.status === 'Closed';
+
+    const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
+    const statusRef = useRef(ticket.status);
+    const isInitialMount = useRef(true);
+
+    useEffect(() => {
+        if (isInitialMount.current) {
+            statusRef.current = ticket.status;
+            isInitialMount.current = false;
+            return;
+        }
+
+        if (ticket.status !== statusRef.current) {
+            playSound();
+            statusRef.current = ticket.status;
+        }
+    }, [ticket.status, playSound]);
 
     const handleCopyAnyDesk = () => {
         if (!ticket.anydesk) return;
