@@ -10,10 +10,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 
 export default function LoginPage() {
@@ -22,10 +21,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
@@ -47,29 +42,6 @@ export default function LoginPage() {
     }
   }, [user, userLoading, userProfile, profileLoading, router]);
   
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetEmail || !auth) return;
-    setIsResetting(true);
-    try {
-        await sendPasswordResetEmail(auth, resetEmail);
-        toast({
-            title: 'Password Reset Email Sent',
-            description: `If an account with ${resetEmail} exists, an email has been sent with reset instructions.`,
-        });
-        setIsResetting(false);
-        setIsResetDialogOpen(false);
-        setResetEmail('');
-    } catch(err: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Password Reset Error',
-            description: err.message,
-        });
-        setIsResetting(false);
-    }
-  }
-
   const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -157,42 +129,6 @@ export default function LoginPage() {
             </form>
           </CardContent>
           <CardFooter className="flex flex-col pt-2 pb-6 px-6">
-              <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                  <DialogTrigger asChild>
-                      <Button variant="link" className="text-sm text-zinc-400 hover:text-primary">Forgot Password?</Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
-                      <DialogHeader>
-                          <DialogTitle className="text-zinc-100">Reset Your Password</DialogTitle>
-                          <DialogDescription className="text-zinc-400">
-                              Enter your email address and we will send you a link to reset your password.
-                          </DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
-                          <div className="space-y-1.5">
-                              <Label htmlFor="reset-email" className="text-zinc-400">Email</Label>
-                              <Input
-                                  id="reset-email"
-                                  type="email"
-                                  placeholder="m@example.com"
-                                  value={resetEmail}
-                                  onChange={(e) => setResetEmail(e.target.value)}
-                                  required
-                                  className="bg-zinc-800 border-zinc-700 text-zinc-100 focus:border-primary placeholder:text-zinc-500"
-                              />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                              <DialogClose asChild>
-                                  <Button type="button" variant="outline" className="text-white border-zinc-700 bg-zinc-800 hover:bg-zinc-700 hover:text-white">Cancel</Button>
-                              </DialogClose>
-                              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={isResetting}>
-                                  {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                  Send Reset Link
-                              </Button>
-                          </div>
-                      </form>
-                  </DialogContent>
-              </Dialog>
           </CardFooter>
         </Card>
       </div>
