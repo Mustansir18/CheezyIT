@@ -107,13 +107,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-white px-4">
-      <Card className="w-full max-w-sm">
+    <div className="relative flex h-screen w-full items-center justify-center bg-gray-950 overflow-hidden px-4">
+      {/* Background glows */}
+      <div className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 w-96 h-96 bg-orange-500/40 rounded-full blur-3xl opacity-40"></div>
+      <div className="absolute bottom-0 translate-y-1/2 left-1/4 -translate-x-1/2 w-96 h-96 bg-purple-500/40 rounded-full blur-3xl opacity-40"></div>
+      <div className="absolute bottom-0 translate-y-1/2 right-1/4 translate-x-1/2 w-80 h-80 bg-sky-500/40 rounded-full blur-3xl opacity-40"></div>
+      
+      <Card className="w-full max-w-sm z-10 border-white/10 bg-gray-900/60 text-white backdrop-blur-md">
         <CardHeader className="text-center items-center p-4 pb-2">
           <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
           <div className="pt-2 text-center">
             <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
-            <p className={cn("text-sm text-muted-foreground font-bold", "pt-2 text-base")}>
+            <p className={cn("text-sm font-bold text-gray-400", "pt-2 text-base")}>
               Welcome
             </p>
           </div>
@@ -121,7 +126,7 @@ export default function LoginPage() {
         <CardContent className="p-4">
           <form onSubmit={handleAuthAction} className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-gray-300">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -129,16 +134,18 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-gray-300">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
               />
             </div>
             <Button type="submit" className="w-full !mt-5" disabled={loading}>
@@ -150,18 +157,18 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col pt-2 pb-4">
             <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="link" className="text-sm">Forgot Password?</Button>
+                    <Button variant="link" className="text-sm text-primary/80 hover:text-primary">Forgot Password?</Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="bg-gray-900 border-white/10 text-white">
                     <DialogHeader>
                         <DialogTitle>Reset Your Password</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-gray-400">
                             Enter your email address and we will send you a link to reset your password.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
                         <div className="space-y-1.5">
-                            <Label htmlFor="reset-email">Email</Label>
+                            <Label htmlFor="reset-email" className="text-gray-300">Email</Label>
                             <Input
                                 id="reset-email"
                                 type="email"
@@ -169,11 +176,12 @@ export default function LoginPage() {
                                 value={resetEmail}
                                 onChange={(e) => setResetEmail(e.target.value)}
                                 required
+                                className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
                             />
                         </div>
                         <div className="flex justify-end gap-2">
                             <DialogClose asChild>
-                                <Button type="button" variant="outline">Cancel</Button>
+                                <Button type="button" variant="outline" className="text-white border-white/20 hover:bg-white/10 hover:text-white">Cancel</Button>
                             </DialogClose>
                             <Button type="submit" disabled={isResetting}>
                                 {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
