@@ -48,13 +48,21 @@ export default function AdminAnnouncementsPage() {
     loadData();
     setLoading(false);
 
-    const handleStorageChange = (e: StorageEvent) => {
+    const handleStorageChange = (e: StorageEvent | CustomEvent) => {
+      if (e instanceof StorageEvent) {
         if (['mockUser', 'mockAnnouncements', 'mockUsers', 'mockRegions'].includes(e.key || '')) {
             loadData();
         }
+      } else {
+        loadData();
+      }
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('storage', handleStorageChange as EventListener);
+    window.addEventListener('local-storage-change', handleStorageChange as EventListener);
+    return () => {
+        window.removeEventListener('storage', handleStorageChange as EventListener);
+        window.removeEventListener('local-storage-change', handleStorageChange as EventListener);
+    };
   }, [loadData]);
 
 
@@ -73,12 +81,7 @@ export default function AdminAnnouncementsPage() {
     
     const updatedAnnouncements = [announcementToAdd, ...currentAnnouncements];
     localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
-    setAnnouncements(updatedAnnouncements.map((a: any) => ({
-        ...a,
-        createdAt: new Date(a.createdAt),
-        startDate: a.startDate ? new Date(a.startDate) : undefined,
-        endDate: a.endDate ? new Date(a.endDate) : undefined,
-    })));
+    window.dispatchEvent(new Event('local-storage-change'));
 
   }, [user]);
 
@@ -86,12 +89,7 @@ export default function AdminAnnouncementsPage() {
     const currentAnnouncements = JSON.parse(localStorage.getItem('mockAnnouncements') || '[]');
     const updatedAnnouncements = currentAnnouncements.filter((a: Announcement) => a.id !== announcementId);
     localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
-    setAnnouncements(updatedAnnouncements.map((a: any) => ({
-        ...a,
-        createdAt: new Date(a.createdAt),
-        startDate: a.startDate ? new Date(a.startDate) : undefined,
-        endDate: a.endDate ? new Date(a.endDate) : undefined,
-    })));
+    window.dispatchEvent(new Event('local-storage-change'));
     toast({ title: 'Announcement Deleted', description: 'The announcement has been removed.' });
   }, [toast]);
 

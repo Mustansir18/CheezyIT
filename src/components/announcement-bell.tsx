@@ -21,12 +21,10 @@ export default function AnnouncementBell() {
     const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     
-    // Using a state to force re-render when local storage changes
-    const [lastUpdated, setLastUpdated] = useState(Date.now()); 
     const playSound = useSound('/public/sounds/new-announcement.mp3');
     const unreadCountRef = useRef(0);
     
-    useEffect(() => {
+    const loadData = useCallback(() => {
         const userJson = localStorage.getItem('mockUser');
         if (userJson) setCurrentUser(JSON.parse(userJson));
 
@@ -41,16 +39,29 @@ export default function AnnouncementBell() {
             }));
             setAllAnnouncements(parsed);
         }
+    }, []);
 
-        const handleStorageChange = (e: StorageEvent) => {
-            if (e.key === 'mockAnnouncements' || e.key === 'mockUser') {
-                 setLastUpdated(Date.now());
+    useEffect(() => {
+        loadData();
+
+        const handleStorageChange = (e: StorageEvent | CustomEvent) => {
+            if (e instanceof StorageEvent) {
+                if (['mockAnnouncements', 'mockUser'].includes(e.key || '')) {
+                    loadData();
+                }
+            } else {
+                loadData();
             }
         };
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
+        
+        window.addEventListener('storage', handleStorageChange as EventListener);
+        window.addEventListener('local-storage-change', handleStorageChange as EventListener);
 
-    }, [lastUpdated]); // Rerun on storage event
+        return () => {
+            window.removeEventListener('storage', handleStorageChange as EventListener);
+            window.removeEventListener('local-storage-change', handleStorageChange as EventListener);
+        };
+    }, [loadData]);
     
     const isPrivilegedUser = useMemo(() => {
         if (!currentUser) return false;
@@ -130,8 +141,8 @@ export default function AnnouncementBell() {
             }
             return ann;
         });
-        setAllAnnouncements(updatedAnnouncements);
         localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
+        window.dispatchEvent(new Event('local-storage-change'));
     }, [allAnnouncements, currentUser]);
 
      const handleMarkAllAsRead = useCallback(() => {
@@ -144,14 +155,14 @@ export default function AnnouncementBell() {
             }
             return ann;
         });
-         setAllAnnouncements(updatedAnnouncements);
         localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
+        window.dispatchEvent(new Event('local-storage-change'));
     }, [allAnnouncements, currentUser, relevantAnnouncements, unreadCount]);
 
     const handleDelete = (announcementId: string) => {
         const updatedAnnouncements = allAnnouncements.filter(a => a.id !== announcementId);
-        setAllAnnouncements(updatedAnnouncements);
         localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
+        window.dispatchEvent(new Event('local-storage-change'));
         setDeletingId(null);
     };
 
