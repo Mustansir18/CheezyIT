@@ -275,7 +275,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
     const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
     
     if (isMultiRole) {
-      const wasAllSelected = currentField.value?.includes('all');
+      const wasAllSelected = (currentField.value || []).includes('all');
       const isAllNowSelected = selected.includes('all');
 
       // If "All Regions" was just clicked, clear others
@@ -323,7 +323,9 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                         // Clear regions if switching to a single-select role to prevent validation errors
                         if (['User', 'Branch'].includes(val)) {
                           const currentRegions = form.getValues('regions');
-                          form.setValue('regions', currentRegions ? currentRegions.slice(0, 1) : []);
+                          if (currentRegions) {
+                            form.setValue('regions', currentRegions.slice(0, 1));
+                          }
                         }
                       }} 
                       defaultValue={field.value}
