@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CalendarIcon, Loader2 } from 'lucide-react';
+import { useSound } from '@/hooks/use-sound';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ const ROLES: MultiSelectOption[] = [
 export default function AnnouncementForm({ users, regions, onAddAnnouncement, currentUser }: AnnouncementFormProps) {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
+  const playSound = useSound('/sounds/new-announcement.mp3');
 
   const userOptions: MultiSelectOption[] = useMemo(() => 
     users.map(u => ({ value: u.id, label: `${u.displayName} (${u.email})` })),
@@ -94,7 +96,8 @@ export default function AnnouncementForm({ users, regions, onAddAnnouncement, cu
     const description = recipientsSummary.length > 0
         ? `Message sent to: ${recipientsSummary.join('; ')}.`
         : 'Message sent to all users.';
-
+    
+    playSound();
     setTimeout(() => {
         toast({
             title: 'Announcement Sent!',

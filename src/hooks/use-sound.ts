@@ -41,4 +41,11 @@ export const useSound = (src: string) => {
       // browser autoplay policies.
       audioRef.current.play().catch(err => {
         console.warn(
-          `Sound playback was prevented for ${audioRef.current?.src}. This is usually due to browser
+          `Sound playback was prevented for ${audioRef.current?.src}. This is usually due to browser autoplay policies. User interaction is required to play audio.`
+        );
+      });
+    }
+  }, []);
+
+  return play;
+};

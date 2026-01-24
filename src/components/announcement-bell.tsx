@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Bell, Trash2, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useSound } from '@/hooks/use-sound';
 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -23,6 +24,8 @@ export default function AnnouncementBell() {
     
     // Using a state to force re-render when local storage changes
     const [lastUpdated, setLastUpdated] = useState(Date.now()); 
+    const playSound = useSound('/sounds/new-announcement.mp3');
+    const unreadCountRef = useRef(0);
     
     useEffect(() => {
         const userJson = localStorage.getItem('mockUser');
@@ -73,12 +76,10 @@ export default function AnnouncementBell() {
                 if (isBroadcast) return true;
                 
                 // If targets are set, check if the user matches ANY of them (OR logic)
+                if (currentUser.id && ann.targetUsers.includes(currentUser.id)) return true;
 
                 // Check for role match
                 if (ann.targetRoles.includes(currentUser.role)) return true;
-
-                // Check for user match
-                if (currentUser.id && ann.targetUsers.includes(currentUser.id)) return true;
 
                 // Check for region match
                 if (ann.targetRegions.length > 0) {
@@ -94,7 +95,6 @@ export default function AnnouncementBell() {
                     }
                 }
 
-                // If none of the specific targets match, the user shouldn't see it
                 return false;
             })
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -104,6 +104,20 @@ export default function AnnouncementBell() {
         if (!currentUser) return 0;
         return relevantAnnouncements.filter(ann => !ann.readBy.includes(currentUser.id)).length;
     }, [relevantAnnouncements, currentUser]);
+
+    useEffect(() => {
+        // Initialize the ref with the initial count on mount
+        if (unreadCountRef.current === 0) {
+            unreadCountRef.current = unreadCount;
+        }
+    }, [unreadCount]);
+    
+    useEffect(() => {
+        if (unreadCount > unreadCountRef.current) {
+            playSound();
+        }
+        unreadCountRef.current = unreadCount;
+    }, [unreadCount, playSound]);
 
     const handleMarkAsRead = useCallback((announcementId: string) => {
         if (!currentUser) return;
