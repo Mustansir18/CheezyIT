@@ -68,9 +68,10 @@ export default function UserManagement({
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
     const isLoading = false;
     
-    const regionOptions: MultiSelectOption[] = useMemo(() => (
-      regionList.map(r => ({ value: r, label: r }))
-    ), [regionList]);
+    const regionOptions: MultiSelectOption[] = useMemo(() => ([
+      { value: 'all', label: 'All Regions' },
+      ...regionList.filter(r => r.toLowerCase() !== 'all').map(r => ({ value: r, label: r }))
+    ]), [regionList]);
 
     const handleOpenAddDialog = () => {
         setEditingUser(null);
@@ -144,7 +145,7 @@ export default function UserManagement({
                                             </TableCell>
                                             <TableCell>{user.email}</TableCell>
                                             <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
-                                            <TableCell>{user.regions?.includes('all') ? 'All' : (user.region || user.regions?.join(', '))}</TableCell>
+                                            <TableCell>{user.regions?.includes('all') ? 'All Regions' : (user.region || user.regions?.join(', '))}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isUserAdmin}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -316,7 +317,21 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                             <MultiSelect 
                                 options={regions}
                                 selected={field.value || []}
-                                onChange={field.onChange}
+                                onChange={(selected) => {
+                                    const currentValue = field.value || [];
+                                    const isNowSelectingAll = selected.includes('all');
+                                    
+                                    if (isNowSelectingAll && !currentValue.includes('all')) {
+                                        // If 'all' is newly selected, make it the only selection
+                                        field.onChange(['all']);
+                                    } else if (isNowSelectingAll && selected.length > 1) {
+                                        // If 'all' was already selected and something else is added, remove 'all'
+                                        field.onChange(selected.filter(v => v !== 'all'));
+                                    } else {
+                                        // Otherwise, just update with the new selection
+                                        field.onChange(selected);
+                                    }
+                                }}
                                 placeholder="Select regions..."
                             />
                         </FormControl>
@@ -330,7 +345,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {regions.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                                {regions.filter(r => r.value !== 'all').map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     <FormMessage /></FormItem>
