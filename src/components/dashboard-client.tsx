@@ -2,10 +2,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { TicketStatus } from '@/lib/data';
+import type { TicketStatus, Ticket } from '@/lib/data';
 import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths } from 'date-fns';
+import { addDays, format, startOfDay, endOfDay, startOfMonth, subMonths, formatDistanceToNowStrict } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -39,8 +39,34 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
 
-  const filteredTickets = allTickets;
-  const finalStats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
+  const filteredTickets = useMemo(() => {
+    return allTickets
+      .filter(ticket => ticket.status !== 'Closed') // Hide closed tickets
+      .filter(ticket => {
+        // Date range filter
+        if (date?.from) {
+            const ticketDate = new Date(ticket.createdAt);
+            const from = startOfDay(date.from);
+            const to = date.to ? endOfDay(date.to) : endOfDay(date.from);
+            if (ticketDate < from || ticketDate > to) return false;
+        }
+
+        // Text search filter
+        if (ticketIdFilter) {
+            const searchTerm = ticketIdFilter.toLowerCase();
+            const inTitle = ticket.title.toLowerCase().includes(searchTerm);
+            const inId = ticket.ticketId.toLowerCase().includes(searchTerm);
+            if (!inTitle && !inId) return false;
+        }
+
+        // Dropdown filters
+        if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
+
+        return true;
+      });
+  }, [allTickets, date, ticketIdFilter, statusFilter]);
+
+  const finalStats = useMemo(() => getStats(allTickets), [allTickets]);
 
 
   return (
@@ -80,10 +106,10 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
       <Card>
         <CardHeader>
             <CardTitle>My Tickets</CardTitle>
-            <CardDescription>Firebase is detached. Ticket data is not available.</CardDescription>
+            <CardDescription>A list of your recent support tickets.</CardDescription>
              <div className="flex items-center gap-2 pt-4">
                 <Input
-                    placeholder="Search by ID, title, or description..."
+                    placeholder="Search by ID or title..."
                     value={ticketIdFilter}
                     onChange={(e) => setTicketIdFilter(e.target.value)}
                     className="h-9 max-w-sm"
@@ -93,7 +119,7 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
                     <DropdownMenuContent align="start">
                         <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
                             <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem><DropdownMenuSeparator />
-                            {TICKET_STATUS_LIST.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
+                            {TICKET_STATUS_LIST.filter(s => s !== 'Closed').map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -102,15 +128,30 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
         <CardContent>
             <div className="grid grid-cols-1 gap-3">
               {ticketsLoading ? (
-                [...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+                [...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)
               ) : filteredTickets.length > 0 ? (
-                // This will not render as filteredTickets is empty
-                filteredTickets.map((ticket: any) => (
-                  <div key={ticket.id}>{ticket.title}</div>
+                filteredTickets.map((ticket: Ticket & {id: string}) => (
+                   <Link href={`/dashboard/ticket/${ticket.id}`} key={ticket.id} className="block">
+                    <Card className="hover:border-primary transition-colors duration-200">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg leading-tight">{ticket.title}</CardTitle>
+                          <Badge className={`${statusConfig[ticket.status].color} text-white hover:${statusConfig[ticket.status].color}`}>{ticket.status}</Badge>
+                        </div>
+                        <CardDescription>{ticket.ticketId}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                            <Clock className="mr-2 h-4 w-4" />
+                            <span>Last updated {formatDistanceToNowStrict(new Date(ticket.updatedAt), { addSuffix: true })}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))
               ) : (
                 <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground">
-                    No tickets found.
+                    No open tickets found.
                 </div>
               )}
             </div>

@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
+import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceToNowStrict } from 'date-fns';
 import { Filter, FileDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getStats, TICKET_STATUS_LIST } from '@/lib/data';
+import { Ticket, getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -17,6 +18,24 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+
+const mockTickets: (Ticket & { id: string })[] = [
+    { id: 'TKT-001', ticketId: 'TKT-001', userId: 'user1@example.com', title: 'Wifi not working', region: 'Region A', status: 'Open', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The wifi in the main conference room is down.' },
+    { id: 'TKT-002', ticketId: 'TKT-002', userId: 'user2@example.com', title: 'Printer jam', region: 'Region B', status: 'In-Progress', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The 2nd floor printer is jammed and showing an error code.' },
+    { id: 'TKT-003', ticketId: 'TKT-003', userId: 'user3@example.com', title: 'Software install request', region: 'Region C', status: 'Resolved', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I need Adobe Photoshop installed on my new laptop.' },
+    { id: 'TKT-004', ticketId: 'TKT-004', userId: 'user1@example.com', title: 'Password reset', region: 'Region A', status: 'Closed', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I forgot my password for the sales portal.' },
+    { id: 'TKT-005', ticketId: 'TKT-005', userId: 'user2@example.com', title: 'Monitor is flickering', region: 'Region B', status: 'Closed', createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'My external monitor keeps flickering on and off.' },
+    { id: 'TKT-006', ticketId: 'TKT-006', userId: 'user4@example.com', title: 'VPN connection issue', region: 'Region B', status: 'Open', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I cannot connect to the VPN from home.' },
+];
+
+const statusColors: Record<Ticket['status'], string> = {
+    'Open': 'bg-blue-500',
+    'In-Progress': 'bg-orange-500',
+    'Resolved': 'bg-green-600',
+    'Closed': 'bg-gray-500',
+};
 
 export default function AdminTicketList() {
   const { toast } = useToast();
@@ -33,7 +52,65 @@ export default function AdminTicketList() {
     to: new Date(),
   });
 
-  const stats = useMemo(() => getStats([]), []);
+  const [currentUser, setCurrentUser] = useState<{ email: string; role: string; regions?: string[] } | null>(null);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('mockUser');
+    if (userJson) {
+        setCurrentUser(JSON.parse(userJson));
+    }
+  }, []);
+  
+  const allTickets = useMemo(() => mockTickets, []);
+
+  const uniqueUsers = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.userId)))], [allTickets]);
+  const uniqueRegions = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.region)))], [allTickets]);
+
+  const filteredTickets = useMemo(() => {
+    if (!currentUser) return [];
+
+    let tickets = [...allTickets];
+
+    // Role-based filtering for closed tickets
+    if (currentUser.role === 'it-support' || currentUser.role === 'Branch') {
+      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
+    }
+    
+    // Role-based filtering for regions
+    if ((currentUser.role === 'it-support' || currentUser.role === 'Head') && currentUser.regions && !currentUser.regions.includes('all')) {
+      tickets = tickets.filter(ticket => currentUser.regions!.includes(ticket.region));
+    }
+
+    // UI filters
+    return tickets.filter(ticket => {
+        // Date range filter
+        if (date?.from) {
+            const ticketDate = new Date(ticket.createdAt);
+            const from = startOfDay(date.from);
+            const to = date.to ? endOfDay(date.to) : endOfDay(date.from);
+            if (ticketDate < from || ticketDate > to) return false;
+        }
+
+        // Text search filter
+        if (ticketIdFilter) {
+            const searchTerm = ticketIdFilter.toLowerCase();
+            const inTitle = ticket.title.toLowerCase().includes(searchTerm);
+            const inId = ticket.ticketId.toLowerCase().includes(searchTerm);
+            const inDescription = ticket.description?.toLowerCase().includes(searchTerm);
+            if (!inTitle && !inId && !inDescription) return false;
+        }
+
+        // Dropdown filters
+        if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
+        if (userFilter !== 'all' && ticket.userId !== userFilter) return false;
+        if (regionFilter !== 'all' && ticket.region !== regionFilter) return false;
+
+        return true;
+    });
+  }, [allTickets, currentUser, date, ticketIdFilter, statusFilter, regionFilter, userFilter]);
+
+  const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
+
   
   if (loading) {
     return (
@@ -81,7 +158,7 @@ export default function AdminTicketList() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <CardTitle>All Tickets</CardTitle>
-                    <CardDescription>Firebase is detached, so no tickets can be shown.</CardDescription>
+                    <CardDescription>View, search, and filter all support tickets.</CardDescription>
                 </div>
             </div>
              <div className="flex items-center gap-2 mt-4">
@@ -92,22 +169,62 @@ export default function AdminTicketList() {
                     className="h-9 max-w-sm"
                 />
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />User</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />User: {userFilter}</Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                        <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
+                            {uniqueUsers.map(user => <DropdownMenuRadioItem key={user} value={user}>{user}</DropdownMenuRadioItem>)}
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Status</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Status: {statusFilter}</Button></DropdownMenuTrigger>
+                     <DropdownMenuContent align="start">
+                        <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                            <DropdownMenuSeparator />
+                            {TICKET_STATUS_LIST.map(s => <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>)}
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Region</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Region: {regionFilter}</Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                        <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
+                            {uniqueRegions.map(region => <DropdownMenuRadioItem key={region} value={region}>{region}</DropdownMenuRadioItem>)}
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
                 </DropdownMenu>
             </div>
         </CardHeader>
         <CardContent>
-            <div className="grid grid-cols-1 gap-3">
-                <div className="col-span-full h-24 flex items-center justify-center text-muted-foreground">
-                    No tickets found.
-                </div>
-            </div>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Ticket ID</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Region</TableHead>
+                        <TableHead>Last Updated</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredTickets.length > 0 ? filteredTickets.map((ticket) => (
+                        <TableRow key={ticket.id}>
+                            <TableCell><Link href={`/dashboard/ticket/${ticket.id}`} className="font-medium text-primary hover:underline">{ticket.ticketId}</Link></TableCell>
+                            <TableCell>{ticket.title}</TableCell>
+                            <TableCell><Badge className={`${statusColors[ticket.status]} text-white hover:${statusColors[ticket.status]}`}>{ticket.status}</Badge></TableCell>
+                            <TableCell>{ticket.region}</TableCell>
+                            <TableCell>{formatDistanceToNowStrict(new Date(ticket.updatedAt), { addSuffix: true })}</TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                No tickets found for the selected criteria.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
         </CardContent>
       </Card>
     </>

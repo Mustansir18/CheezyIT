@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
-import { type Ticket } from '@/lib/data';
+import { type Ticket, getStats } from '@/lib/data';
 import DashboardClient from '@/components/dashboard-client';
 
 const useUser = () => {
@@ -21,11 +21,16 @@ const useUser = () => {
     return { user, loading };
 };
 
+const mockTickets: (Ticket & { id: string })[] = [
+    { id: 'mock-1', ticketId: 'TKT-001', userId: 'user@example.com', title: 'Wifi not working in my office', region: 'Region A', status: 'Open', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), updatedAt: new Date(), description: '...' },
+    { id: 'mock-2', ticketId: 'TKT-004', userId: 'user@example.com', title: 'My old issue from last week', region: 'Region A', status: 'Closed', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: '...' }
+];
+
+
 export default function DashboardPage() {
   const { user, loading } = useUser();
   const router = useRouter();
-  const tickets: Ticket[] = []; 
-  const stats = { pending: 0, inProgress: 0, resolved: 0};
+  const stats = getStats(mockTickets);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -43,7 +48,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <DashboardClient tickets={tickets} stats={stats} />
+      <DashboardClient tickets={mockTickets} stats={stats} />
     </div>
   );
 }
