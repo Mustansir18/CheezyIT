@@ -89,9 +89,9 @@ export default function LoginPage() {
         <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
           <CardHeader className="text-center items-center p-6">
-            <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
+            <Image src="/logo.png" alt="Cheezious IT Support Logo" width={60} height={60} />
             <div className="pt-4 text-center">
-              <CardTitle className="text-2xl font-headline font-bold text-zinc-100 whitespace-nowrap">Cheezious IT Support</CardTitle>
+              <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
               <CardDescription className="text-zinc-400 pt-2">
                 Sign in to continue
               </CardDescription>
