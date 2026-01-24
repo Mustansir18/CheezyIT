@@ -107,7 +107,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-gray-100 px-4">
+    <div className="flex h-screen w-full items-center justify-center bg-white px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center items-center p-4 pb-2">
           <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
