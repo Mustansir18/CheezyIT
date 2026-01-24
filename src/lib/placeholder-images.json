@@ -1,16 +1,3 @@
 {
-  "placeholderImages": [
-    {
-      "id": "user-avatar",
-      "description": "User avatar",
-      "imageUrl": "https://images.unsplash.com/flagged/photo-1570612861542-284f4c12e75f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBmYWNlfGVufDB8fHx8MTc2ODQ0ODI2N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "person face"
-    },
-    {
-      "id": "dashboard-banner",
-      "description": "Dashboard banner image",
-      "imageUrl": "https://images.unsplash.com/photo-1625645262499-c2a1e2eb09a7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxvZmZpY2UlMjB0ZWNobm9sb2d5fGVufDB8fHx8MTc2ODcyNDk2OXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "office technology"
-    }
-  ]
+  "placeholderImages": []
 }
