@@ -113,86 +113,89 @@ export default function LoginPage() {
       <div className="absolute bottom-0 translate-y-1/2 left-1/4 -translate-x-1/2 w-96 h-96 bg-purple-500/40 rounded-full blur-3xl opacity-40"></div>
       <div className="absolute bottom-0 translate-y-1/2 right-1/4 translate-x-1/2 w-80 h-80 bg-sky-500/40 rounded-full blur-3xl opacity-40"></div>
       
-      <Card className="w-full max-w-sm z-10 border-white/20 bg-gray-900/60 text-white backdrop-blur-md">
-        <CardHeader className="text-center items-center p-4 pb-2">
-          <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
-          <div className="pt-2 text-center">
-            <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
-            <p className={cn("text-sm font-bold text-gray-400", "pt-2 text-base")}>
-              Welcome
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4">
-          <form onSubmit={handleAuthAction} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-gray-300">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
-              />
+      <div className="relative w-full max-w-sm z-10">
+        <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 blur opacity-75"></div>
+        <Card className="relative border-white/20 bg-gray-900/80 text-white backdrop-blur-md">
+          <CardHeader className="text-center items-center p-4 pb-2">
+            <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
+            <div className="pt-2 text-center">
+              <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
+              <p className={cn("text-sm font-bold text-gray-400", "pt-2 text-base")}>
+                Welcome
+              </p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-gray-300">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
-              />
-            </div>
-            <Button type="submit" variant="secondary" className="w-full !mt-5" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col pt-2 pb-4">
-            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="link" className="text-sm text-primary/80 hover:text-primary">Forgot Password?</Button>
-                </DialogTrigger>
-                <DialogContent className="bg-gray-900 border-white/10 text-white">
-                    <DialogHeader>
-                        <DialogTitle>Reset Your Password</DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Enter your email address and we will send you a link to reset your password.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="reset-email" className="text-gray-300">Email</Label>
-                            <Input
-                                id="reset-email"
-                                type="email"
-                                placeholder="m@example.com"
-                                value={resetEmail}
-                                onChange={(e) => setResetEmail(e.target.value)}
-                                required
-                                className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
-                            />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <DialogClose asChild>
-                                <Button type="button" variant="outline" className="text-white border-white/20 hover:bg-white/10 hover:text-white">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit" variant="secondary" disabled={isResetting}>
-                                {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Send Reset Link
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
-        </CardFooter>
-      </Card>
+          </CardHeader>
+          <CardContent className="p-4">
+            <form onSubmit={handleAuthAction} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-gray-300">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-gray-300">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
+                />
+              </div>
+              <Button type="submit" variant="secondary" className="w-full !mt-5" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign In
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex flex-col pt-2 pb-4">
+              <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                  <DialogTrigger asChild>
+                      <Button variant="link" className="text-sm text-primary/80 hover:text-primary">Forgot Password?</Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-gray-900 border-white/10 text-white">
+                      <DialogHeader>
+                          <DialogTitle>Reset Your Password</DialogTitle>
+                          <DialogDescription className="text-gray-400">
+                              Enter your email address and we will send you a link to reset your password.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
+                          <div className="space-y-1.5">
+                              <Label htmlFor="reset-email" className="text-gray-300">Email</Label>
+                              <Input
+                                  id="reset-email"
+                                  type="email"
+                                  placeholder="m@example.com"
+                                  value={resetEmail}
+                                  onChange={(e) => setResetEmail(e.target.value)}
+                                  required
+                                  className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
+                              />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                              <DialogClose asChild>
+                                  <Button type="button" variant="outline" className="text-white border-white/20 hover:bg-white/10 hover:text-white">Cancel</Button>
+                              </DialogClose>
+                              <Button type="submit" variant="secondary" disabled={isResetting}>
+                                  {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                  Send Reset Link
+                              </Button>
+                          </div>
+                      </form>
+                  </DialogContent>
+              </Dialog>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }
