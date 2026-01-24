@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -24,8 +23,6 @@ export type User = {
   displayName: string;
   email: string;
   role: 'User' | 'it-support' | 'Admin' | 'Branch' | 'Head';
-  region?: string;
-  regions?: string[];
   blockedUntil?: Date | null;
 };
 
@@ -35,35 +32,17 @@ const userSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
   role: z.enum(['User', 'it-support', 'Admin', 'Branch', 'Head']),
-  regions: z.array(z.string()).optional(),
-}).superRefine((data, ctx) => {
-    if (data.role !== 'Admin' && (!data.regions || data.regions.length === 0)) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'At least one region is required.',
-            path: ['regions'],
-        });
-    }
-    if ((data.role === 'User' || data.role === 'Branch') && data.regions && data.regions.length > 1) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Users and branches can only be assigned to one region.',
-            path: ['regions'],
-        });
-    }
 });
 
 
 export default function UserManagement({ 
     userIsAdminOrRoot: isPrivileged, 
-    regions: regionList,
     users,
     onSaveUser,
     onBlockUser,
     onDeleteUser
 }: { 
     userIsAdminOrRoot: boolean, 
-    regions: string[],
     users: User[],
     onSaveUser: (data: z.infer<typeof userSchema>) => void,
     onBlockUser: (user: User) => void,
@@ -75,11 +54,6 @@ export default function UserManagement({
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
     const isLoading = false;
     
-    const regionOptions: MultiSelectOption[] = useMemo(() => ([
-      { value: 'all', label: 'All Regions' },
-      ...regionList.filter(r => r.toLowerCase() !== 'all').map(r => ({ value: r, label: r }))
-    ]), [regionList]);
-
     const handleOpenAddDialog = () => {
         setEditingUser(null);
         setIsUserDialogOpen(true);
@@ -129,7 +103,6 @@ export default function UserManagement({
                                 <TableHead>Display Name</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
-                                <TableHead>Region(s)</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -137,7 +110,7 @@ export default function UserManagement({
                             {isLoading ? (
                                 [...Array(5)].map((_, i) => (
                                     <TableRow key={i}>
-                                        <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                                        <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
                                     </TableRow>
                                 ))
                             ) : users && users.length > 0 ? (
@@ -152,7 +125,6 @@ export default function UserManagement({
                                             </TableCell>
                                             <TableCell>{user.email}</TableCell>
                                             <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
-                                            <TableCell>{user.regions?.includes('all') ? 'All Regions' : (user.region || user.regions?.join(', '))}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isUserAdmin}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -173,7 +145,7 @@ export default function UserManagement({
                                 })
                             ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">No users found.</TableCell>
+                                <TableCell colSpan={4} className="h-24 text-center">No users found.</TableCell>
                             </TableRow>
                             )}
                         </TableBody>
@@ -186,7 +158,6 @@ export default function UserManagement({
                 setIsOpen={setIsUserDialogOpen} 
                 user={editingUser} 
                 onSave={handleSaveUser}
-                regions={regionOptions}
             />
 
             {blockingUser && (
@@ -226,7 +197,7 @@ export default function UserManagement({
     );
 }
 
-function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: boolean, setIsOpen: (open: boolean) => void, user: User | null, onSave: (data: z.infer<typeof userSchema>) => void, regions: MultiSelectOption[] }) {
+function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, setIsOpen: (open: boolean) => void, user: User | null, onSave: (data: z.infer<typeof userSchema>) => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<z.infer<typeof userSchema>>({
@@ -235,7 +206,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       displayName: '',
       email: '',
       role: 'User',
-      regions: [],
       password: '',
     }
   });
@@ -243,23 +213,16 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   // Reset form when dialog opens or user changes
   useEffect(() => {
     if (isOpen) {
-      const initialRegions = user 
-        ? (user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : [])) 
-        : [];
-        
       form.reset({
         id: user?.id || undefined,
         displayName: user?.displayName || '',
         email: user?.email || '',
         role: user?.role || 'User',
-        regions: initialRegions,
         password: '',
       });
     }
   }, [user, form, isOpen]);
   
-  const watchedRole = form.watch('role');
-
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
     // Simulate network delay
@@ -268,29 +231,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       setIsSubmitting(false);
       setIsOpen(false);
     }, 500);
-  };
-
-  // Helper to handle complex region selection logic
-  const handleRegionChange = (selected: string[], currentField: any) => {
-    const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
-    
-    if (isMultiRole) {
-      const wasAllSelected = (currentField.value || []).includes('all');
-      const isAllNowSelected = selected.includes('all');
-
-      // If "All Regions" was just clicked, clear others
-      if (isAllNowSelected && !wasAllSelected) {
-        currentField.onChange(['all']);
-        return;
-      }
-      // If other regions clicked while "All" was active, remove "All"
-      if (wasAllSelected && selected.length > 1) {
-        currentField.onChange(selected.filter(i => i !== 'all'));
-        return;
-      }
-    }
-    
-    currentField.onChange(selected);
   };
   
   return (
@@ -318,16 +258,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
              <FormField control={form.control} name="role" render={({ field }) => (
                 <FormItem><FormLabel>Role</FormLabel>
                     <Select 
-                      onValueChange={(val) => {
-                        field.onChange(val);
-                        // Clear regions if switching to a single-select role to prevent validation errors
-                        if (['User', 'Branch'].includes(val)) {
-                          const currentRegions = form.getValues('regions');
-                          if (currentRegions) {
-                            form.setValue('regions', currentRegions.slice(0, 1));
-                          }
-                        }
-                      }} 
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
@@ -341,32 +272,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                     </Select>
                 <FormMessage /></FormItem>
              )}/>
-             
-             {watchedRole !== 'Admin' && (
-                <FormField
-                  control={form.control}
-                  name="regions"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Region(s)</FormLabel>
-                      <FormControl>
-                        <MultiSelect
-                            // Filter "All Regions" for User/Branch
-                            options={['User', 'Branch'].includes(watchedRole) 
-                              ? regions.filter(r => r.value !== 'all') 
-                              : regions
-                            }
-                            selected={field.value || []}
-                            onChange={(selected) => handleRegionChange(selected, field)}
-                            mode={['User', 'Branch'].includes(watchedRole) ? 'single' : 'multiple'}
-                            placeholder={['User', 'Branch'].includes(watchedRole) ? "Select a region..." : "Select region(s)..."}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-             )}
             
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>

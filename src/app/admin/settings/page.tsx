@@ -1,6 +1,5 @@
 'use client';
 import UserManagement from '@/components/user-management';
-import SystemSettings from '@/components/system-settings';
 import { isAdmin } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -13,19 +12,16 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/components/user-management';
 
-const initialRegionsData = ['Region A', 'Region B', 'Region C'];
-
 const initialUsersData: User[] = [
-    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
-    { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', regions: ['all'], blockedUntil: null },
-    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', regions: ['Region A', 'Region B'], blockedUntil: null },
-    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', region: 'Region A', blockedUntil: null },
+    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', blockedUntil: null },
+    { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', blockedUntil: null },
+    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', blockedUntil: null },
+    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', blockedUntil: null },
 ];
 
 export default function AdminSettingsPage() {
     const [user, setUser] = useState<{email: string; role: string} | null>(null);
     const [loading, setLoading] = useState(true);
-    const [regions, setRegions] = useState<string[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const router = useRouter();
     const { toast } = useToast();
@@ -33,14 +29,6 @@ export default function AdminSettingsPage() {
     const loadData = useCallback(() => {
         const userJson = localStorage.getItem('mockUser');
         if(userJson) setUser(JSON.parse(userJson));
-
-        const regionsJson = localStorage.getItem('mockRegions');
-        if (regionsJson) {
-            setRegions(JSON.parse(regionsJson));
-        } else {
-            localStorage.setItem('mockRegions', JSON.stringify(initialRegionsData));
-            setRegions(initialRegionsData);
-        }
 
         const usersJson = localStorage.getItem('mockUsers');
         if (usersJson) {
@@ -59,7 +47,7 @@ export default function AdminSettingsPage() {
         setLoading(false);
         const handleStorageChange = (event: StorageEvent | CustomEvent) => {
             if (event instanceof StorageEvent) {
-                if (['mockUser', 'mockUsers', 'mockRegions'].includes(event.key || '')) {
+                if (['mockUser', 'mockUsers'].includes(event.key || '')) {
                     loadData();
                 }
             } else {
@@ -91,38 +79,14 @@ export default function AdminSettingsPage() {
   }, [loading, isAuthorized, router]);
 
   const handleSaveUser = (data: any) => {
-    const { regions, ...restOfData } = data;
     let updatedUsersList: User[];
 
     if (data.id) { // Editing
-        updatedUsersList = users.map(u => {
-            if (u.id !== data.id) {
-                return u;
-            }
-
-            const updatedUser: any = { ...u, ...restOfData };
-            
-            if (updatedUser.role === 'User') {
-                updatedUser.region = regions?.[0];
-                delete updatedUser.regions;
-            } else {
-                updatedUser.regions = regions;
-                delete updatedUser.region;
-            }
-            
-            return updatedUser;
-        });
+        updatedUsersList = users.map(u => u.id === data.id ? { ...u, ...data } : u);
         toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
 
     } else { // Adding
-        const newUser: any = { ...restOfData, id: `mock-user-${Date.now()}` };
-
-        if (newUser.role === 'User') {
-            newUser.region = regions?.[0];
-        } else {
-            newUser.regions = regions;
-        }
-
+        const newUser: any = { ...data, id: `mock-user-${Date.now()}` };
         updatedUsersList = [...users, newUser];
         toast({ title: "User Added", description: `${data.displayName} has been added.` });
     }
@@ -143,12 +107,6 @@ export default function AdminSettingsPage() {
       localStorage.setItem('mockUsers', JSON.stringify(updatedUsers));
       window.dispatchEvent(new Event('local-storage-change'));
       toast({ title: "User Deleted", description: `${userToDelete.displayName} has been permanently deleted.` });
-  };
-
-   const handleSetRegions = (updater: (prevRegions: string[]) => string[]) => {
-    const newRegions = updater(regions);
-    localStorage.setItem('mockRegions', JSON.stringify(newRegions));
-    window.dispatchEvent(new Event('local-storage-change'));
   };
 
   if (loading || !isAuthorized) {
@@ -176,21 +134,11 @@ export default function AdminSettingsPage() {
       <div className="space-y-8">
         <UserManagement 
             userIsAdminOrRoot={isAuthorized} 
-            regions={regions} 
             users={users}
             onSaveUser={handleSaveUser}
             onBlockUser={handleBlockUser}
             onDeleteUser={handleDeleteUser}
         />
-        {userIsAdmin && (
-          <>
-            <Separator />
-            <div>
-                <h2 className="text-2xl font-headline font-bold mb-4">System Settings</h2>
-                <SystemSettings regions={regions} setRegions={handleSetRegions} />
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

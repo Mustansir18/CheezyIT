@@ -20,7 +20,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 function RecipientSummary({ announcement }: { announcement: Announcement }) {
     const parts = [];
     if (announcement.targetRoles.length > 0) parts.push(`Roles: ${announcement.targetRoles.join(', ')}`);
-    if (announcement.targetRegions.length > 0) parts.push(`Regions: ${announcement.targetRegions.join(', ')}`);
     if (announcement.targetUsers.length > 0) parts.push(`${announcement.targetUsers.length} specific user(s)`);
     
     if (parts.length === 0) {

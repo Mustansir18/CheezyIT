@@ -51,7 +51,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const [user, setUser] = useState<{ email: string; region: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; } | null>(null);
 
   useEffect(() => {
     const userJson = localStorage.getItem('mockUser');
@@ -95,7 +95,6 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         id: `TKT-${nextTicketNumber}`,
         ticketId: `TKT-${nextTicketNumber}`,
         userId: user.email,
-        region: user.region,
         createdAt: new Date(),
         updatedAt: new Date(),
         status: 'Open',

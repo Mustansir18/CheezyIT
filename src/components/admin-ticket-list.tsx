@@ -35,7 +35,6 @@ export default function AdminTicketList() {
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [regionFilter, setRegionFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +43,7 @@ export default function AdminTicketList() {
     to: new Date(),
   });
 
-  const [currentUser, setCurrentUser] = useState<{ email: string; role: string; regions?: string[] } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ email: string; role: string; } | null>(null);
   
   const playSound = useSound('/sounds/new-announcement.mp3');
   const ticketCountRef = useRef(0);
@@ -94,7 +93,6 @@ export default function AdminTicketList() {
   }, [allTickets, playSound, loading]);
 
   const uniqueUsers = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.userId)))], [allTickets]);
-  const uniqueRegions = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.region)))], [allTickets]);
 
   const filteredTickets = useMemo(() => {
     if (!currentUser) return [];
@@ -103,10 +101,6 @@ export default function AdminTicketList() {
 
     if (currentUser.role === 'it-support' || currentUser.role === 'Branch') {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
-    }
-    
-    if ((currentUser.role === 'it-support' || currentUser.role === 'Head') && currentUser.regions && !currentUser.regions.includes('all')) {
-      tickets = tickets.filter(ticket => currentUser.regions!.includes(ticket.region));
     }
 
     return tickets.filter(ticket => {
@@ -127,11 +121,10 @@ export default function AdminTicketList() {
 
         if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
         if (userFilter !== 'all' && ticket.userId !== userFilter) return false;
-        if (regionFilter !== 'all' && ticket.region !== regionFilter) return false;
-
+        
         return true;
     });
-  }, [allTickets, currentUser, date, ticketIdFilter, statusFilter, regionFilter, userFilter]);
+  }, [allTickets, currentUser, date, ticketIdFilter, statusFilter, userFilter]);
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
 
@@ -210,14 +203,6 @@ export default function AdminTicketList() {
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />Region: {regionFilter}</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        <DropdownMenuRadioGroup value={regionFilter} onValueChange={setRegionFilter}>
-                            {uniqueRegions.map(region => <DropdownMenuRadioItem key={region} value={region}>{region}</DropdownMenuRadioItem>)}
-                        </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
             </div>
         </CardHeader>
         <CardContent>
@@ -227,7 +212,6 @@ export default function AdminTicketList() {
                         <TableHead>Ticket ID</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Region</TableHead>
                         <TableHead>Last Updated</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -237,12 +221,11 @@ export default function AdminTicketList() {
                             <TableCell><Link href={`/dashboard/ticket/${ticket.id}`} className="font-medium text-primary hover:underline">{ticket.ticketId}</Link></TableCell>
                             <TableCell>{ticket.title}</TableCell>
                             <TableCell><Badge className={`${statusColors[ticket.status]} text-white hover:${statusColors[ticket.status]}`}>{ticket.status}</Badge></TableCell>
-                            <TableCell>{ticket.region}</TableCell>
                             <TableCell>{formatDistanceToNowStrict(new Date(ticket.updatedAt), { addSuffix: true })}</TableCell>
                         </TableRow>
                     )) : (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
+                            <TableCell colSpan={4} className="h-24 text-center">
                                 No tickets found for the selected criteria.
                             </TableCell>
                         </TableRow>

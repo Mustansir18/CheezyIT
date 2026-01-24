@@ -18,7 +18,6 @@ export default function AdminAnnouncementsPage() {
   const [loading, setLoading] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
   const { toast } = useToast();
 
   const loadData = useCallback(() => {
@@ -39,9 +38,6 @@ export default function AdminAnnouncementsPage() {
       const usersJson = localStorage.getItem('mockUsers');
       if (usersJson) setUsers(JSON.parse(usersJson));
 
-      const regionsJson = localStorage.getItem('mockRegions');
-      if (regionsJson) setRegions(JSON.parse(regionsJson));
-
   }, []);
 
   useEffect(() => {
@@ -50,7 +46,7 @@ export default function AdminAnnouncementsPage() {
 
     const handleStorageChange = (e: StorageEvent | CustomEvent) => {
       if (e instanceof StorageEvent) {
-        if (['mockUser', 'mockAnnouncements', 'mockUsers', 'mockRegions'].includes(e.key || '')) {
+        if (['mockUser', 'mockAnnouncements', 'mockUsers'].includes(e.key || '')) {
             loadData();
         }
       } else {
@@ -135,7 +131,7 @@ export default function AdminAnnouncementsPage() {
         </TabsList>
       </div>
       <TabsContent value="send" className="mt-4">
-        <AnnouncementForm users={users} regions={regions} onAddAnnouncement={handleAddAnnouncement} currentUser={user} />
+        <AnnouncementForm users={users} onAddAnnouncement={handleAddAnnouncement} currentUser={user} />
       </TabsContent>
       <TabsContent value="history" className="mt-4">
         <AnnouncementHistory 

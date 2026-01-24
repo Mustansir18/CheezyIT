@@ -83,7 +83,7 @@ export default function AnnouncementBell() {
                 if (!isWithinDate) return false;
                 
                 // If no targets are set, it's a broadcast to everyone
-                const isBroadcast = ann.targetRoles.length === 0 && ann.targetRegions.length === 0 && ann.targetUsers.length === 0;
+                const isBroadcast = ann.targetRoles.length === 0 && ann.targetUsers.length === 0;
                 if (isBroadcast) return true;
                 
                 // If targets are set, check if the user matches ANY of them (OR logic)
@@ -91,20 +91,6 @@ export default function AnnouncementBell() {
 
                 // Check for role match
                 if (ann.targetRoles.includes(currentUser.role)) return true;
-
-                // Check for region match
-                if (ann.targetRegions.length > 0) {
-                    const userRegions = currentUser.regions || (currentUser.region ? [currentUser.region] : []);
-                    
-                    // If user is in 'all' regions or announcement targets 'all' regions, it's a match
-                    if (userRegions.includes('all') || ann.targetRegions.includes('all')) {
-                        return true;
-                    }
-                    // Check for any overlap between user's regions and announcement's target regions
-                    if (userRegions.some(r => ann.targetRegions.includes(r))) {
-                        return true;
-                    }
-                }
 
                 return false;
             })
