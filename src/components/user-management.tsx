@@ -17,12 +17,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { isAdmin as isRootAdmin } from '@/lib/admins';
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 
 export type User = {
   id: string;
   displayName: string;
   email: string;
   role: 'User' | 'it-support' | 'Admin' | 'Head';
+  regions: string[];
   blockedUntil?: Date | null;
 };
 
@@ -32,6 +34,13 @@ const userSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
   role: z.enum(['User', 'it-support', 'Admin', 'Head']),
+  regions: z.array(z.string()).optional(),
+}).refine(data => {
+    if (data.role === 'Admin') return true;
+    return data.regions && data.regions.length > 0;
+}, {
+    message: 'At least one region is required for this role.',
+    path: ['regions'],
 });
 
 
@@ -40,19 +49,29 @@ export default function UserManagement({
     users,
     onSaveUser,
     onBlockUser,
-    onDeleteUser
+    onDeleteUser,
+    regions
 }: { 
     userIsAdminOrRoot: boolean, 
     users: User[],
     onSaveUser: (data: z.infer<typeof userSchema>) => void,
     onBlockUser: (user: User) => void,
-    onDeleteUser: (user: User) => void
+    onDeleteUser: (user: User) => void,
+    regions: string[]
 }) {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [blockingUser, setBlockingUser] = useState<User | null>(null);
     const [deletingUser, setDeletingUser] = useState<User | null>(null);
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
     const isLoading = false;
+
+    const regionOptions: MultiSelectOption[] = useMemo(() => {
+        const list = regions
+            .filter(r => r.toLowerCase() !== 'all')
+            .map(r => ({ value: r, label: r }));
+        
+        return [{ value: 'all', label: 'All Regions' }, ...list];
+    }, [regions]);
     
     const handleOpenAddDialog = () => {
         setEditingUser(null);
@@ -103,6 +122,7 @@ export default function UserManagement({
                                 <TableHead>Display Name</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
+                                <TableHead>Region(s)</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -110,7 +130,7 @@ export default function UserManagement({
                             {isLoading ? (
                                 [...Array(5)].map((_, i) => (
                                     <TableRow key={i}>
-                                        <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+                                        <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                                     </TableRow>
                                 ))
                             ) : users && users.length > 0 ? (
@@ -125,9 +145,10 @@ export default function UserManagement({
                                             </TableCell>
                                             <TableCell>{user.email}</TableCell>
                                             <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
+                                            <TableCell>{user.regions?.join(', ') || 'N/A'}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isUserAdmin}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isUserAdmin && user.role === 'Admin'}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuItem onSelect={() => handleOpenEditDialog(user)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                                                         <DropdownMenuItem onSelect={() => setBlockingUser(user)}>
@@ -145,7 +166,7 @@ export default function UserManagement({
                                 })
                             ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">No users found.</TableCell>
+                                <TableCell colSpan={5} className="h-24 text-center">No users found.</TableCell>
                             </TableRow>
                             )}
                         </TableBody>
@@ -158,6 +179,7 @@ export default function UserManagement({
                 setIsOpen={setIsUserDialogOpen} 
                 user={editingUser} 
                 onSave={handleSaveUser}
+                regions={regionOptions}
             />
 
             {blockingUser && (
@@ -197,7 +219,7 @@ export default function UserManagement({
     );
 }
 
-function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, setIsOpen: (open: boolean) => void, user: User | null, onSave: (data: z.infer<typeof userSchema>) => void }) {
+function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: boolean, setIsOpen: (open: boolean) => void, user: User | null, onSave: (data: z.infer<typeof userSchema>) => void, regions: MultiSelectOption[] }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<z.infer<typeof userSchema>>({
@@ -206,6 +228,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
       displayName: '',
       email: '',
       role: 'User',
+      regions: [],
       password: '',
     }
   });
@@ -218,10 +241,13 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
         displayName: user?.displayName || '',
         email: user?.email || '',
         role: user?.role || 'User',
+        regions: user?.regions || [],
         password: '',
       });
     }
   }, [user, form, isOpen]);
+  
+  const watchedRole = form.watch('role');
   
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
@@ -233,6 +259,24 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
     }, 500);
   };
   
+  const handleRegionChange = (selected: string[]) => {
+      const currentRegions = form.getValues('regions') || [];
+      const wasAllSelected = currentRegions.includes('all');
+      const isAllNowSelected = selected.includes('all');
+
+      if (isAllNowSelected && !wasAllSelected) {
+        form.setValue('regions', ['all']);
+        return;
+      }
+      
+      if (wasAllSelected && selected.length > 1) {
+        form.setValue('regions', selected.filter(i => i !== 'all'));
+        return;
+      }
+      
+      form.setValue('regions', selected);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { form.reset(); } setIsOpen(open); }}>
       <DialogContent className="sm:max-w-md">
@@ -258,7 +302,14 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
              <FormField control={form.control} name="role" render={({ field }) => (
                 <FormItem><FormLabel>Role</FormLabel>
                     <Select 
-                      onValueChange={field.onChange}
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                        if (val === 'Admin') {
+                            form.setValue('regions', ['all']);
+                        } else {
+                            form.setValue('regions', []);
+                        }
+                      }} 
                       defaultValue={field.value}
                     >
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
@@ -271,6 +322,27 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
                     </Select>
                 <FormMessage /></FormItem>
              )}/>
+             
+             {watchedRole !== 'Admin' && (
+                <FormField
+                  control={form.control}
+                  name="regions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Region(s)</FormLabel>
+                      <FormControl>
+                        <MultiSelect
+                            options={regions}
+                            selected={field.value || []}
+                            onChange={handleRegionChange}
+                            placeholder="Select region(s)..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+             )}
             
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>

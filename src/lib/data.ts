@@ -21,6 +21,7 @@ export type Ticket = {
   anydesk?: string;
   unreadByAdmin?: boolean;
   unreadByUser?: boolean;
+  region?: string;
 };
 
 export type ChatMessage = {
@@ -49,12 +50,12 @@ export type Announcement = {
 };
 
 export const initialMockTickets: (Ticket & { id: string })[] = [
-    { id: 'TKT-001', ticketId: 'TKT-001', userId: 'user@example.com', title: 'Wifi not working', status: 'Open', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The wifi in the main conference room is down.' },
-    { id: 'TKT-002', ticketId: 'TKT-002', userId: 'head@example.com', title: 'Printer jam', status: 'In-Progress', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The 2nd floor printer is jammed and showing an error code.' },
-    { id: 'TKT-003', ticketId: 'TKT-003', userId: 'user@example.com', title: 'Software install request', status: 'Resolved', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I need Adobe Photoshop installed on my new laptop.' },
-    { id: 'TKT-004', ticketId: 'TKT-004', userId: 'user@example.com', title: 'Password reset', status: 'Closed', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I forgot my password for the sales portal.' },
-    { id: 'TKT-005', ticketId: 'TKT-005', userId: 'head@example.com', title: 'Monitor is flickering', status: 'Closed', createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'My external monitor keeps flickering on and off.' },
-    { id: 'TKT-006', ticketId: 'TKT-006', userId: 'support@example.com', title: 'VPN connection issue', status: 'Open', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I cannot connect to the VPN from home.' },
+    { id: 'TKT-001', ticketId: 'TKT-001', userId: 'user@example.com', title: 'Wifi not working', status: 'Open', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The wifi in the main conference room is down.', region: 'ISL' },
+    { id: 'TKT-002', ticketId: 'TKT-002', userId: 'head@example.com', title: 'Printer jam', status: 'In-Progress', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The 2nd floor printer is jammed and showing an error code.', region: 'LHR' },
+    { id: 'TKT-003', ticketId: 'TKT-003', userId: 'user@example.com', title: 'Software install request', status: 'Resolved', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I need Adobe Photoshop installed on my new laptop.', region: 'ISL' },
+    { id: 'TKT-004', ticketId: 'TKT-004', userId: 'user@example.com', title: 'Password reset', status: 'Closed', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I forgot my password for the sales portal.', region: 'ISL' },
+    { id: 'TKT-005', ticketId: 'TKT-005', userId: 'head@example.com', title: 'Monitor is flickering', status: 'Closed', createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'My external monitor keeps flickering on and off.', region: 'LHR' },
+    { id: 'TKT-006', ticketId: 'TKT-006', userId: 'support@example.com', title: 'VPN connection issue', status: 'Open', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I cannot connect to the VPN from home.', region: 'South' },
 ];
 
 

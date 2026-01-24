@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useSound } from '@/hooks/use-sound';
+import { isAdmin } from '@/lib/admins';
 
 const statusColors: Record<Ticket['status'], string> = {
     'Open': 'bg-blue-500',
@@ -43,7 +44,7 @@ export default function AdminTicketList() {
     to: new Date(),
   });
 
-  const [currentUser, setCurrentUser] = useState<{ email: string; role: string; } | null>(null);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
   
   const playSound = useSound('/sounds/new-announcement.mp3');
   const ticketCountRef = useRef(0);
@@ -51,7 +52,16 @@ export default function AdminTicketList() {
 
   const loadData = useCallback(() => {
     const userJson = localStorage.getItem('mockUser');
-    if (userJson) setCurrentUser(JSON.parse(userJson));
+    const usersJson = localStorage.getItem('mockUsers');
+
+    if (userJson && usersJson) {
+      const allUsers = JSON.parse(usersJson);
+      const loggedInUserEmail = JSON.parse(userJson).email;
+      const fullUser = allUsers.find((u: any) => u.email === loggedInUserEmail);
+      setCurrentUser(fullUser || JSON.parse(userJson));
+    } else if (userJson) {
+      setCurrentUser(JSON.parse(userJson));
+    }
 
     const ticketsJson = localStorage.getItem('mockTickets');
     if (ticketsJson) {
@@ -69,13 +79,19 @@ export default function AdminTicketList() {
   useEffect(() => {
     loadData();
     setLoading(false);
-    const handleStorage = (e: StorageEvent) => {
-        if (e.key === 'mockTickets' || e.key === 'mockUser') {
+    const handleStorage = (e: StorageEvent | CustomEvent) => {
+        if (e instanceof StorageEvent && (e.key === 'mockTickets' || e.key === 'mockUser' || e.key === 'mockUsers')) {
+            loadData();
+        } else if (!(e instanceof StorageEvent)) {
             loadData();
         }
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('storage', handleStorage as EventListener);
+    window.addEventListener('local-storage-change', handleStorage as EventListener);
+    return () => {
+      window.removeEventListener('storage', handleStorage as EventListener);
+      window.removeEventListener('local-storage-change', handleStorage as EventListener);
+    }
   }, [loadData]);
   
   useEffect(() => {
@@ -99,6 +115,13 @@ export default function AdminTicketList() {
 
     let tickets = [...allTickets];
 
+    const userIsAdmin = currentUser.role === 'Admin';
+    if (!userIsAdmin && (currentUser.role === 'it-support' || currentUser.role === 'Head')) {
+      if (currentUser.regions && !currentUser.regions.includes('all')) {
+        tickets = tickets.filter(ticket => ticket.region && currentUser.regions.includes(ticket.region));
+      }
+    }
+    
     if (currentUser.role === 'it-support') {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
@@ -211,6 +234,7 @@ export default function AdminTicketList() {
                     <TableRow>
                         <TableHead>Ticket ID</TableHead>
                         <TableHead>Title</TableHead>
+                        <TableHead>Region</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Last Updated</TableHead>
                     </TableRow>
@@ -220,12 +244,13 @@ export default function AdminTicketList() {
                         <TableRow key={ticket.id}>
                             <TableCell><Link href={`/dashboard/ticket/${ticket.id}`} className="font-medium text-primary hover:underline">{ticket.ticketId}</Link></TableCell>
                             <TableCell>{ticket.title}</TableCell>
+                            <TableCell><Badge variant="outline">{ticket.region}</Badge></TableCell>
                             <TableCell><Badge className={`${statusColors[ticket.status]} text-white hover:${statusColors[ticket.status]}`}>{ticket.status}</Badge></TableCell>
                             <TableCell>{formatDistanceToNowStrict(new Date(ticket.updatedAt), { addSuffix: true })}</TableCell>
                         </TableRow>
                     )) : (
                         <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">
+                            <TableCell colSpan={5} className="h-24 text-center">
                                 No tickets found for the selected criteria.
                             </TableCell>
                         </TableRow>

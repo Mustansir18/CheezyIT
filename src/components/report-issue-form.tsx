@@ -25,6 +25,7 @@ const ticketSchema = z.object({
   }),
   customIssueType: z.string().optional(),
   description: z.string().min(1, 'Description is required.'),
+  region: z.string({ required_error: 'Region is required.' }),
   anydesk: z.string().regex(/^\d*$/, { message: 'AnyDesk ID must be a number.' }).optional(),
 }).refine(data => {
     if (data.issueType === 'Other') {
@@ -51,11 +52,19 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const [user, setUser] = useState<{ email: string; } | null>(null);
+  const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
     const userJson = localStorage.getItem('mockUser');
-    if (userJson) setUser(JSON.parse(userJson));
+    const usersJson = localStorage.getItem('mockUsers');
+    if (userJson && usersJson) {
+      const currentUserEmail = JSON.parse(userJson).email;
+      const allUsers = JSON.parse(usersJson);
+      const fullUser = allUsers.find((u: any) => u.email === currentUserEmail);
+      setUser(fullUser);
+    } else if (userJson) {
+      setUser(JSON.parse(userJson));
+    }
   }, []);
 
   const form = useForm<FormData>({
@@ -66,16 +75,24 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
       anydesk: '',
       issueType: undefined,
       customIssueType: '',
+      region: undefined,
     },
   });
 
   const issueType = form.watch('issueType');
+  const userRegions = user?.regions?.filter((r: string) => r !== 'all') || [];
 
   useEffect(() => {
     if (issueType !== 'Other') {
       form.setValue('customIssueType', '');
     }
   }, [issueType, form]);
+  
+  useEffect(() => {
+      if (userRegions.length === 1) {
+          form.setValue('region', userRegions[0]);
+      }
+  }, [userRegions, form])
 
   const resetFormState = () => {
     form.reset();
@@ -92,7 +109,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     const nextTicketNumber = (currentTickets.length + 1).toString().padStart(3, '0');
 
     const newTicket: Ticket & { id: string } = {
-        id: `TKT-${nextTicketNumber}`,
+        id: `TKT-${Date.now()}`,
         ticketId: `TKT-${nextTicketNumber}`,
         userId: user.email,
         createdAt: new Date(),
@@ -103,10 +120,12 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         issueType: data.issueType,
         customIssueType: data.customIssueType,
         anydesk: data.anydesk,
+        region: data.region,
     };
 
     const updatedTickets = [...currentTickets, newTicket];
     localStorage.setItem('mockTickets', JSON.stringify(updatedTickets));
+    window.dispatchEvent(new Event('local-storage-change'));
 
     toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
     resetFormState();
@@ -139,43 +158,67 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 </FormItem>
               )}
             />
-            <FormField
-                control={form.control}
-                name="issueType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Issue Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an issue type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {issueTypes.map(type => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="issueType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Issue Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an issue type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {issueTypes.map(type => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                {issueType === 'Other' && (
+                     <FormField
+                        control={form.control}
+                        name="customIssueType"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Custom Issue Type</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Please specify" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                 )}
-              />
-            {issueType === 'Other' && (
                  <FormField
                     control={form.control}
-                    name="customIssueType"
+                    name="region"
                     render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Custom Issue Type</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Please specify the issue type" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
+                      <FormItem>
+                        <FormLabel>Region</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={userRegions.length <= 1}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a region" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {userRegions.map((region: string) => (
+                              <SelectItem key={region} value={region}>{region}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                    />
-            )}
+                  />
+            </div>
             <FormField
               control={form.control}
               name="description"

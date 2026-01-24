@@ -12,11 +12,13 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/components/user-management';
 
+const regions = ['ISL', 'LHR', 'South', 'SUG'];
+
 const initialUsersData: User[] = [
-    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', blockedUntil: null },
-    { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', blockedUntil: null },
-    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', blockedUntil: null },
-    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', blockedUntil: null },
+    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', blockedUntil: null, regions: ['all'] },
+    { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', blockedUntil: null, regions: ['LHR', 'ISL'] },
+    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', blockedUntil: null, regions: ['South'] },
+    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', blockedUntil: null, regions: ['ISL'] },
 ];
 
 export default function AdminSettingsPage() {
@@ -80,13 +82,16 @@ export default function AdminSettingsPage() {
 
   const handleSaveUser = (data: any) => {
     let updatedUsersList: User[];
+    
+    // Ensure regions is an array
+    const userData = { ...data, regions: data.regions || [] };
 
     if (data.id) { // Editing
-        updatedUsersList = users.map(u => u.id === data.id ? { ...u, ...data } : u);
+        updatedUsersList = users.map(u => u.id === data.id ? { ...u, ...userData } : u);
         toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
 
     } else { // Adding
-        const newUser: any = { ...data, id: `mock-user-${Date.now()}` };
+        const newUser: any = { ...userData, id: `mock-user-${Date.now()}` };
         updatedUsersList = [...users, newUser];
         toast({ title: "User Added", description: `${data.displayName} has been added.` });
     }
@@ -138,6 +143,7 @@ export default function AdminSettingsPage() {
             onSaveUser={handleSaveUser}
             onBlockUser={handleBlockUser}
             onDeleteUser={handleDeleteUser}
+            regions={regions}
         />
       </div>
     </div>

@@ -184,6 +184,10 @@ export default function TicketDetailView({
                             <p className="text-muted-foreground">Issue Type</p>
                             <p>{ticket.issueType === 'Other' ? ticket.customIssueType : ticket.issueType}</p>
                         </div>
+                         <div className="space-y-1">
+                            <p className="text-muted-foreground">Region</p>
+                            <p>{ticket.region || 'N/A'}</p>
+                        </div>
                         <div className="space-y-1">
                             <p className="text-muted-foreground">AnyDesk ID</p>
                             {ticket.anydesk ? (
