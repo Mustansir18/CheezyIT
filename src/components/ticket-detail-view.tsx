@@ -101,7 +101,7 @@ export default function TicketDetailView({
     const { toast } = useToast();
     const isLocked = ticket.status === 'Closed';
 
-    const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
+    const playSound = useSound('/sounds/new-announcement.mp3');
     const statusRef = useRef(ticket.status);
     const isInitialMount = useRef(true);
 

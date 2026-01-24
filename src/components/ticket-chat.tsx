@@ -47,20 +47,18 @@ const mockMessages: ChatMessage[] = [
     },
 ];
 
-const ringtone = 'data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==';
-
 export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onTakeOwnership, onReturnToQueue, onBackToDetail }: any) {
     const { toast } = useToast();
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<any[]>(mockMessages);
     const [isCalling, setIsCalling] = useState(false);
     const ringIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const playRing = useSound(ringtone);
+    const playRing = useSound('/sounds/ringtone.mp3');
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const isLocked = ticket.status === 'Closed';
 
-    const playSound = useSound('data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAhAAAA5u7k7+fn5+bm5ubm5+bn5ubm5+fn6Ofn6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojp6enp6enp6enp6enp6enp6enp6ejo6Ojo6Ojo6Ojo6Ojn5+fn5+fn5ubm5ubm5ubm5ubm5ubm5g==');
+    const playSound = useSound('/sounds/new-announcement.mp3');
     const messagesCountRef = useRef(messages?.length || 0);
     const statusRef = useRef(ticket.status);
     const isInitialMount = useRef(true);
