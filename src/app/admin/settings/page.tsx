@@ -53,11 +53,37 @@ export default function AdminSettingsPage() {
   }, [loading, isAuthorized, router]);
 
   const handleSaveUser = (data: any) => {
+    const { region, regions, ...restOfData } = data;
+
     if (data.id) { // Editing
-        setUsers(currentUsers => currentUsers.map(u => u.id === data.id ? { ...u, ...data } : u));
+        setUsers(currentUsers => currentUsers.map(u => {
+            if (u.id !== data.id) {
+                return u;
+            }
+
+            const updatedUser: any = { ...u, ...restOfData };
+            
+            if (updatedUser.role === 'User') {
+                updatedUser.region = region;
+                delete updatedUser.regions;
+            } else {
+                updatedUser.regions = regions;
+                delete updatedUser.region;
+            }
+            
+            return updatedUser;
+        }));
         toast({ title: "User Updated (Mock)", description: `${data.displayName}'s profile has been updated.` });
+
     } else { // Adding
-        const newUser: User = { ...data, id: `mock-user-${Date.now()}` };
+        const newUser: any = { ...restOfData, id: `mock-user-${Date.now()}` };
+
+        if (newUser.role === 'User') {
+            newUser.region = region;
+        } else {
+            newUser.regions = regions;
+        }
+
         setUsers(currentUsers => [...currentUsers, newUser]);
         toast({ title: "User Added (Mock)", description: `${data.displayName} has been added.` });
     }
