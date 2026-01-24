@@ -51,19 +51,43 @@ export default function AnnouncementBell() {
     const relevantAnnouncements = useMemo(() => {
         if (!currentUser) return [];
         const now = new Date();
+
         return allAnnouncements.filter(ann => {
-            const isTargeted = 
-                (ann.targetRoles.length === 0 && ann.targetRegions.length === 0 && ann.targetUsers.length === 0) ||
-                (ann.targetRoles.includes(currentUser.role)) ||
-                (currentUser.region && ann.targetRegions.includes(currentUser.region)) ||
-                (currentUser.regions && currentUser.regions.some(r => ann.targetRegions.includes(r))) ||
-                (currentUser.id && ann.targetUsers.includes(currentUser.id));
-            
+            // Check if announcement is within the active date range
             const isWithinDate = 
                 (!ann.startDate || ann.startDate <= now) &&
                 (!ann.endDate || ann.endDate >= now);
 
-            return isTargeted && isWithinDate;
+            if (!isWithinDate) return false;
+            
+            // If no targets are set, it's a broadcast to everyone
+            const isBroadcast = ann.targetRoles.length === 0 && ann.targetRegions.length === 0 && ann.targetUsers.length === 0;
+            if (isBroadcast) return true;
+            
+            // If targets are set, check if the user matches ANY of them (OR logic)
+
+            // Check for role match
+            if (ann.targetRoles.includes(currentUser.role)) return true;
+
+            // Check for user match
+            if (currentUser.id && ann.targetUsers.includes(currentUser.id)) return true;
+
+            // Check for region match
+            if (ann.targetRegions.length > 0) {
+                const userRegions = currentUser.regions || (currentUser.region ? [currentUser.region] : []);
+                
+                // If user is in 'all' regions or announcement targets 'all' regions, it's a match
+                if (userRegions.includes('all') || ann.targetRegions.includes('all')) {
+                    return true;
+                }
+                // Check for any overlap between user's regions and announcement's target regions
+                if (userRegions.some(r => ann.targetRegions.includes(r))) {
+                    return true;
+                }
+            }
+
+            // If none of the specific targets match, the user shouldn't see it
+            return false;
         });
     }, [allAnnouncements, currentUser]);
     
