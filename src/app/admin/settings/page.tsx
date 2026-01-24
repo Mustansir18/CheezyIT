@@ -15,6 +15,7 @@ import { collection, deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestor
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
+import { logActivity } from '@/lib/activity-logger';
 
 
 const regions = ['ISL', 'LHR', 'South', 'SUG'];
@@ -48,7 +49,7 @@ export default function AdminSettingsPage() {
     }, [loading, isAuthorized, router]);
 
     const handleSaveUser = useCallback(async (data: any) => {
-        if (!firestore) return;
+        if (!firestore || !user || !userProfile) return;
         const userData = {
             displayName: data.displayName,
             email: data.email,
@@ -61,6 +62,12 @@ export default function AdminSettingsPage() {
                 const userDocRef = doc(firestore, 'users', data.id);
                 await updateDoc(userDocRef, userData);
                 toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
+                logActivity(firestore, {
+                    userId: user.uid,
+                    userName: userProfile.displayName || user.email || 'Admin',
+                    action: 'USER_UPDATE',
+                    details: `Updated profile for user "${data.displayName}" (${data.email})`
+                });
             } else { // Adding
                  if (!data.password) {
                     toast({ variant: 'destructive', title: "Error", description: "Password is required for new users." });
@@ -80,6 +87,12 @@ export default function AdminSettingsPage() {
                     await setDoc(userDocRef, userData);
 
                     toast({ title: "User Added", description: `${data.displayName} has been added.` });
+                    logActivity(firestore, {
+                        userId: user.uid,
+                        userName: userProfile.displayName || user.email || 'Admin',
+                        action: 'USER_CREATE',
+                        details: `Created new user "${data.displayName}" (${data.email}) with role ${data.role}`
+                    });
                 } finally {
                     await deleteApp(tempApp);
                 }
@@ -93,10 +106,10 @@ export default function AdminSettingsPage() {
             }
             toast({ variant: 'destructive', title: "Error creating user", description: errorMessage });
         }
-    }, [firestore, toast]);
+    }, [firestore, toast, user, userProfile]);
 
     const handleBlockUser = useCallback(async (userToBlock: User) => {
-        if (!firestore) return;
+        if (!firestore || !user || !userProfile) return;
         const blockedUntil = (userToBlock.blockedUntil as any)?.toDate ? (userToBlock.blockedUntil as any).toDate() : userToBlock.blockedUntil;
         const isCurrentlyBlocked = blockedUntil && blockedUntil > new Date();
         const userDocRef = doc(firestore, 'users', userToBlock.id);
@@ -106,13 +119,19 @@ export default function AdminSettingsPage() {
                 blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
             });
             toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'}`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
+            logActivity(firestore, {
+                userId: user.uid,
+                userName: userProfile.displayName || user.email || 'Admin',
+                action: isCurrentlyBlocked ? 'USER_UNBLOCK' : 'USER_BLOCK',
+                details: `${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'} user "${userToBlock.displayName}"`
+            });
         } catch (error: any) {
             toast({ variant: 'destructive', title: "Error", description: error.message });
         }
-    }, [firestore, toast]);
+    }, [firestore, toast, user, userProfile]);
   
     const handleDeleteUser = useCallback(async (userToDelete: User) => {
-        if (!firestore) return;
+        if (!firestore || !user || !userProfile) return;
         // NOTE: This only deletes the user's document in Firestore.
         // The Firebase Auth user will remain. Deleting Auth users requires admin privileges,
         // which is typically done from a secure server environment (e.g., Cloud Function).
@@ -120,10 +139,16 @@ export default function AdminSettingsPage() {
         try {
             await deleteDoc(userDocRef);
             toast({ title: "User Record Deleted", description: `${userToDelete.displayName}'s profile has been deleted from Firestore. The user can still log in.` });
+            logActivity(firestore, {
+                userId: user.uid,
+                userName: userProfile.displayName || user.email || 'Admin',
+                action: 'USER_DELETE',
+                details: `Deleted user record for "${userToDelete.displayName}"`
+            });
         } catch (error: any) {
             toast({ variant: 'destructive', title: "Error", description: error.message });
         }
-    }, [firestore, toast]);
+    }, [firestore, toast, user, userProfile]);
 
 
     if (loading || !isAuthorized) {

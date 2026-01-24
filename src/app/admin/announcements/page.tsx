@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, collection, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { isAdmin } from '@/lib/admins';
+import { logActivity } from '@/lib/activity-logger';
 
 export default function AdminAnnouncementsPage() {
   const { user, loading: userLoading } = useUser();
@@ -48,7 +49,7 @@ export default function AdminAnnouncementsPage() {
 
 
   const handleAddAnnouncement = useCallback(async (newAnnouncement: Omit<Announcement, 'id' | 'createdAt' | 'sentBy' | 'readBy'>) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !userProfile) return;
 
     try {
         await addDoc(collection(firestore, 'announcements'), {
@@ -58,20 +59,32 @@ export default function AdminAnnouncementsPage() {
             readBy: [],
         });
         toast({ title: "Announcement Sent!", description: "Your announcement has been published." });
+        logActivity(firestore, {
+            userId: user.uid,
+            userName: userProfile.displayName || user.email,
+            action: 'ANNOUNCEMENT_SENT',
+            details: `Sent announcement: "${newAnnouncement.title}"`
+        });
     } catch(err: any) {
         toast({ variant: 'destructive', title: 'Error', description: err.message });
     }
-  }, [user, firestore, toast]);
+  }, [user, firestore, toast, userProfile]);
 
-  const handleDeleteAnnouncement = useCallback(async (announcementId: string) => {
-    if (!firestore) return;
+  const handleDeleteAnnouncement = useCallback(async (announcementToDelete: Announcement) => {
+    if (!firestore || !user || !userProfile) return;
     try {
-        await deleteDoc(doc(firestore, 'announcements', announcementId));
+        await deleteDoc(doc(firestore, 'announcements', announcementToDelete.id));
         toast({ title: 'Announcement Deleted', description: 'The announcement has been removed.' });
+        logActivity(firestore, {
+            userId: user.uid,
+            userName: userProfile.displayName || user.email,
+            action: 'ANNOUNCEMENT_DELETE',
+            details: `Deleted announcement: "${announcementToDelete.title}"`
+        });
     } catch(err: any) {
         toast({ variant: 'destructive', title: 'Error', description: err.message });
     }
-  }, [firestore, toast]);
+  }, [firestore, toast, user, userProfile]);
   
   if (loading || !isAuthorized) {
     return (

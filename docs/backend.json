@@ -88,6 +88,19 @@
             "type": { "type": "string" }
         },
         "required": ["userId", "displayName", "createdAt"]
+    },
+    "ActivityLog": {
+        "title": "Activity Log",
+        "description": "Records user actions within the application.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string", "description": "The ID of the user who performed the action." },
+            "userName": { "type": "string", "description": "The display name of the user who performed the action." },
+            "action": { "type": "string", "description": "The type of action performed (e.g., 'TICKET_CREATE')." },
+            "details": { "type": "string", "description": "A description of the event." },
+            "timestamp": { "type": "string", "format": "date-time", "description": "The time the action occurred." }
+        },
+        "required": ["userId", "userName", "action", "details", "timestamp"]
     }
   },
   "auth": {
@@ -121,6 +134,10 @@
             }
         },
         "description": "Stores system-wide settings like regions."
+    },
+    "/activityLogs/{logId}": {
+        "schema": { "$ref": "#/entities/ActivityLog" },
+        "description": "Stores all user activity logs."
     }
   }
 }

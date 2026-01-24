@@ -34,7 +34,7 @@ export default function AnnouncementHistory({
     canDelete 
 }: { 
     announcements: Announcement[],
-    onDelete: (id: string) => void,
+    onDelete: (announcement: Announcement) => void,
     canDelete: boolean,
 }) {
     return (
@@ -54,7 +54,7 @@ export default function AnnouncementHistory({
                                             <div className="flex flex-col items-start text-left">
                                                 <span className="font-semibold">{announcement.title}</span>
                                                 <span className="text-sm text-muted-foreground">
-                                                    Sent on {format(announcement.createdAt, "MMM d, yyyy 'at' h:mm a")}
+                                                    Sent on {format(new Date(announcement.createdAt as any), "MMM d, yyyy 'at' h:mm a")}
                                                 </span>
                                             </div>
                                             <RecipientSummary announcement={announcement} />
@@ -76,7 +76,7 @@ export default function AnnouncementHistory({
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => onDelete(announcement.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                                    <AlertDialogAction onClick={() => onDelete(announcement)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>

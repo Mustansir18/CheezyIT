@@ -29,50 +29,54 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useCollection, useFirestore, useMemoFirebase, type WithId } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { Skeleton } from './ui/skeleton';
 
 type ActivityLog = {
-  id: string;
-  user: string;
+  userName: string;
   action: string;
   details: string;
-  timestamp: Date;
+  timestamp: any;
 };
 
-const mockLogs: ActivityLog[] = [
-  { id: '1', user: 'Admin', action: 'USER_UPDATE', details: 'Updated profile for user "Demo User"', timestamp: new Date(Date.now() - 2 * 60 * 1000) },
-  { id: '2', user: 'Admin', action: 'REGION_ADD', details: 'Added new region "Region D"', timestamp: new Date(Date.now() - 5 * 60 * 1000) },
-  { id: '3', user: 'Demo User', action: 'TICKET_CREATE', details: 'Created ticket TKT-000002: "Printer not working"', timestamp: new Date(Date.now() - 15 * 60 * 1000) },
-  { id: '4', user: 'Admin', action: 'LOGIN', details: 'Admin signed in successfully', timestamp: new Date(Date.now() - 30 * 60 * 1000) },
-  { id: '5', user: 'Support Person', action: 'TICKET_UPDATE', details: 'Changed status of TKT-000001 to "In-Progress"', timestamp: new Date(Date.now() - 60 * 60 * 1000) },
-  { id: '6', user: 'Demo User', action: 'LOGIN', details: 'User signed in successfully', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) },
-];
-
 const getActionBadgeVariant = (action: string) => {
-    if (action.includes('CREATE') || action.includes('ADD')) return 'default';
-    if (action.includes('UPDATE')) return 'secondary';
+    if (action.includes('CREATE') || action.includes('ADD') || action.includes('SENT')) return 'default';
+    if (action.includes('UPDATE') || action.includes('ASSIGN')) return 'secondary';
     if (action.includes('DELETE') || action.includes('BLOCK')) return 'destructive';
     if (action.includes('LOGIN')) return 'outline';
     return 'outline';
 }
 
 export default function ActivityLog() {
+  const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
   const [userFilter, setUserFilter] = useState('all');
 
-  const uniqueUsers = useMemo(() => ['all', ...Array.from(new Set(mockLogs.map(log => log.user)))], []);
+  const logsQuery = useMemoFirebase(
+      () => firestore ? query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc')) : null,
+      [firestore]
+  );
+  const { data: logs, isLoading } = useCollection<ActivityLog>(logsQuery);
+
+  const uniqueUsers = useMemo(() => {
+    if (!logs) return ['all'];
+    return ['all', ...Array.from(new Set(logs.map(log => log.userName)))];
+  }, [logs]);
 
   const filteredLogs = useMemo(() => {
-    return mockLogs.filter(log => {
+    if (!logs) return [];
+    return logs.filter(log => {
       const matchesSearch = searchTerm === '' || 
                             log.details.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             log.action.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesUser = userFilter === 'all' || log.user === userFilter;
+      const matchesUser = userFilter === 'all' || log.userName === userFilter;
 
       return matchesSearch && matchesUser;
     });
-  }, [searchTerm, userFilter]);
+  }, [logs, searchTerm, userFilter]);
 
   return (
     <Card>
@@ -122,9 +126,18 @@ export default function ActivityLog() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLogs.length > 0 ? filteredLogs.map((log) => (
+            {isLoading ? (
+                [...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-64" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-5 w-32 ml-auto" /></TableCell>
+                    </TableRow>
+                ))
+            ) : filteredLogs && filteredLogs.length > 0 ? filteredLogs.map((log: WithId<ActivityLog>) => (
               <TableRow key={log.id}>
-                <TableCell className="font-medium">{log.user}</TableCell>
+                <TableCell className="font-medium">{log.userName}</TableCell>
                 <TableCell>
                   <Badge variant={getActionBadgeVariant(log.action)}>
                     {log.action}
@@ -132,13 +145,13 @@ export default function ActivityLog() {
                 </TableCell>
                 <TableCell>{log.details}</TableCell>
                 <TableCell className="text-right">
-                  {format(log.timestamp, "MMM d, yyyy, h:mm:ss a")}
+                  {log.timestamp && format(log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp), "MMM d, yyyy, h:mm:ss a")}
                 </TableCell>
               </TableRow>
             )) : (
                 <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                        No logs found matching your criteria.
+                        No activity logs found.
                     </TableCell>
                 </TableRow>
             )}
