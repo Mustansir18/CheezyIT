@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -28,7 +27,6 @@ const statusConfig: Record<TicketStatus, { icon: React.ElementType, color: strin
 
 export default function DashboardClient({ tickets, stats }: { tickets: any[], stats: any }) {
   const ticketsLoading = false;
-  const allTickets = tickets || [];
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -40,10 +38,8 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
 
   const filteredTickets = useMemo(() => {
-    return allTickets
-      .filter(ticket => ticket.status !== 'Closed') // Hide closed tickets
+    return tickets
       .filter(ticket => {
-        // Date range filter
         if (date?.from) {
             const ticketDate = new Date(ticket.createdAt);
             const from = startOfDay(date.from);
@@ -51,7 +47,6 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
             if (ticketDate < from || ticketDate > to) return false;
         }
 
-        // Text search filter
         if (ticketIdFilter) {
             const searchTerm = ticketIdFilter.toLowerCase();
             const inTitle = ticket.title.toLowerCase().includes(searchTerm);
@@ -59,15 +54,11 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
             if (!inTitle && !inId) return false;
         }
 
-        // Dropdown filters
         if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
 
         return true;
       });
-  }, [allTickets, date, ticketIdFilter, statusFilter]);
-
-  const finalStats = useMemo(() => getStats(allTickets), [allTickets]);
-
+  }, [tickets, date, ticketIdFilter, statusFilter]);
 
   return (
     <>
@@ -97,7 +88,7 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
                     {React.createElement(statusConfig[status].icon, { className: "h-4 w-4 text-muted-foreground" })}
                 </CardHeader>
                 <CardContent>
-                    {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{finalStats[status.toLowerCase().replace('-', '') as keyof typeof stats]}</div>}
+                    {ticketsLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{stats[status.toLowerCase().replace('-', '') as keyof typeof stats]}</div>}
                 </CardContent>
             </Card>
         ))}

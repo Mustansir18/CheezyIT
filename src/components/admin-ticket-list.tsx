@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceToNowStrict } from 'date-fns';
 import { Filter, FileDown, Loader2 } from 'lucide-react';
@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ticket, getStats, TICKET_STATUS_LIST } from '@/lib/data';
+import { Ticket, getStats, TICKET_STATUS_LIST, initialMockTickets } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -21,15 +21,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
-const mockTickets: (Ticket & { id: string })[] = [
-    { id: 'TKT-001', ticketId: 'TKT-001', userId: 'user1@example.com', title: 'Wifi not working', region: 'Region A', status: 'Open', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The wifi in the main conference room is down.' },
-    { id: 'TKT-002', ticketId: 'TKT-002', userId: 'user2@example.com', title: 'Printer jam', region: 'Region B', status: 'In-Progress', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The 2nd floor printer is jammed and showing an error code.' },
-    { id: 'TKT-003', ticketId: 'TKT-003', userId: 'user3@example.com', title: 'Software install request', region: 'Region C', status: 'Resolved', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I need Adobe Photoshop installed on my new laptop.' },
-    { id: 'TKT-004', ticketId: 'TKT-004', userId: 'user1@example.com', title: 'Password reset', region: 'Region A', status: 'Closed', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I forgot my password for the sales portal.' },
-    { id: 'TKT-005', ticketId: 'TKT-005', userId: 'user2@example.com', title: 'Monitor is flickering', region: 'Region B', status: 'Closed', createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'My external monitor keeps flickering on and off.' },
-    { id: 'TKT-006', ticketId: 'TKT-006', userId: 'user4@example.com', title: 'VPN connection issue', region: 'Region B', status: 'Open', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I cannot connect to the VPN from home.' },
-];
-
 const statusColors: Record<Ticket['status'], string> = {
     'Open': 'bg-blue-500',
     'In-Progress': 'bg-orange-500',
@@ -39,13 +30,13 @@ const statusColors: Record<Ticket['status'], string> = {
 
 export default function AdminTicketList() {
   const { toast } = useToast();
+  const [allTickets, setAllTickets] = useState<(Ticket & {id: string})[]>([]);
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
-  
-  const loading = false;
+  const [loading, setLoading] = useState(true);
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -54,14 +45,35 @@ export default function AdminTicketList() {
 
   const [currentUser, setCurrentUser] = useState<{ email: string; role: string; regions?: string[] } | null>(null);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     const userJson = localStorage.getItem('mockUser');
-    if (userJson) {
-        setCurrentUser(JSON.parse(userJson));
+    if (userJson) setCurrentUser(JSON.parse(userJson));
+
+    const ticketsJson = localStorage.getItem('mockTickets');
+    if (ticketsJson) {
+        setAllTickets(JSON.parse(ticketsJson).map((t: any) => ({
+            ...t,
+            createdAt: new Date(t.createdAt),
+            updatedAt: new Date(t.updatedAt),
+        })));
+    } else {
+        localStorage.setItem('mockTickets', JSON.stringify(initialMockTickets));
+        setAllTickets(initialMockTickets);
     }
   }, []);
+
+  useEffect(() => {
+    loadData();
+    setLoading(false);
+    const handleStorage = (e: StorageEvent) => {
+        if (e.key === 'mockTickets' || e.key === 'mockUser') {
+            loadData();
+        }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [loadData]);
   
-  const allTickets = useMemo(() => mockTickets, []);
 
   const uniqueUsers = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.userId)))], [allTickets]);
   const uniqueRegions = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.region)))], [allTickets]);
@@ -71,19 +83,15 @@ export default function AdminTicketList() {
 
     let tickets = [...allTickets];
 
-    // Role-based filtering for closed tickets
     if (currentUser.role === 'it-support' || currentUser.role === 'Branch') {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
     
-    // Role-based filtering for regions
     if ((currentUser.role === 'it-support' || currentUser.role === 'Head') && currentUser.regions && !currentUser.regions.includes('all')) {
       tickets = tickets.filter(ticket => currentUser.regions!.includes(ticket.region));
     }
 
-    // UI filters
     return tickets.filter(ticket => {
-        // Date range filter
         if (date?.from) {
             const ticketDate = new Date(ticket.createdAt);
             const from = startOfDay(date.from);
@@ -91,7 +99,6 @@ export default function AdminTicketList() {
             if (ticketDate < from || ticketDate > to) return false;
         }
 
-        // Text search filter
         if (ticketIdFilter) {
             const searchTerm = ticketIdFilter.toLowerCase();
             const inTitle = ticket.title.toLowerCase().includes(searchTerm);
@@ -100,7 +107,6 @@ export default function AdminTicketList() {
             if (!inTitle && !inId && !inDescription) return false;
         }
 
-        // Dropdown filters
         if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
         if (userFilter !== 'all' && ticket.userId !== userFilter) return false;
         if (regionFilter !== 'all' && ticket.region !== regionFilter) return false;

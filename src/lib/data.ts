@@ -1,5 +1,3 @@
-
-
 export type TicketStatus = 'Open' | 'In-Progress' | 'Resolved' | 'Closed';
 
 export const TICKET_STATUS_LIST: TicketStatus[] = ['Open', 'In-Progress', 'Resolved', 'Closed'];
@@ -13,9 +11,9 @@ export type Ticket = {
   status: TicketStatus;
   assignedTo?: string;
   assignedToDisplayName?: string;
-  createdAt: any; // Firestore Timestamp
-  updatedAt: any; // Firestore Timestamp
-  completedAt?: any; // Firestore Timestamp
+  createdAt: any; // Storing as Date object in state, but string in JSON
+  updatedAt: any; // Storing as Date object in state, but string in JSON
+  completedAt?: any; 
   resolvedBy?: string;
   resolvedByDisplayName?: string;
   issueType: string;
@@ -52,17 +50,24 @@ export type Announcement = {
   readBy: string[];
 };
 
+export const initialMockTickets: (Ticket & { id: string })[] = [
+    { id: 'TKT-001', ticketId: 'TKT-001', userId: 'user@example.com', title: 'Wifi not working', region: 'Region A', status: 'Open', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The wifi in the main conference room is down.' },
+    { id: 'TKT-002', ticketId: 'TKT-002', userId: 'head@example.com', title: 'Printer jam', region: 'Region B', status: 'In-Progress', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'The 2nd floor printer is jammed and showing an error code.' },
+    { id: 'TKT-003', ticketId: 'TKT-003', userId: 'user@example.com', title: 'Software install request', region: 'Region A', status: 'Resolved', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I need Adobe Photoshop installed on my new laptop.' },
+    { id: 'TKT-004', ticketId: 'TKT-004', userId: 'user@example.com', title: 'Password reset', region: 'Region A', status: 'Closed', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I forgot my password for the sales portal.' },
+    { id: 'TKT-005', ticketId: 'TKT-005', userId: 'head@example.com', title: 'Monitor is flickering', region: 'Region B', status: 'Closed', createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), updatedAt: new Date(), description: 'My external monitor keeps flickering on and off.' },
+    { id: 'TKT-006', ticketId: 'TKT-006', userId: 'support@example.com', title: 'VPN connection issue', region: 'Region B', status: 'Open', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), updatedAt: new Date(), description: 'I cannot connect to the VPN from home.' },
+];
+
 
 export const getStats = (allTickets: (Ticket & { id: string })[]) => {
     if (!allTickets) {
-        return { open: 0, inProgress: 0, resolved: 0, closed: 0 };
+        return { open: 0, inprogress: 0, resolved: 0, closed: 0 };
     }
     return {
         open: allTickets.filter(t => t.status === 'Open').length,
-        inProgress: allTickets.filter(t => t.status === 'In-Progress').length,
+        inprogress: allTickets.filter(t => t.status === 'In-Progress').length,
         resolved: allTickets.filter(t => t.status === 'Resolved').length,
         closed: allTickets.filter(t => t.status === 'Closed').length,
     };
 };
-
-    

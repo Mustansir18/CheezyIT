@@ -13,9 +13,9 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/components/user-management';
 
-const initialRegions = ['Region A', 'Region B', 'Region C'];
+const initialRegionsData = ['Region A', 'Region B', 'Region C'];
 
-const initialUsers: User[] = [
+const initialUsersData: User[] = [
     { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
     { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', regions: ['all'], blockedUntil: null },
     { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', regions: ['Region A', 'Region B'], blockedUntil: null },
@@ -25,18 +25,47 @@ const initialUsers: User[] = [
 export default function AdminSettingsPage() {
     const [user, setUser] = useState<{email: string; role: string} | null>(null);
     const [loading, setLoading] = useState(true);
-    const [regions, setRegions] = useState<string[]>(initialRegions);
-    const [users, setUsers] = useState<User[]>(initialUsers);
+    const [regions, setRegions] = useState<string[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const router = useRouter();
     const { toast } = useToast();
 
-    useEffect(() => {
+    const loadData = useCallback(() => {
         const userJson = localStorage.getItem('mockUser');
-        if(userJson) {
-            setUser(JSON.parse(userJson));
+        if(userJson) setUser(JSON.parse(userJson));
+
+        const regionsJson = localStorage.getItem('mockRegions');
+        if (regionsJson) {
+            setRegions(JSON.parse(regionsJson));
+        } else {
+            localStorage.setItem('mockRegions', JSON.stringify(initialRegionsData));
+            setRegions(initialRegionsData);
         }
-        setLoading(false);
+
+        const usersJson = localStorage.getItem('mockUsers');
+        if (usersJson) {
+            setUsers(JSON.parse(usersJson).map((u: any) => ({
+                ...u,
+                blockedUntil: u.blockedUntil ? new Date(u.blockedUntil) : null
+            })));
+        } else {
+            localStorage.setItem('mockUsers', JSON.stringify(initialUsersData));
+            setUsers(initialUsersData);
+        }
     }, []);
+
+    useEffect(() => {
+        loadData();
+        setLoading(false);
+        const handleStorageChange = (event: StorageEvent) => {
+            if (['mockUser', 'mockUsers', 'mockRegions'].includes(event.key || '')) {
+                loadData();
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, [loadData]);
+
 
   const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
   
@@ -54,9 +83,10 @@ export default function AdminSettingsPage() {
 
   const handleSaveUser = (data: any) => {
     const { region, regions, ...restOfData } = data;
+    let updatedUsersList: User[];
 
     if (data.id) { // Editing
-        setUsers(currentUsers => currentUsers.map(u => {
+        updatedUsersList = users.map(u => {
             if (u.id !== data.id) {
                 return u;
             }
@@ -72,8 +102,8 @@ export default function AdminSettingsPage() {
             }
             
             return updatedUser;
-        }));
-        toast({ title: "User Updated (Mock)", description: `${data.displayName}'s profile has been updated.` });
+        });
+        toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
 
     } else { // Adding
         const newUser: any = { ...restOfData, id: `mock-user-${Date.now()}` };
@@ -84,19 +114,25 @@ export default function AdminSettingsPage() {
             newUser.regions = regions;
         }
 
-        setUsers(currentUsers => [...currentUsers, newUser]);
-        toast({ title: "User Added (Mock)", description: `${data.displayName} has been added.` });
+        updatedUsersList = [...users, newUser];
+        toast({ title: "User Added", description: `${data.displayName} has been added.` });
     }
+      setUsers(updatedUsersList);
+      localStorage.setItem('mockUsers', JSON.stringify(updatedUsersList));
   };
 
   const handleBlockUser = (userToBlock: User) => {
       const isCurrentlyBlocked = userToBlock.blockedUntil && userToBlock.blockedUntil > new Date();
-      setUsers(currentUsers => currentUsers.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u));
-      toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'} (Mock)`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
+      const updatedUsers = users.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u)
+      setUsers(updatedUsers);
+      localStorage.setItem('mockUsers', JSON.stringify(updatedUsers));
+      toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'}`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
   };
   
    const handleSetRegions = (updater: (prevRegions: string[]) => string[]) => {
-    setRegions(updater);
+    const newRegions = updater(regions);
+    setRegions(newRegions);
+    localStorage.setItem('mockRegions', JSON.stringify(newRegions));
   };
 
   if (loading || !isAuthorized) {

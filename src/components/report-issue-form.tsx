@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useSound } from '@/hooks/use-sound';
+import type { Ticket } from '@/lib/data';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
 
@@ -50,6 +51,12 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [user, setUser] = useState<{ email: string; region: string } | null>(null);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('mockUser');
+    if (userJson) setUser(JSON.parse(userJson));
+  }, []);
 
   const form = useForm<FormData>({
     resolver: zodResolver(ticketSchema),
@@ -75,14 +82,37 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   }
   
   const onSubmit = (data: FormData) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+        return;
+    }
     setIsSubmitting(true);
-    // Mock submission
-    setTimeout(() => {
-        toast({ title: 'Success! (Mock)', description: 'Your ticket has been created successfully.' });
-        resetFormState();
-        closeButtonRef.current?.click();
-        setIsSubmitting(false);
-    }, 1000);
+    
+    const currentTickets = JSON.parse(localStorage.getItem('mockTickets') || '[]');
+    const nextTicketNumber = (currentTickets.length + 1).toString().padStart(3, '0');
+
+    const newTicket: Ticket & { id: string } = {
+        id: `TKT-${nextTicketNumber}`,
+        ticketId: `TKT-${nextTicketNumber}`,
+        userId: user.email,
+        region: user.region,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: 'Open',
+        title: data.title,
+        description: data.description,
+        issueType: data.issueType,
+        customIssueType: data.customIssueType,
+        anydesk: data.anydesk,
+    };
+
+    const updatedTickets = [...currentTickets, newTicket];
+    localStorage.setItem('mockTickets', JSON.stringify(updatedTickets));
+
+    toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
+    resetFormState();
+    closeButtonRef.current?.click();
+    setIsSubmitting(false);
   }
 
   return (
