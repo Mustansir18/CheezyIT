@@ -30,6 +30,14 @@ interface MultiSelectProps {
 const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
   ({ options, selected, onChange, className, placeholder = "Select..." }, ref) => {
 
+    const handleSelect = (value: string) => {
+        const isSelected = selected.includes(value);
+        const newSelected = isSelected
+            ? selected.filter((item) => item !== value)
+            : [...selected, value];
+        onChange(newSelected);
+    };
+
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -62,26 +70,16 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
               {options.map((option) => (
                 <div
                   key={option.value}
-                  className="flex items-center p-2 rounded-md"
+                  className="flex items-center p-2 rounded-md hover:bg-accent cursor-pointer"
+                  onClick={() => handleSelect(option.value)}
                 >
                   <Checkbox
-                    id={`multi-select-${option.value}`}
                     checked={selected.includes(option.value)}
-                    onCheckedChange={(checked) => {
-                        const isChecked = !!checked;
-                        const newSelected = isChecked
-                            ? [...selected, option.value]
-                            : selected.filter((item) => item !== option.value);
-                        onChange(newSelected);
-                    }}
-                    className="mr-2"
+                    className="mr-2 pointer-events-none"
                   />
-                  <label
-                    htmlFor={`multi-select-${option.value}`}
-                    className="w-full text-sm font-medium cursor-pointer"
-                  >
+                  <span className="w-full text-sm font-medium">
                     {option.label}
-                  </label>
+                  </span>
                 </div>
               ))}
             </div>
