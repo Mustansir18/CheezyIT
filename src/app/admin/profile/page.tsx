@@ -9,22 +9,24 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { isAdmin } from '@/lib/admins';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
+type UserProfile = {
+  phoneNumber?: string;
+};
 
 export default function AdminProfilePage() {
-    const [user, setUser] = useState<{email: string; displayName: string} | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if (userJson) {
-            setUser(JSON.parse(userJson));
-        }
-        setLoading(false);
-    }, []);
+    const { user, loading: userLoading } = useUser();
+    const firestore = useFirestore();
+    
+    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+    const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
     const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
+    const loading = userLoading || profileLoading;
 
     if (loading) {
         return (
@@ -72,7 +74,7 @@ export default function AdminProfilePage() {
                         <div>
                             <UpdateProfileForm 
                                 currentDisplayName={user.displayName} 
-                                currentPhoneNumber={"03001234567"}
+                                currentPhoneNumber={userProfile?.phoneNumber}
                                 backLink="/admin"
                                 backLinkText="Back to Dashboard"
                             />

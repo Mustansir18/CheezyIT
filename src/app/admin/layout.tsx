@@ -9,6 +9,7 @@ import { doc } from 'firebase/firestore';
 import { UserNav } from '@/components/user-nav';
 import AnnouncementBell from '@/components/announcement-bell';
 import { Button } from '@/components/ui/button';
+import { isAdmin } from '@/lib/admins';
 
 type UserProfile = {
   role: string;
@@ -25,10 +26,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const isAuthorized = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin(user.email)) return true;
     if (!userProfile) return false;
-    if (userProfile.role === 'Admin' || userProfile.role === 'it-support' || userProfile.role === 'Head') return true;
-    return false;
-  }, [userProfile]);
+    return ['Admin', 'it-support', 'Head'].includes(userProfile.role);
+  }, [user, userProfile]);
 
   const isBlocked = useMemo(() => {
       if (!userProfile?.blockedUntil) return false;

@@ -12,90 +12,33 @@ import { cn } from '@/lib/utils';
 import type { User } from '@/components/user-management';
 import type { Announcement } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, collection, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { isAdmin } from '@/lib/admins';
 
 export default function AdminAnnouncementsPage() {
-  const [user, setUser] = useState<{id: string, email: string; role: string} | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
   const { toast } = useToast();
 
-  const loadData = useCallback(() => {
-      const userJson = localStorage.getItem('mockUser');
-      if (userJson) setUser(JSON.parse(userJson));
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc(userProfileRef);
 
-      const announcementsJson = localStorage.getItem('mockAnnouncements');
-      if (announcementsJson) {
-        const parsed = JSON.parse(announcementsJson).map((a: any) => ({
-          ...a,
-          createdAt: new Date(a.createdAt),
-          startDate: a.startDate ? new Date(a.startDate) : undefined,
-          endDate: a.endDate ? new Date(a.endDate) : undefined,
-        }));
-        setAnnouncements(parsed);
-      }
-
-      const usersJson = localStorage.getItem('mockUsers');
-      if (usersJson) setUsers(JSON.parse(usersJson));
-
-  }, []);
-
-  useEffect(() => {
-    loadData();
-    setLoading(false);
-
-    const handleStorageChange = (e: StorageEvent | CustomEvent) => {
-      if (e instanceof StorageEvent) {
-        if (['mockUser', 'mockAnnouncements', 'mockUsers'].includes(e.key || '')) {
-            loadData();
-        }
-      } else {
-        loadData();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange as EventListener);
-    window.addEventListener('local-storage-change', handleStorageChange as EventListener);
-    return () => {
-        window.removeEventListener('storage', handleStorageChange as EventListener);
-        window.removeEventListener('local-storage-change', handleStorageChange as EventListener);
-    };
-  }, [loadData]);
-
-
-  const handleAddAnnouncement = useCallback((newAnnouncement: Omit<Announcement, 'id' | 'createdAt' | 'sentBy' | 'readBy'>) => {
-    if (!user) return;
-
-    const currentAnnouncements = JSON.parse(localStorage.getItem('mockAnnouncements') || '[]');
-
-    const announcementToAdd: Announcement = {
-      ...newAnnouncement,
-      id: `announcement-${Date.now()}`,
-      createdAt: new Date(),
-      sentBy: user.email,
-      readBy: [],
-    };
-    
-    const updatedAnnouncements = [announcementToAdd, ...currentAnnouncements];
-    localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
-    window.dispatchEvent(new Event('local-storage-change'));
-
-  }, [user]);
-
-  const handleDeleteAnnouncement = useCallback((announcementId: string) => {
-    const currentAnnouncements = JSON.parse(localStorage.getItem('mockAnnouncements') || '[]');
-    const updatedAnnouncements = currentAnnouncements.filter((a: Announcement) => a.id !== announcementId);
-    localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
-    window.dispatchEvent(new Event('local-storage-change'));
-    toast({ title: 'Announcement Deleted', description: 'The announcement has been removed.' });
-  }, [toast]);
-
-  const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
-  const router = useRouter();
+  const announcementsQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'announcements') : null), [firestore]);
+  const { data: announcements, isLoading: announcementsLoading } = useCollection<Announcement>(announcementsQuery);
+  
+  const usersQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'users') : null), [firestore]);
+  const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
 
   const isAuthorized = useMemo(() => {
-    if (user && (user.role === 'Admin' || user.role === 'Head')) return true;
+    if (!user) return false;
+    if (isAdmin(user.email)) return true;
+    if (userProfile) return ['Admin', 'Head'].includes(userProfile.role);
     return false;
-  }, [user]);
+  }, [user, userProfile]);
+
+  const loading = userLoading || profileLoading || announcementsLoading || usersLoading;
 
   useEffect(() => {
     if (!loading && !isAuthorized) {
@@ -103,6 +46,33 @@ export default function AdminAnnouncementsPage() {
     }
   }, [loading, isAuthorized, router]);
 
+
+  const handleAddAnnouncement = useCallback(async (newAnnouncement: Omit<Announcement, 'id' | 'createdAt' | 'sentBy' | 'readBy'>) => {
+    if (!user || !firestore) return;
+
+    try {
+        await addDoc(collection(firestore, 'announcements'), {
+            ...newAnnouncement,
+            createdAt: serverTimestamp(),
+            sentBy: user.uid,
+            readBy: [],
+        });
+        toast({ title: "Announcement Sent!", description: "Your announcement has been published." });
+    } catch(err: any) {
+        toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
+  }, [user, firestore, toast]);
+
+  const handleDeleteAnnouncement = useCallback(async (announcementId: string) => {
+    if (!firestore) return;
+    try {
+        await deleteDoc(doc(firestore, 'announcements', announcementId));
+        toast({ title: 'Announcement Deleted', description: 'The announcement has been removed.' });
+    } catch(err: any) {
+        toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
+  }, [firestore, toast]);
+  
   if (loading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -121,7 +91,7 @@ export default function AdminAnnouncementsPage() {
               <span className="sr-only">Back to Dashboard</span>
             </Link>
           </Button>
-          <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
+          <h1 className={cn("text-3xl font-bold tracking-tight font-headline", isAdmin(user?.email) && "text-primary")}>
             Announcements
           </h1>
         </div>
@@ -131,11 +101,11 @@ export default function AdminAnnouncementsPage() {
         </TabsList>
       </div>
       <TabsContent value="send" className="mt-4">
-        <AnnouncementForm users={users} onAddAnnouncement={handleAddAnnouncement} currentUser={user} />
+        <AnnouncementForm users={users || []} onAddAnnouncement={handleAddAnnouncement} currentUser={user} />
       </TabsContent>
       <TabsContent value="history" className="mt-4">
         <AnnouncementHistory 
-            announcements={announcements} 
+            announcements={announcements || []} 
             onDelete={handleDeleteAnnouncement}
             canDelete={isAuthorized}
         />

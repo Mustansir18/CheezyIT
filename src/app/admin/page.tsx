@@ -6,6 +6,7 @@ import { Ticket, BarChart, Settings, Megaphone, History } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useMemo } from 'react';
+import { isAdmin } from '@/lib/admins';
 
 type UserProfile = {
   role?: string;
@@ -56,9 +57,21 @@ export default function AdminDashboardPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const navItems = useMemo(() => {
-    if (!userProfile?.role) return [];
-    return allNavItems.filter(item => item.roles.includes(userProfile.role));
-  }, [userProfile]);
+    const isSuperAdmin = user && isAdmin(user.email);
+    const userRole = userProfile?.role;
+
+    if (!userRole && !isSuperAdmin) return [];
+
+    return allNavItems.filter(item => {
+      const effectiveRole = isSuperAdmin ? 'Admin' : userRole;
+      if (effectiveRole) {
+        // Super admin has all permissions of a regular 'Admin' plus Head permissions
+        if (isSuperAdmin) return item.roles.includes('Admin') || item.roles.includes('Head');
+        return item.roles.includes(effectiveRole);
+      }
+      return false;
+    });
+  }, [user, userProfile]);
 
   if (userLoading || profileLoading) {
       return (

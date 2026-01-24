@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
 import { cn } from '@/lib/utils';
 import WhatsAppFAB from '@/components/whatsapp-fab';
+import { isAdmin } from '@/lib/admins';
 
 type UserProfile = {
   role: string;
@@ -27,10 +28,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
     const isPrivilegedUser = useMemo(() => {
+        if (!user) return false;
+        if (isAdmin(user.email)) return true;
         if (!userProfile) return false;
-        if (['Admin', 'it-support', 'Head'].includes(userProfile.role)) return true;
-        return false;
-    }, [userProfile]);
+        return ['Admin', 'it-support', 'Head'].includes(userProfile.role);
+    }, [user, userProfile]);
 
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
     const loading = userLoading || profileLoading;

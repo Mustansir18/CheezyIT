@@ -5,29 +5,29 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
 import { isAdmin } from '@/lib/admins';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
 
 export default function AdminActivityLogPage() {
-  const [user, setUser] = useState<{email: string; role: string} | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const userJson = localStorage.getItem('mockUser');
-    if (userJson) {
-      setUser(JSON.parse(userJson));
-    }
-    setLoading(false);
-  }, []);
-
-  const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
 
-  const isAuthorized = useMemo(() => {
-    if (user?.role === 'Admin') return true;
-    return false;
-  }, [user]);
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc(userProfileRef);
+
+  const userIsAdmin = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin(user.email)) return true;
+    return userProfile?.role === 'Admin';
+  }, [user, userProfile]);
+
+  const isAuthorized = useMemo(() => userIsAdmin, [userIsAdmin]);
+  const loading = userLoading || profileLoading;
 
   useEffect(() => {
     if (!loading && !isAuthorized) {

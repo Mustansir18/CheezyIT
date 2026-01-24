@@ -4,148 +4,131 @@ import { isAdmin } from '@/lib/admins';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/components/user-management';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { addDoc, collection, deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
+
 
 const regions = ['ISL', 'LHR', 'South', 'SUG'];
 
-const initialUsersData: User[] = [
-    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', blockedUntil: null, regions: ['all'] },
-    { id: 'head-user-1', displayName: 'Head User', email: 'head@example.com', role: 'Head', blockedUntil: null, regions: ['LHR', 'ISL'] },
-    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', blockedUntil: null, regions: ['South'] },
-    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', blockedUntil: null, regions: ['ISL'] },
-];
-
 export default function AdminSettingsPage() {
-    const [user, setUser] = useState<{email: string; role: string} | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [users, setUsers] = useState<User[]>([]);
+    const { user, loading: userLoading } = useUser();
+    const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
 
-    const loadData = useCallback(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if(userJson) setUser(JSON.parse(userJson));
+    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+    const { data: userProfile, isLoading: profileLoading } = useDoc(userProfileRef);
+    
+    const usersQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'users') : null), [firestore]);
+    const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
 
-        const usersJson = localStorage.getItem('mockUsers');
-        if (usersJson) {
-            setUsers(JSON.parse(usersJson).map((u: any) => ({
-                ...u,
-                blockedUntil: u.blockedUntil ? new Date(u.blockedUntil) : null
-            })));
-        } else {
-            localStorage.setItem('mockUsers', JSON.stringify(initialUsersData));
-            setUsers(initialUsersData);
-        }
-    }, []);
+    const userIsAdmin = useMemo(() => {
+        if (!user) return false;
+        if (isAdmin(user.email)) return true;
+        return userProfile?.role === 'Admin';
+    }, [user, userProfile]);
+    
+    const isAuthorized = useMemo(() => userIsAdmin, [userIsAdmin]);
+
+    const loading = userLoading || profileLoading || usersLoading;
 
     useEffect(() => {
-        loadData();
-        setLoading(false);
-        const handleStorageChange = (event: StorageEvent | CustomEvent) => {
-            if (event instanceof StorageEvent) {
-                if (['mockUser', 'mockUsers'].includes(event.key || '')) {
-                    loadData();
-                }
-            } else {
-                loadData();
+        if (!loading && !isAuthorized) {
+          router.push('/admin');
+        }
+    }, [loading, isAuthorized, router]);
+
+    const handleSaveUser = useCallback(async (data: any) => {
+        if (!firestore) return;
+        const userData = {
+            displayName: data.displayName,
+            email: data.email,
+            role: data.role,
+            regions: data.regions || [],
+        };
+
+        try {
+            if (data.id) { // Editing
+                const userDocRef = doc(firestore, 'users', data.id);
+                await updateDoc(userDocRef, userData);
+                toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
+            } else { // Adding
+                // In a real app you'd use Firebase Auth to create a user, then create the doc.
+                // Here we just add the doc. You'd need to set a password separately.
+                // This is a simplified approach for demonstration.
+                await addDoc(collection(firestore, 'users'), userData);
+                toast({ title: "User Added", description: `${data.displayName} has been added.` });
             }
-        };
-        window.addEventListener('storage', handleStorageChange as EventListener);
-        window.addEventListener('local-storage-change', handleStorageChange as EventListener);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Error", description: error.message });
+        }
+    }, [firestore, toast]);
 
-        return () => {
-            window.removeEventListener('storage', handleStorageChange as EventListener);
-            window.removeEventListener('local-storage-change', handleStorageChange as EventListener);
-        };
-    }, [loadData]);
-
-
-  const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
+    const handleBlockUser = useCallback(async (userToBlock: User) => {
+        if (!firestore) return;
+        const isCurrentlyBlocked = userToBlock.blockedUntil && userToBlock.blockedUntil > new Date();
+        const userDocRef = doc(firestore, 'users', userToBlock.id);
+        
+        try {
+            await updateDoc(userDocRef, {
+                blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            });
+            toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'}`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Error", description: error.message });
+        }
+    }, [firestore, toast]);
   
-  const isAuthorized = useMemo(() => {
-    if (user?.role === 'Admin') return true;
-    return false;
-  }, [user]);
+    const handleDeleteUser = useCallback(async (userToDelete: User) => {
+        if (!firestore) return;
+        const userDocRef = doc(firestore, 'users', userToDelete.id);
+        try {
+            await deleteDoc(userDocRef);
+            toast({ title: "User Deleted", description: `${userToDelete.displayName} has been permanently deleted.` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Error", description: error.message });
+        }
+    }, [firestore, toast]);
 
 
-  useEffect(() => {
-    if (!loading && !isAuthorized) {
-      router.push('/admin');
+    if (loading || !isAuthorized) {
+        return (
+          <div className="flex h-full w-full items-center justify-center">
+            <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+          </div>
+        );
     }
-  }, [loading, isAuthorized, router]);
 
-  const handleSaveUser = (data: any) => {
-    let updatedUsersList: User[];
-    
-    // Ensure regions is an array
-    const userData = { ...data, regions: data.regions || [] };
-
-    if (data.id) { // Editing
-        updatedUsersList = users.map(u => u.id === data.id ? { ...u, ...userData } : u);
-        toast({ title: "User Updated", description: `${data.displayName}'s profile has been updated.` });
-
-    } else { // Adding
-        const newUser: any = { ...userData, id: `mock-user-${Date.now()}` };
-        updatedUsersList = [...users, newUser];
-        toast({ title: "User Added", description: `${data.displayName} has been added.` });
-    }
-      localStorage.setItem('mockUsers', JSON.stringify(updatedUsersList));
-      window.dispatchEvent(new Event('local-storage-change'));
-  };
-
-  const handleBlockUser = (userToBlock: User) => {
-      const isCurrentlyBlocked = userToBlock.blockedUntil && userToBlock.blockedUntil > new Date();
-      const updatedUsers = users.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u);
-      localStorage.setItem('mockUsers', JSON.stringify(updatedUsers));
-      window.dispatchEvent(new Event('local-storage-change'));
-      toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'}`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
-  };
-  
-  const handleDeleteUser = (userToDelete: User) => {
-      const updatedUsers = users.filter(u => u.id !== userToDelete.id);
-      localStorage.setItem('mockUsers', JSON.stringify(updatedUsers));
-      window.dispatchEvent(new Event('local-storage-change'));
-      toast({ title: "User Deleted", description: `${userToDelete.displayName} has been permanently deleted.` });
-  };
-
-  if (loading || !isAuthorized) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
-      </div>
+        <div className="space-y-6">
+            <div className="flex items-center gap-4">
+                <Button asChild variant="outline" size="icon">
+                    <Link href="/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back to Dashboard</span>
+                    </Link>
+                </Button>
+                <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
+                Admin Settings
+                </h1>
+            </div>
+            
+            <div className="space-y-8">
+                <UserManagement 
+                    userIsAdminOrRoot={isAuthorized} 
+                    users={users || []}
+                    onSaveUser={handleSaveUser}
+                    onBlockUser={handleBlockUser}
+                    onDeleteUser={handleDeleteUser}
+                    regions={regions}
+                />
+            </div>
+        </div>
     );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button asChild variant="outline" size="icon">
-            <Link href="/admin">
-                <ArrowLeft className="h-4 w-4" />
-                <span className="sr-only">Back to Dashboard</span>
-            </Link>
-        </Button>
-        <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
-          Admin Settings
-        </h1>
-      </div>
-      
-      <div className="space-y-8">
-        <UserManagement 
-            userIsAdminOrRoot={isAuthorized} 
-            users={users}
-            onSaveUser={handleSaveUser}
-            onBlockUser={handleBlockUser}
-            onDeleteUser={handleDeleteUser}
-            regions={regions}
-        />
-      </div>
-    </div>
-  );
 }
