@@ -243,7 +243,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
         displayName: user?.displayName || '',
         email: user?.email || '',
         role: user?.role || 'User',
-        regions: user?.regions || [],
+        regions: user ? (user.regions || []) : ['LHR', 'ISL'],
         password: '',
       });
     }
@@ -262,7 +262,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   };
   
   const handleRegionChange = (selected: string[], currentField: any) => {
-      const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
+      const isMultiRole = ['it-support', 'Head', 'Branch'].includes(watchedRole);
       
       if (isMultiRole) {
         const wasAllSelected = currentField.value?.includes('all');
@@ -282,7 +282,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       currentField.onChange(selected);
   };
 
-  const isSingleRegionRole = ['User', 'Branch'].includes(watchedRole);
+  const isSingleRegionRole = ['User'].includes(watchedRole);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { form.reset(); } setIsOpen(open); }}>
@@ -311,7 +311,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                     <Select 
                       onValueChange={(val) => {
                         field.onChange(val);
-                        if (['User', 'Branch'].includes(val)) {
+                        if (['User'].includes(val)) {
                             const currentRegions = form.getValues('regions') || [];
                             form.setValue('regions', currentRegions.slice(0, 1));
                         }
