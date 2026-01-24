@@ -33,14 +33,23 @@ export default function DashboardPage() {
     loadData();
     setLoading(false);
 
-    const handleStorage = (e: StorageEvent) => {
-        if (e.key === 'mockTickets' || e.key === 'mockUser') {
+    const handleStorageChange = (e: StorageEvent | CustomEvent) => {
+        if (e instanceof StorageEvent) {
+            if (['mockTickets', 'mockUser'].includes(e.key || '')) {
+                loadData();
+            }
+        } else {
             loadData();
         }
     };
+    
+    window.addEventListener('storage', handleStorageChange as EventListener);
+    window.addEventListener('local-storage-change', handleStorageChange as EventListener);
 
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    return () => {
+        window.removeEventListener('storage', handleStorageChange as EventListener);
+        window.removeEventListener('local-storage-change', handleStorageChange as EventListener);
+    };
   }, [loadData]);
 
 

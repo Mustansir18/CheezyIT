@@ -117,8 +117,8 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         status: 'Open',
         title: data.title,
         description: data.description,
-        issueType: data.issueType,
-        customIssueType: data.customIssueType,
+        issueType: data.issueType === 'Other' ? data.customIssueType! : data.issueType,
+        customIssueType: data.issueType === 'Other' ? data.customIssueType : undefined,
         anydesk: data.anydesk,
         region: data.region,
     };
@@ -196,28 +196,30 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                         )}
                         />
                 )}
-                 <FormField
-                    control={form.control}
-                    name="region"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Region</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={userRegions.length <= 1}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a region" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {userRegions.map((region: string) => (
-                              <SelectItem key={region} value={region}>{region}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                 {userRegions.length > 1 && (
+                    <FormField
+                        control={form.control}
+                        name="region"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Region</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Select a region" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {userRegions.map((region: string) => (
+                                <SelectItem key={region} value={region}>{region}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                 )}
             </div>
             <FormField
               control={form.control}
