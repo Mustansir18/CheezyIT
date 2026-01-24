@@ -6,11 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 
 
 export default function LoginPage() {
@@ -25,27 +28,31 @@ export default function LoginPage() {
 
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const firestore = useFirestore();
+
+  const { user, loading: userLoading } = useUser();
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc(userProfileRef);
 
   useEffect(() => {
-    const user = localStorage.getItem('mockUser');
-    if (user) {
-      const parsedUser = JSON.parse(user);
-      if (parsedUser.role === 'Admin' || parsedUser.role === 'Head') {
-          router.push('/admin');
-      } else if (parsedUser.role === 'it-support') {
-          router.push('/admin/tickets');
+    if (!userLoading && user && !profileLoading) {
+      if (userProfile?.role === 'Admin' || userProfile?.role === 'Head') {
+        router.push('/admin');
+      } else if (userProfile?.role === 'it-support') {
+        router.push('/admin/tickets');
       } else {
-          router.push('/dashboard');
+        router.push('/dashboard');
       }
     }
-  }, [router]);
+  }, [user, userLoading, userProfile, profileLoading, router]);
   
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail) return;
+    if (!resetEmail || !auth) return;
     setIsResetting(true);
-    // Mock password reset
-    setTimeout(() => {
+    try {
+        await sendPasswordResetEmail(auth, resetEmail);
         toast({
             title: 'Password Reset Email Sent',
             description: `If an account with ${resetEmail} exists, an email has been sent with reset instructions.`,
@@ -53,7 +60,14 @@ export default function LoginPage() {
         setIsResetting(false);
         setIsResetDialogOpen(false);
         setResetEmail('');
-    }, 1000);
+    } catch(err: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Password Reset Error',
+            description: err.message,
+        });
+        setIsResetting(false);
+    }
   }
 
   const handleAuthAction = async (e: React.FormEvent) => {
@@ -61,31 +75,35 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    // Mock login
-    setTimeout(() => {
-        if (email === 'mustansir133@gmail.com' && password === 'PAK!7tan') {
-            localStorage.setItem('mockUser', JSON.stringify({ id: 'admin-user-id', email, displayName: 'Admin', role: 'Admin' }));
-            router.push('/admin');
-        } else if (email === 'head@example.com' && password === 'password') {
-            localStorage.setItem('mockUser', JSON.stringify({ id: 'head-user-1', email, displayName: 'Head User', role: 'Head' }));
-            router.push('/admin');
-        } else if (email === 'support@example.com' && password === 'password') {
-            localStorage.setItem('mockUser', JSON.stringify({ id: 'support-user-1', email, displayName: 'Support Person', role: 'it-support' }));
-            router.push('/admin/tickets');
-        } else if (email && password) {
-            localStorage.setItem('mockUser', JSON.stringify({ id: `user-${email}`, email, displayName: 'Demo User', role: 'User' }));
-            router.push('/dashboard');
-        } else {
-            const errMessage = 'Invalid credentials';
-            setError(errMessage);
-            toast({
-                variant: 'destructive',
-                title: 'Authentication Error',
-                description: errMessage,
-            });
-        }
+    if (!auth) {
+        setError("Auth service not available.");
         setLoading(false);
-    }, 1000);
+        return;
+    }
+
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // On success, the useEffect hook will handle redirection
+    } catch (err: any) {
+        let errMessage = "An unknown error occurred.";
+        switch (err.code) {
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+            case 'auth/invalid-credential':
+                errMessage = 'Invalid email or password.';
+                break;
+            default:
+                errMessage = err.message;
+                break;
+        }
+        setError(errMessage);
+        toast({
+            variant: 'destructive',
+            title: 'Authentication Error',
+            description: errMessage,
+        });
+    }
+    setLoading(false);
   };
 
   return (

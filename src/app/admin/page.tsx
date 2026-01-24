@@ -3,9 +3,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Ticket, BarChart, Settings, Megaphone, History } from 'lucide-react';
-import { isAdmin } from '@/lib/admins';
-import { useMemo, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useMemo } from 'react';
+
+type UserProfile = {
+  role?: string;
+}
 
 const allNavItems = [
   {
@@ -46,24 +50,17 @@ const allNavItems = [
 ];
 
 export default function AdminDashboardPage() {
-  const [user, setUser] = useState<{email: string, role: string} | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    const userJson = localStorage.getItem('mockUser');
-    if (userJson) {
-      setUser(JSON.parse(userJson));
-    }
-    setLoading(false);
-  }, []);
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const navItems = useMemo(() => {
-    if (!user?.role) return [];
-    return allNavItems.filter(item => item.roles.includes(user.role));
-  }, [user]);
+    if (!userProfile?.role) return [];
+    return allNavItems.filter(item => item.roles.includes(userProfile.role));
+  }, [userProfile]);
 
-  if (loading) {
+  if (userLoading || profileLoading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
             <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />

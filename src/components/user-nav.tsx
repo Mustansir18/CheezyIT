@@ -10,31 +10,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect, useState } from 'react';
-
-const useUser = () => {
-    const [user, setUser] = useState<{ email: string; } | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if (userJson) {
-            setUser(JSON.parse(userJson));
-        }
-        setLoading(false);
-    }, []);
-
-    return { user, loading };
-};
-
+import { useAuth, useUser } from '@/firebase';
 
 export function UserNav() {
   const { user, loading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleSignOut = async () => {
-    localStorage.removeItem('mockUser');
+    if(auth) {
+        await auth.signOut();
+    }
     router.push('/');
   };
 

@@ -1,18 +1,46 @@
 'use client';
-
 import { useEffect, useState } from 'react';
+import { onAuthStateChanged, type User as FirebaseAuthUser } from 'firebase/auth';
+import { useAuth } from '../provider';
+
+// Define a user shape that is serializable
+export interface User {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
+
+// Convert Firebase user to a serializable object
+const mapUser = (user: FirebaseAuthUser): User => ({
+  uid: user.uid,
+  email: user.email,
+  displayName: user.displayName,
+  photoURL: user.photoURL,
+});
 
 export function useUser() {
-  const [user, setUser] = useState<{ uid: string, email: string, displayName: string } | null>(null);
+  const auth = useAuth();
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('mockUser') : null;
-    if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    if (!auth) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
-  }, []);
+    
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(mapUser(firebaseUser));
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
 
   return { user, loading };
 }

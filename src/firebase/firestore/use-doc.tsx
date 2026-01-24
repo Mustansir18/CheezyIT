@@ -1,21 +1,53 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { onSnapshot, type DocumentReference, type DocumentData } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '../provider';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
 
-// Mock implementation since Firebase is detached.
-export function useDoc<T = any>(docRef: any) {
-  const [data, setData] = useState<any | null>(null);
+export type WithId<T> = T & { id: string };
+
+export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
+  const [data, setData] = useState<WithId<T> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const memoizedDocRef = useMemoFirebase(() => docRef, [docRef]);
 
   useEffect(() => {
-    // Simulate a short delay for loading state
-    const timer = setTimeout(() => {
-      setData(null); // Return null as there's no data source
+    if (!memoizedDocRef) {
+      setData(null);
       setIsLoading(false);
-    }, 300);
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [docRef]);
+    setIsLoading(true);
+    setError(null);
+    
+    const unsubscribe = onSnapshot(
+      memoizedDocRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          setData({ id: docSnapshot.id, ...docSnapshot.data() });
+        } else {
+          setData(null);
+        }
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error(`Error fetching document:`, err);
+        const permissionError = new FirestorePermissionError({
+          path: memoizedDocRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setError(permissionError);
+        setIsLoading(false);
+      }
+    );
 
+    return () => unsubscribe();
+  }, [memoizedDocRef]);
 
-  return { data, isLoading, error: null };
+  return { data, isLoading, error };
 }

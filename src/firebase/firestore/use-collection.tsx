@@ -1,20 +1,53 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { onSnapshot, type Query, type DocumentData } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '../provider';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
 
-// Mock implementation since Firebase is detached.
-export function useCollection<T = any>(query: any) {
-  const [data, setData] = useState<any[] | null>(null);
+export type WithId<T> = T & { id: string };
+
+export function useCollection<T = DocumentData>(query: Query<T> | null) {
+  const [data, setData] = useState<WithId<T>[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const memoizedQuery = useMemoFirebase(() => query, [query]);
 
   useEffect(() => {
-    // Simulate a short delay for loading state
-    const timer = setTimeout(() => {
-      setData([]); // Return empty array as there's no data source
+    if (!memoizedQuery) {
+      setData([]);
       setIsLoading(false);
-    }, 300);
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [query]);
+    setIsLoading(true);
+    setError(null);
 
-  return { data, isLoading, error: null };
+    const unsubscribe = onSnapshot(
+      memoizedQuery,
+      (querySnapshot) => {
+        const result: WithId<T>[] = [];
+        querySnapshot.forEach((doc) => {
+          result.push({ id: doc.id, ...doc.data() });
+        });
+        setData(result);
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error(`Error fetching collection:`, err);
+        const permissionError = new FirestorePermissionError({
+          path: memoizedQuery.path,
+          operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setError(permissionError);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [memoizedQuery]);
+
+  return { data, isLoading, error };
 }

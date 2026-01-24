@@ -3,46 +3,40 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
-import { isAdmin } from '@/lib/admins';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
 import { UserNav } from '@/components/user-nav';
-import { cn } from '@/lib/utils';
 import AnnouncementBell from '@/components/announcement-bell';
 import { Button } from '@/components/ui/button';
 
 type UserProfile = {
   role: string;
-  blockedUntil?: Date;
+  blockedUntil?: any;
 }
-
-// Mock useUser hook
-const useUser = () => {
-    const [user, setUser] = useState<{ email: string; displayName: string, role: string} | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if (userJson) {
-            setUser(JSON.parse(userJson));
-        }
-        setLoading(false);
-    }, []);
-    return { user, loading };
-}
-
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
 
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
   const isAuthorized = useMemo(() => {
-    if (!user) return false;
-    if (user.role === 'Admin' || user.role === 'it-support' || user.role === 'Head') return true;
+    if (!userProfile) return false;
+    if (userProfile.role === 'Admin' || userProfile.role === 'it-support' || userProfile.role === 'Head') return true;
     return false;
-  }, [user]);
+  }, [userProfile]);
+
+  const isBlocked = useMemo(() => {
+      if (!userProfile?.blockedUntil) return false;
+      const blockedDate = userProfile.blockedUntil.toDate ? userProfile.blockedUntil.toDate() : new Date(userProfile.blockedUntil);
+      return blockedDate > new Date();
+  }, [userProfile]);
   
-  const isBlocked = false; // Mocking this as there's no live data
+  const loading = userLoading || profileLoading;
 
   useEffect(() => {
     if (loading) {
@@ -50,10 +44,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     if (!user) {
       router.replace('/');
+    } else if (isBlocked) {
+        // Handle blocked user logic if needed, e.g. sign out and redirect
+        // auth?.signOut();
+        // router.replace('/blocked');
     } else if (!isAuthorized) {
       router.replace('/dashboard');
     }
-  }, [user, loading, isAuthorized, router]);
+  }, [user, loading, isAuthorized, isBlocked, router]);
 
   if (loading || !user || !isAuthorized) {
     return (

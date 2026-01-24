@@ -1,7 +1,7 @@
 'use client';
 // This file contains the email for the admin user with super privileges.
 
-export const ADMIN_EMAIL: string = 'mustansir133@gmail.com';
+export const ADMIN_EMAIL: string = process.env.NEXT_PUBLIC_ROOT_ADMIN_EMAIL || 'mustansir133@gmail.com';
 
 export const isAdmin = (email: string | undefined | null): boolean => {
     if (!email) return false;

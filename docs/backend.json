@@ -1,1 +1,126 @@
-{}
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user-specific information.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["User", "it-support", "Admin", "Head", "Branch"],
+          "description": "The user's role in the system."
+        },
+        "regions": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "The regions the user is associated with."
+        },
+        "blockedUntil": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Timestamp until which the user is blocked."
+        }
+      },
+      "required": ["displayName", "email", "role", "regions"]
+    },
+    "Ticket": {
+      "title": "Support Ticket",
+      "description": "Represents a support ticket created by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "ticketId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "In-Progress", "Resolved", "Closed"] },
+        "assignedTo": { "type": "string" },
+        "assignedToDisplayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "resolvedBy": { "type": "string" },
+        "resolvedByDisplayName": { "type": "string" },
+        "issueType": { "type": "string" },
+        "customIssueType": { "type": "string" },
+        "anydesk": { "type": "string" },
+        "region": { "type": "string" }
+      },
+      "required": ["userId", "ticketId", "title", "status", "createdAt", "updatedAt", "issueType", "region"]
+    },
+    "Announcement": {
+        "title": "Announcement",
+        "description": "A message broadcast to users.",
+        "type": "object",
+        "properties": {
+            "title": { "type": "string"},
+            "message": { "type": "string"},
+            "targetRoles": { "type": "array", "items": { "type": "string" }},
+            "targetUsers": { "type": "array", "items": { "type": "string" }},
+            "startDate": { "type": "string", "format": "date-time" },
+            "endDate": { "type": "string", "format": "date-time" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "sentBy": { "type": "string" },
+            "readBy": { "type": "array", "items": { "type": "string" }}
+        },
+        "required": ["title", "message", "createdAt", "sentBy"]
+    },
+    "ChatMessage": {
+        "title": "Chat Message",
+        "description": "A message within a ticket's chat.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string" },
+            "displayName": { "type": "string" },
+            "text": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "isRead": { "type": "boolean" },
+            "type": { "type": "string" }
+        },
+        "required": ["userId", "displayName", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profiles."
+    },
+    "/tickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/Ticket" },
+      "description": "Stores all support tickets."
+    },
+    "/tickets/{ticketId}/messages/{messageId}": {
+        "schema": { "$ref": "#/entities/ChatMessage" },
+        "description": "Stores chat messages for a specific ticket."
+    },
+    "/announcements/{announcementId}": {
+        "schema": { "$ref": "#/entities/Announcement" },
+        "description": "Stores all announcements."
+    },
+    "/settings/regions": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
+            }
+        },
+        "description": "Stores system-wide settings like regions."
+    }
+  }
+}

@@ -3,44 +3,37 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
-import { isAdmin } from '@/lib/admins';
+import { doc } from 'firebase/firestore';
 
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import ReportIssueForm from '@/components/report-issue-form';
 import { cn } from '@/lib/utils';
 import WhatsAppFAB from '@/components/whatsapp-fab';
 
-const useUser = () => {
-    const [user, setUser] = useState<{ email: string; role: string; } | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if (userJson) {
-            setUser(JSON.parse(userJson));
-        }
-        setLoading(false);
-    }, []);
-
-    return { user, loading };
-};
-
+type UserProfile = {
+  role: string;
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { user, loading } = useUser();
+    const { user, loading: userLoading } = useUser();
+    const firestore = useFirestore();
     const router = useRouter();
     const pathname = usePathname();
     const hasRedirected = useRef(false);
 
+    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+    const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
     const isPrivilegedUser = useMemo(() => {
-        if (!user) return false;
-        if (['Admin', 'it-support', 'Head'].includes(user.role)) return true;
+        if (!userProfile) return false;
+        if (['Admin', 'it-support', 'Head'].includes(userProfile.role)) return true;
         return false;
-    }, [user]);
+    }, [userProfile]);
 
     const isTicketPage = pathname.startsWith('/dashboard/ticket/');
+    const loading = userLoading || profileLoading;
 
     useEffect(() => {
         if (loading || hasRedirected.current) {
@@ -51,13 +44,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             router.replace('/');
         } else if (isPrivilegedUser && !isTicketPage) {
             hasRedirected.current = true;
-            if (user.role === 'it-support') {
+            if (userProfile?.role === 'it-support') {
               router.replace('/admin/tickets');
             } else {
               router.replace('/admin');
             }
         }
-    }, [user, loading, router, isPrivilegedUser, pathname, isTicketPage]);
+    }, [user, loading, router, isPrivilegedUser, userProfile, pathname, isTicketPage]);
     
     if (loading || !user || (isPrivilegedUser && !isTicketPage)) {
       return (

@@ -1,33 +1,34 @@
 'use client';
-import { useMemo } from 'react';
+import {
+  FirebaseProvider,
+  useFirebaseApp,
+  useAuth,
+  useFirestore,
+  useStorage,
+  useFirebase,
+  useMemoFirebase,
+} from './provider';
+import { FirebaseClientProvider } from './client-provider';
+import { useCollection } from './firestore/use-collection';
+import { useDoc } from './firestore/use-doc';
+import { useUser, type User } from './auth/use-user';
+import { FirestorePermissionError, type SecurityRuleContext } from './errors';
+import { errorEmitter } from './error-emitter';
 
-export const useUser = () => {
-    const userJson = typeof window !== 'undefined' ? localStorage.getItem('mockUser') : null;
-    const user = userJson ? JSON.parse(userJson) : null;
-    return { user, loading: false };
+export type { User, SecurityRuleContext };
+export {
+  FirebaseProvider,
+  FirebaseClientProvider,
+  useFirebaseApp,
+  useAuth,
+  useFirestore,
+  useStorage,
+  useFirebase,
+  useUser,
+  useCollection,
+  useDoc,
+  useMemoFirebase,
+  FirestorePermissionError,
+  errorEmitter
 };
-
-export const useAuth = () => {
-    return {
-        signOut: () => {
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('mockUser');
-            }
-        }
-    }
-};
-
-export const useCollection = () => ({ data: [], isLoading: false, error: null });
-export const useDoc = () => ({ data: null, isLoading: false, error: null });
-export const useFirestore = () => null;
-export const useFirebaseApp = () => null;
-export const useFirebase = () => ({});
-
-export const FirebaseProvider = ({ children }: { children: React.ReactNode }) => children;
-export const FirebaseClientProvider = ({ children }: { children: React.ReactNode }) => children;
-export const useMemoFirebase = (fn: any) => useMemo(fn, []);
-
-export class FirestorePermissionError extends Error { constructor() { super("Firebase is detached."); this.name = 'FirebaseError' } };
-export const errorEmitter = { on: () => {}, off: () => {}, emit: () => {} };
-
-export const initializeFirebase = () => {};
+export type { WithId } from './firestore/use-collection';
