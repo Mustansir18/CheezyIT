@@ -99,7 +99,7 @@ export default function AdminTicketList() {
 
     let tickets = [...allTickets];
 
-    if (currentUser.role === 'it-support' || currentUser.role === 'Branch') {
+    if (currentUser.role === 'it-support') {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
 

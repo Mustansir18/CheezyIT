@@ -22,7 +22,7 @@ export type User = {
   id: string;
   displayName: string;
   email: string;
-  role: 'User' | 'it-support' | 'Admin' | 'Branch' | 'Head';
+  role: 'User' | 'it-support' | 'Admin' | 'Head';
   blockedUntil?: Date | null;
 };
 
@@ -31,7 +31,7 @@ const userSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
   email: z.string().email('Invalid email address.'),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
-  role: z.enum(['User', 'it-support', 'Admin', 'Branch', 'Head']),
+  role: z.enum(['User', 'it-support', 'Admin', 'Head']),
 });
 
 
@@ -264,7 +264,6 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave }: { isOpen: boolean, 
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
                         <SelectContent>
                             <SelectItem value="User">User</SelectItem>
-                            <SelectItem value="Branch">Branch</SelectItem>
                             <SelectItem value="it-support">IT Support</SelectItem>
                             <SelectItem value="Head">Head</SelectItem>
                             <SelectItem value="Admin">Admin</SelectItem>

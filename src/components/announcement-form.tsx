@@ -40,7 +40,6 @@ interface AnnouncementFormProps {
 
 const ROLES: MultiSelectOption[] = [
     { value: 'User', label: 'User' },
-    { value: 'Branch', label: 'Branch' },
     { value: 'it-support', label: 'IT Support' },
     { value: 'Head', label: 'Head' },
     { value: 'Admin', label: 'Admin' },
