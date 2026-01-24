@@ -21,14 +21,20 @@ const getBase64ImageFromURL = (url: string): Promise<string> => {
       const dataURL = canvas.toDataURL('image/png');
       resolve(dataURL);
     };
-    img.onerror = reject;
+    img.onerror = (error) => {
+        // Construct a more informative error
+        const err = new Error(`Failed to load image from URL: ${url}. Error: ${error}`);
+        reject(err);
+    };
     img.src = url;
   });
 };
 
+
 const addHeader = async (doc: jsPDF, title: string) => {
     try {
-        const logoUrl = '/logo.png';
+        // Using an absolute path for the logo
+        const logoUrl = `${window.location.origin}/logo.png`;
         const logoBase64 = await getBase64ImageFromURL(logoUrl);
         doc.addImage(logoBase64, 'PNG', 15, 8, 20, 20);
     } catch (error) {
@@ -52,7 +58,7 @@ const exportToPdf = async (title: string, head: string[][], body: any[][]) => {
         body: body,
         startY: 45,
         theme: 'grid',
-        headStyles: { fillColor: [249, 168, 38] },
+        headStyles: { fillColor: [249, 168, 38] }, // This is an orange color
         styles: {
             fontSize: 9,
             cellPadding: 2,
@@ -78,41 +84,39 @@ const exportToExcel = (title: string, head: string[], body: any[][]) => {
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
     const merge = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: head.length - 1 > 0 ? head.length - 1 : 0 } },
-        { s: { r: 2, c: 0 }, e: { r: 2, c: head.length - 1 > 0 ? head.length - 1 : 0 } }
+        { s: { r: 0, c: 0 }, e: { r: 0, c: head.length > 0 ? head.length - 1 : 0 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: head.length > 0 ? head.length - 1 : 0 } }
     ];
-    ws['!merges'] = merge;
+    if (wsData[0].length > 1) {
+        ws['!merges'] = merge;
+    }
     
     const setCellStyle = (cell: string, style: any) => {
-        if (ws[cell]) {
-            ws[cell].s = style;
-        } else {
-            ws[cell] = { t: 's', v: '', s: style };
-        }
+        if (!ws[cell]) ws[cell] = { t: 's', v: '' };
+        ws[cell].s = style;
     };
 
     setCellStyle('A1', { font: { name: 'Arial', sz: 16, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } });
     setCellStyle('A3', { font: { name: 'Arial', sz: 14, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } });
 
-    const colWidths = body.reduce((acc: number[], row: any[]) => {
+    const colWidths: number[] = head.map(h => h.length);
+    body.forEach(row => {
         row.forEach((cell, i) => {
             const len = cell ? String(cell).length : 0;
-            if (!acc[i] || len > acc[i]) {
-                acc[i] = len;
+            if (!colWidths[i] || len > colWidths[i]) {
+                colWidths[i] = len;
             }
         });
-        return acc;
-    }, []);
+    });
 
-    ws['!cols'] = head.map((h, i) => ({
-        wch: Math.max(h.length, colWidths[i] || 0) + 2
-    }));
+    ws['!cols'] = colWidths.map(wch => ({ wch: wch + 2 }));
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
     
     XLSX.writeFile(wb, `${title.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
 };
+
 
 export const exportData = async (
     format: 'pdf' | 'excel',
