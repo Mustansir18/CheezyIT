@@ -74,7 +74,6 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
                   <Checkbox
                     id={`multi-select-${option.value}`}
                     checked={selected.includes(option.value)}
-                    onCheckedChange={() => handleSelect(option.value)}
                     className="mr-2"
                   />
                   <label
