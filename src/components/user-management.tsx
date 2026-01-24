@@ -67,7 +67,11 @@ export default function UserManagement({
     const isLoading = false;
 
     const regionOptions: MultiSelectOption[] = useMemo(() => {
-        return regions.map(r => ({ value: r, label: r }));
+        const list = regions
+            .filter(r => r.toLowerCase() !== 'all')
+            .map(r => ({ value: r, label: r }));
+        
+        return [{ value: 'all', label: 'All Regions' }, ...list];
     }, [regions]);
     
     const handleOpenAddDialog = () => {
@@ -229,15 +233,16 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       password: '',
     }
   });
+  const { reset } = form;
 
-  // Reset form when dialog opens or user changes
+  // Reset form ONLY when dialog opens or the user prop changes.
   useEffect(() => {
     if (isOpen) {
       const initialRegions = user 
         ? (user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : [])) 
         : ['ISL', 'LHR', 'South', 'SUG'];
         
-      form.reset({
+      reset({
         id: user?.id || undefined,
         displayName: user?.displayName || '',
         email: user?.email || '',
@@ -246,7 +251,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
         password: '',
       });
     }
-  }, [user, isOpen]);
+  }, [user, isOpen, reset]);
   
   const watchedRole = form.watch('role');
 
@@ -260,8 +265,29 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
     }, 500);
   };
   
+  const handleRegionChange = (selected: string[], currentField: any) => {
+    const isMultiRole = ['it-support', 'Head'].includes(watchedRole);
+    
+    if (isMultiRole) {
+      const wasAllSelected = currentField.value?.includes('all');
+      const isAllNowSelected = selected.includes('all');
+
+      if (isAllNowSelected && !wasAllSelected) {
+        currentField.onChange(['all']);
+        return;
+      }
+      
+      if (wasAllSelected && selected.length > 1) {
+        currentField.onChange(selected.filter(i => i !== 'all'));
+        return;
+      }
+    }
+    
+    currentField.onChange(selected);
+  };
+  
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { form.reset(); } setIsOpen(open); }}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { reset(); } setIsOpen(open); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
@@ -289,7 +315,9 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                         field.onChange(val);
                         if (['User', 'Branch'].includes(val)) {
                             const currentRegions = form.getValues('regions') || [];
-                            form.setValue('regions', currentRegions.slice(0, 1));
+                            if (currentRegions.length > 1) {
+                                form.setValue('regions', currentRegions.slice(0, 1));
+                            }
                         }
                       }} 
                       defaultValue={field.value}
@@ -315,9 +343,12 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                       <FormLabel>Region(s)</FormLabel>
                       <FormControl>
                         <MultiSelect
-                            options={regions}
+                            options={['User', 'Branch'].includes(watchedRole) 
+                              ? regions.filter(r => r.value !== 'all') 
+                              : regions
+                            }
                             selected={field.value || []}
-                            onChange={field.onChange}
+                            onChange={(selected) => handleRegionChange(selected, field)}
                             mode={['User', 'Branch'].includes(watchedRole) ? 'single' : 'multiple'}
                             placeholder={['User', 'Branch'].includes(watchedRole) ? "Select a region..." : "Select region(s)..."}
                         />
