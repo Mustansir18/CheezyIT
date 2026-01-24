@@ -1,5 +1,9 @@
 'use client';
 
+import { useState, useMemo } from 'react';
+import { format } from 'date-fns';
+import { Filter } from 'lucide-react';
+
 import {
   Card,
   CardContent,
@@ -16,7 +20,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type ActivityLog = {
   id: string;
@@ -44,13 +56,60 @@ const getActionBadgeVariant = (action: string) => {
 }
 
 export default function ActivityLog() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [userFilter, setUserFilter] = useState('all');
+
+  const uniqueUsers = useMemo(() => ['all', ...Array.from(new Set(mockLogs.map(log => log.user)))], []);
+
+  const filteredLogs = useMemo(() => {
+    return mockLogs.filter(log => {
+      const matchesSearch = searchTerm === '' || 
+                            log.details.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            log.action.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesUser = userFilter === 'all' || log.user === userFilter;
+
+      return matchesSearch && matchesUser;
+    });
+  }, [searchTerm, userFilter]);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
-        <CardDescription>
-          Showing all logged events across the application.
-        </CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>
+                Showing all logged events across the application.
+                </CardDescription>
+            </div>
+        </div>
+         <div className="flex items-center gap-2 mt-4">
+            <Input
+                placeholder="Search by details, user, or action..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 max-w-sm"
+            />
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9">
+                        <Filter className="mr-2 h-3 w-3" />
+                        User: {userFilter === 'all' ? 'All' : userFilter}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                    <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
+                        {uniqueUsers.map(user => (
+                            <DropdownMenuRadioItem key={user} value={user}>
+                                {user === 'all' ? 'All' : user}
+                            </DropdownMenuRadioItem>
+                        ))}
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
@@ -63,7 +122,7 @@ export default function ActivityLog() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockLogs.map((log) => (
+            {filteredLogs.length > 0 ? filteredLogs.map((log) => (
               <TableRow key={log.id}>
                 <TableCell className="font-medium">{log.user}</TableCell>
                 <TableCell>
@@ -76,7 +135,13 @@ export default function ActivityLog() {
                   {format(log.timestamp, "MMM d, yyyy, h:mm:ss a")}
                 </TableCell>
               </TableRow>
-            ))}
+            )) : (
+                <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                        No logs found matching your criteria.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
