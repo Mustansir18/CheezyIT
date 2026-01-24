@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, UserPlus, MoreHorizontal, Pencil, ShieldBan, ShieldCheck } from 'lucide-react';
+import { Loader2, UserPlus, MoreHorizontal, Pencil, ShieldBan, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -52,16 +52,19 @@ export default function UserManagement({
     regions: regionList,
     users,
     onSaveUser,
-    onBlockUser
+    onBlockUser,
+    onDeleteUser
 }: { 
     userIsAdminOrRoot: boolean, 
     regions: string[],
     users: User[],
     onSaveUser: (data: z.infer<typeof userSchema>) => void,
-    onBlockUser: (user: User) => void
+    onBlockUser: (user: User) => void,
+    onDeleteUser: (user: User) => void
 }) {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [blockingUser, setBlockingUser] = useState<User | null>(null);
+    const [deletingUser, setDeletingUser] = useState<User | null>(null);
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
     const isLoading = false;
     
@@ -90,6 +93,12 @@ export default function UserManagement({
         setBlockingUser(null);
     };
     
+    const handleConfirmDelete = () => {
+        if (!deletingUser) return;
+        onDeleteUser(deletingUser);
+        setDeletingUser(null);
+    };
+
     return (
         <>
             <Card>
@@ -145,6 +154,9 @@ export default function UserManagement({
                                                             {isBlocked ? <ShieldCheck className="mr-2 h-4 w-4" /> : <ShieldBan className="mr-2 h-4 w-4" />}
                                                             {isBlocked ? 'Unblock' : 'Block'}
                                                         </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => setDeletingUser(user)} className="text-destructive focus:text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
@@ -181,6 +193,23 @@ export default function UserManagement({
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setBlockingUser(null)}>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={handleConfirmBlock}>Confirm</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+
+            {deletingUser && (
+                <AlertDialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the user "{deletingUser.displayName}" and all their associated data.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setDeletingUser(null)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>

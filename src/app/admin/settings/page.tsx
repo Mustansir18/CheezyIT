@@ -57,13 +57,22 @@ export default function AdminSettingsPage() {
     useEffect(() => {
         loadData();
         setLoading(false);
-        const handleStorageChange = (event: StorageEvent) => {
-            if (['mockUser', 'mockUsers', 'mockRegions'].includes(event.key || '')) {
+        const handleStorageChange = (event: StorageEvent | CustomEvent) => {
+            if (event instanceof StorageEvent) {
+                if (['mockUser', 'mockUsers', 'mockRegions'].includes(event.key || '')) {
+                    loadData();
+                }
+            } else {
                 loadData();
             }
         };
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
+        window.addEventListener('storage', handleStorageChange as EventListener);
+        window.addEventListener('local-storage-change', handleStorageChange as EventListener);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange as EventListener);
+            window.removeEventListener('local-storage-change', handleStorageChange as EventListener);
+        };
     }, [loadData]);
 
 
@@ -117,22 +126,29 @@ export default function AdminSettingsPage() {
         updatedUsersList = [...users, newUser];
         toast({ title: "User Added", description: `${data.displayName} has been added.` });
     }
-      setUsers(updatedUsersList);
       localStorage.setItem('mockUsers', JSON.stringify(updatedUsersList));
+      window.dispatchEvent(new Event('local-storage-change'));
   };
 
   const handleBlockUser = (userToBlock: User) => {
       const isCurrentlyBlocked = userToBlock.blockedUntil && userToBlock.blockedUntil > new Date();
-      const updatedUsers = users.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u)
-      setUsers(updatedUsers);
+      const updatedUsers = users.map(u => u.id === userToBlock.id ? { ...u, blockedUntil: isCurrentlyBlocked ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) } : u);
       localStorage.setItem('mockUsers', JSON.stringify(updatedUsers));
+      window.dispatchEvent(new Event('local-storage-change'));
       toast({ title: `User ${isCurrentlyBlocked ? 'Unblocked' : 'Blocked'}`, description: `${userToBlock.displayName} has been ${isCurrentlyBlocked ? 'unblocked' : 'blocked'}.` });
   };
   
+  const handleDeleteUser = (userToDelete: User) => {
+      const updatedUsers = users.filter(u => u.id !== userToDelete.id);
+      localStorage.setItem('mockUsers', JSON.stringify(updatedUsers));
+      window.dispatchEvent(new Event('local-storage-change'));
+      toast({ title: "User Deleted", description: `${userToDelete.displayName} has been permanently deleted.` });
+  };
+
    const handleSetRegions = (updater: (prevRegions: string[]) => string[]) => {
     const newRegions = updater(regions);
-    setRegions(newRegions);
     localStorage.setItem('mockRegions', JSON.stringify(newRegions));
+    window.dispatchEvent(new Event('local-storage-change'));
   };
 
   if (loading || !isAuthorized) {
@@ -164,6 +180,7 @@ export default function AdminSettingsPage() {
             users={users}
             onSaveUser={handleSaveUser}
             onBlockUser={handleBlockUser}
+            onDeleteUser={handleDeleteUser}
         />
         {userIsAdmin && (
           <>
