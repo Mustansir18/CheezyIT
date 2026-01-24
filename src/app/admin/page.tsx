@@ -7,39 +7,43 @@ import { isAdmin } from '@/lib/admins';
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const baseNavItems = [
+const allNavItems = [
   {
     href: '/admin/tickets',
     icon: Ticket,
     title: 'All Tickets',
     description: 'View, manage, and filter all support tickets.',
+    roles: ['Admin', 'it-support'],
   },
   {
     href: '/admin/reports',
     icon: BarChart,
     title: 'Reports',
     description: 'Analyze ticket data with charts and statistics.',
+    roles: ['Admin', 'it-support'],
   },
   {
     href: '/admin/announcements',
     icon: Megaphone,
     title: 'Announcements',
     description: 'Send broadcast messages to users and staff.',
+    roles: ['Admin', 'it-support'],
   },
   {
     href: '/admin/activity-log',
     icon: History,
     title: 'Activity Log',
     description: 'Track all actions and events in the app.',
+    roles: ['Admin'],
   },
-];
-
-const adminNavItem = {
+  {
     href: '/admin/settings',
     icon: Settings,
     title: 'Admin Settings',
     description: 'Manage user accounts and roles.',
-};
+    roles: ['Admin'],
+  },
+];
 
 export default function AdminDashboardPage() {
   const [user, setUser] = useState<{email: string, role: string} | null>(null);
@@ -49,37 +53,22 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const userJson = localStorage.getItem('mockUser');
     if (userJson) {
-      const parsed = JSON.parse(userJson);
-      if (isAdmin(parsed.email)) {
-        parsed.role = 'Admin';
-      } else {
-        parsed.role = 'it-support';
-      }
-      setUser(parsed);
+      setUser(JSON.parse(userJson));
     }
     setLoading(false);
   }, []);
 
-  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
-  const userIsSupport = useMemo(() => user?.role === 'it-support', [user]);
-  
-  useEffect(() => {
-    if (!loading && userIsSupport) {
-        router.replace('/admin/tickets');
-    }
-  }, [loading, userIsSupport, router]);
+  const navItems = useMemo(() => {
+    if (!user?.role) return [];
+    return allNavItems.filter(item => item.roles.includes(user.role));
+  }, [user]);
 
-  if (loading || userIsSupport) {
+  if (loading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
             <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
         </div>
       );
-  }
-
-  const navItems = [...baseNavItems];
-  if (userIsAdmin) {
-    navItems.push(adminNavItem);
   }
 
   return (

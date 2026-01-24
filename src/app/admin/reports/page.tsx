@@ -16,19 +16,15 @@ export default function AdminReportsPage() {
   useEffect(() => {
     const userJson = localStorage.getItem('mockUser');
     if (userJson) {
-      const parsed = JSON.parse(userJson);
-      if (isAdmin(parsed.email)) parsed.role = 'Admin';
-      else parsed.role = 'it-support';
-      setUser(parsed);
+      setUser(JSON.parse(userJson));
     }
     setLoading(false);
   }, []);
 
-  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
+  const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
   const router = useRouter();
 
   const isAuthorized = useMemo(() => {
-    if (user && isAdmin(user.email)) return true;
     if (user && (user.role === 'Admin' || user.role === 'it-support')) return true;
     return false;
   }, [user]);

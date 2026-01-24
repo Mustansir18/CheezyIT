@@ -32,21 +32,17 @@ export default function AdminSettingsPage() {
     useEffect(() => {
         const userJson = localStorage.getItem('mockUser');
         if(userJson) {
-            const parsed = JSON.parse(userJson);
-             if (isAdmin(parsed.email)) parsed.role = 'Admin';
-             else parsed.role = 'it-support';
-            setUser(parsed);
+            setUser(JSON.parse(userJson));
         }
         setLoading(false);
     }, []);
 
-  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
+  const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
   
   const isAuthorized = useMemo(() => {
-    if (userIsAdmin) return true;
-    if (user && (user.role === 'Admin' || user.role === 'it-support')) return true;
+    if (user?.role === 'Admin') return true;
     return false;
-  }, [userIsAdmin, user]);
+  }, [user]);
 
 
   useEffect(() => {
@@ -90,7 +86,7 @@ export default function AdminSettingsPage() {
             </Link>
         </Button>
         <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
-          {userIsAdmin ? 'Admin Settings' : 'User Management'}
+          Admin Settings
         </h1>
       </div>
       

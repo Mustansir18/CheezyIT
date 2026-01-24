@@ -23,13 +23,7 @@ const useUser = () => {
     useEffect(() => {
         const userJson = localStorage.getItem('mockUser');
         if (userJson) {
-            const parsed = JSON.parse(userJson);
-            if (isAdmin(parsed.email)) {
-                parsed.role = 'Admin';
-            } else {
-                 parsed.role = 'it-support'; // Assume non-admin is support in this layout
-            }
-            setUser(parsed);
+            setUser(JSON.parse(userJson));
         }
         setLoading(false);
     }, []);
@@ -44,8 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isAuthorized = useMemo(() => {
     if (!user) return false;
-    if (isAdmin(user.email)) return true;
-    if (user.role === 'it-support' || user.role === 'Admin') return true;
+    if (user.role === 'Admin' || user.role === 'it-support') return true;
     return false;
   }, [user]);
   

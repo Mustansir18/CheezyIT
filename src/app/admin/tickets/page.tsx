@@ -15,17 +15,13 @@ export default function AdminTicketsPage() {
     useEffect(() => {
         const userJson = localStorage.getItem('mockUser');
         if(userJson) {
-            const parsed = JSON.parse(userJson);
-             if (isAdmin(parsed.email)) parsed.role = 'Admin';
-             else parsed.role = 'it-support';
-            setUser(parsed);
+            setUser(JSON.parse(userJson));
         }
         setLoading(false);
     }, []);
 
   
-  const userIsAdmin = useMemo(() => user && isAdmin(user.email), [user]);
-  const userIsSupport = useMemo(() => user?.role === 'it-support', [user]);
+  const userIsAdmin = useMemo(() => user?.role === 'Admin', [user]);
 
   if (loading) {
       return (
@@ -38,14 +34,12 @@ export default function AdminTicketsPage() {
   return (
     <div className="space-y-4">
         <div className="flex items-center gap-4">
-            {!userIsSupport && (
-                <Button asChild variant="outline" size="icon">
-                    <Link href="/admin">
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">Back to Dashboard</span>
-                    </Link>
-                </Button>
-            )}
+            <Button asChild variant="outline" size="icon">
+                <Link href="/admin">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back to Dashboard</span>
+                </Link>
+            </Button>
             <h1 className={cn("text-3xl font-bold tracking-tight font-headline", userIsAdmin && "text-primary")}>
                 All Tickets
             </h1>
