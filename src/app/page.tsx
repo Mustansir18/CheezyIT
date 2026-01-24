@@ -107,28 +107,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-gray-950 overflow-hidden px-4">
+    <div className="relative flex h-screen w-full items-center justify-center bg-[#09090B] overflow-hidden px-4">
       {/* Background glows */}
-      <div className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 w-96 h-96 bg-orange-500/40 rounded-full blur-3xl opacity-40"></div>
-      <div className="absolute bottom-0 translate-y-1/2 left-1/4 -translate-x-1/2 w-96 h-96 bg-purple-500/40 rounded-full blur-3xl opacity-40"></div>
-      <div className="absolute bottom-0 translate-y-1/2 right-1/4 translate-x-1/2 w-80 h-80 bg-sky-500/40 rounded-full blur-3xl opacity-40"></div>
+      <div className="absolute -z-10 top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 w-96 h-96 bg-orange-500/30 rounded-full blur-3xl opacity-50"></div>
+      <div className="absolute -z-10 bottom-0 translate-y-1/2 left-1/4 -translate-x-1/2 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl opacity-50"></div>
+      <div className="absolute -z-10 bottom-0 translate-y-1/2 right-1/4 translate-x-1/2 w-80 h-80 bg-sky-500/30 rounded-full blur-3xl opacity-50"></div>
       
       <div className="relative w-full max-w-sm z-10">
-        <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 blur opacity-75"></div>
-        <Card className="relative border-white/20 bg-gray-900/80 text-white backdrop-blur-md">
-          <CardHeader className="text-center items-center p-4 pb-2">
+        <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
+        <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
+          <CardHeader className="text-center items-center p-6">
             <Image src="/logo.png" alt="Cheezious IT Support Logo" width={50} height={50} />
-            <div className="pt-2 text-center">
-              <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
-              <p className={cn("text-sm font-bold text-gray-400", "pt-2 text-base")}>
-                Welcome
-              </p>
+            <div className="pt-4 text-center">
+              <CardTitle className="text-2xl font-headline font-bold text-zinc-100 whitespace-nowrap">Cheezious IT Support</CardTitle>
+              <CardDescription className="text-zinc-400 pt-2">
+                Sign in to continue
+              </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="p-4">
-            <form onSubmit={handleAuthAction} className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-gray-300">Email</Label>
+          <CardContent className="px-6 pb-4">
+            <form onSubmit={handleAuthAction} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-zinc-400">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -136,41 +136,41 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100 focus:border-primary placeholder:text-zinc-500"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-gray-300">Password</Label>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-zinc-400">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100 focus:border-primary placeholder:text-zinc-500"
                 />
               </div>
-              <Button type="submit" variant="secondary" className="w-full !mt-5" disabled={loading}>
+              <Button type="submit" className="w-full !mt-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign In
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col pt-2 pb-4">
+          <CardFooter className="flex flex-col pt-2 pb-6 px-6">
               <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
                   <DialogTrigger asChild>
-                      <Button variant="link" className="text-sm text-primary/80 hover:text-primary">Forgot Password?</Button>
+                      <Button variant="link" className="text-sm text-zinc-400 hover:text-primary">Forgot Password?</Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-white/10 text-white">
+                  <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
                       <DialogHeader>
-                          <DialogTitle>Reset Your Password</DialogTitle>
-                          <DialogDescription className="text-gray-400">
+                          <DialogTitle className="text-zinc-100">Reset Your Password</DialogTitle>
+                          <DialogDescription className="text-zinc-400">
                               Enter your email address and we will send you a link to reset your password.
                           </DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
                           <div className="space-y-1.5">
-                              <Label htmlFor="reset-email" className="text-gray-300">Email</Label>
+                              <Label htmlFor="reset-email" className="text-zinc-400">Email</Label>
                               <Input
                                   id="reset-email"
                                   type="email"
@@ -178,14 +178,14 @@ export default function LoginPage() {
                                   value={resetEmail}
                                   onChange={(e) => setResetEmail(e.target.value)}
                                   required
-                                  className="bg-black/30 border-white/20 text-white placeholder:text-gray-500"
+                                  className="bg-zinc-800 border-zinc-700 text-zinc-100 focus:border-primary placeholder:text-zinc-500"
                               />
                           </div>
                           <div className="flex justify-end gap-2">
                               <DialogClose asChild>
-                                  <Button type="button" variant="outline" className="text-white border-white/20 hover:bg-white/10 hover:text-white">Cancel</Button>
+                                  <Button type="button" variant="outline" className="text-white border-zinc-700 bg-zinc-800 hover:bg-zinc-700 hover:text-white">Cancel</Button>
                               </DialogClose>
-                              <Button type="submit" variant="secondary" disabled={isResetting}>
+                              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={isResetting}>
                                   {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                   Send Reset Link
                               </Button>
