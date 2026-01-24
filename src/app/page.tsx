@@ -104,7 +104,7 @@ export default function LoginPage() {
         <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
           <CardHeader className="text-center items-center p-6">
-            <Image src="/logo.png" alt="Cheezious IT Support Logo" width={60} height={60} />
+            <Image src="/logo.png" alt="Cheezious IT Support Logo" width={70} height={70} />
             <div className="pt-4 text-center">
               <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
               <CardDescription className="text-zinc-400 pt-2">
@@ -123,7 +123,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-zinc-800 border-zinc-700 text-zinc-100 focus:border-primary placeholder:text-zinc-500"
+                  className="bg-white text-zinc-900 placeholder:text-zinc-500 border-zinc-300"
                 />
               </div>
               <div className="space-y-2">
@@ -134,7 +134,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-zinc-800 border-zinc-700 text-zinc-100 focus:border-primary placeholder:text-zinc-500"
+                  className="bg-white text-zinc-900 placeholder:text-zinc-500 border-zinc-300"
                 />
               </div>
               <Button type="submit" className="w-full !mt-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
