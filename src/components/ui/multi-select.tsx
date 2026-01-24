@@ -29,15 +29,6 @@ interface MultiSelectProps {
 
 const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
   ({ options, selected, onChange, className, placeholder = "Select..." }, ref) => {
-
-    const handleSelect = (value: string) => {
-        const isSelected = selected.includes(value);
-        const newSelected = isSelected
-            ? selected.filter((item) => item !== value)
-            : [...selected, value];
-        onChange(newSelected);
-    };
-
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -68,19 +59,28 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
           <ScrollArea className="max-h-72">
             <div className="p-2 space-y-1">
               {options.map((option) => (
-                <div
+                <label
                   key={option.value}
+                  htmlFor={`ms-option-${option.value}`}
                   className="flex items-center p-2 rounded-md hover:bg-accent cursor-pointer"
-                  onClick={() => handleSelect(option.value)}
                 >
                   <Checkbox
+                    id={`ms-option-${option.value}`}
                     checked={selected.includes(option.value)}
-                    className="mr-2 pointer-events-none"
+                    onCheckedChange={(checked) => {
+                      const isCurrentlySelected = selected.includes(option.value);
+                      if (checked && !isCurrentlySelected) {
+                        onChange([...selected, option.value]);
+                      } else if (!checked && isCurrentlySelected) {
+                        onChange(selected.filter((item) => item !== option.value));
+                      }
+                    }}
+                    className="mr-2"
                   />
                   <span className="w-full text-sm font-medium">
                     {option.label}
                   </span>
-                </div>
+                </label>
               ))}
             </div>
           </ScrollArea>
