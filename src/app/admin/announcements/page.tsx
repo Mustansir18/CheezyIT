@@ -10,6 +10,15 @@ import { isAdmin } from '@/lib/admins';
 import { useMemo, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import type { User } from '@/components/user-management';
+
+const mockUsersList: User[] = [
+    { id: 'admin-user-id', displayName: 'Admin', email: 'mustansir133@gmail.com', role: 'Admin', regions: ['all'], blockedUntil: null },
+    { id: 'support-user-1', displayName: 'Support Person', email: 'support@example.com', role: 'it-support', regions: ['Region A', 'Region B'], blockedUntil: null },
+    { id: 'user-1', displayName: 'Demo User', email: 'user@example.com', role: 'User', region: 'Region A', blockedUntil: null },
+];
+const initialRegions = ['Region A', 'Region B', 'Region C'];
+
 
 export default function AdminAnnouncementsPage() {
   const [user, setUser] = useState<{email: string; role: string} | null>(null);
@@ -68,7 +77,7 @@ export default function AdminAnnouncementsPage() {
         </TabsList>
       </div>
       <TabsContent value="send" className="mt-4">
-        <AnnouncementForm />
+        <AnnouncementForm users={mockUsersList} regions={initialRegions} />
       </TabsContent>
       <TabsContent value="history" className="mt-4">
         <AnnouncementHistory />

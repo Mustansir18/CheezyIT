@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,10 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { MultiSelect } from '@/components/ui/multi-select';
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import type { User } from '@/components/user-management';
 
 const announcementSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
@@ -31,9 +32,30 @@ const announcementSchema = z.object({
 
 type FormData = z.infer<typeof announcementSchema>;
 
-export default function AnnouncementForm() {
+interface AnnouncementFormProps {
+  users: User[];
+  regions: string[];
+}
+
+const ROLES: MultiSelectOption[] = [
+    { value: 'User', label: 'User' },
+    { value: 'Branch', label: 'Branch' },
+    { value: 'it-support', label: 'IT Support' },
+    { value: 'Admin', label: 'Admin' },
+];
+
+
+export default function AnnouncementForm({ users, regions }: AnnouncementFormProps) {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
+
+  const userOptions: MultiSelectOption[] = useMemo(() => 
+    users.map(u => ({ value: u.id, label: `${u.displayName} (${u.email})` })),
+  [users]);
+
+  const regionOptions: MultiSelectOption[] = useMemo(() => 
+    regions.map(r => ({ value: r, label: r })),
+  [regions]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(announcementSchema),
@@ -50,10 +72,19 @@ export default function AnnouncementForm() {
 
   const onSubmit = (data: FormData) => {
     setIsPending(true);
+    let recipientsSummary = [];
+    if (data.targetRoles.length) recipientsSummary.push(`Roles: ${data.targetRoles.join(', ')}`);
+    if (data.targetRegions.length) recipientsSummary.push(`Regions: ${data.targetRegions.join(', ')}`);
+    if (data.targetUsers.length) recipientsSummary.push(`Users: ${data.targetUsers.length}`);
+
+    const description = recipientsSummary.length > 0
+        ? `Message sent to: ${recipientsSummary.join('; ')}.`
+        : 'Message sent to all users.';
+
     setTimeout(() => {
         toast({
             title: 'Announcement Sent (Mock)!',
-            description: `Message sent to mock users.`,
+            description,
         });
         form.reset();
         setIsPending(false);
@@ -65,7 +96,7 @@ export default function AnnouncementForm() {
       <CardHeader>
         <CardTitle>Compose Announcement</CardTitle>
         <CardDescription>
-          Firebase is detached. This form is for demonstration only.
+          Specify the audience for your announcement. If no audience is specified, it will be sent to everyone.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -97,6 +128,67 @@ export default function AnnouncementForm() {
                 </FormItem>
               )}
             />
+            
+            <div className="space-y-2 pt-4">
+                <h3 className="text-sm font-medium">Target Audience (Optional)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                        control={form.control}
+                        name="targetRoles"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Roles</FormLabel>
+                            <FormControl>
+                                <MultiSelect 
+                                    options={ROLES}
+                                    selected={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Select roles..."
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="targetRegions"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Regions</FormLabel>
+                            <FormControl>
+                                <MultiSelect 
+                                    options={regionOptions}
+                                    selected={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Select regions..."
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="targetUsers"
+                        render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                            <FormLabel>Specific Users</FormLabel>
+                            <FormControl>
+                                <MultiSelect 
+                                    options={userOptions}
+                                    selected={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Select individual users..."
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 <FormField
