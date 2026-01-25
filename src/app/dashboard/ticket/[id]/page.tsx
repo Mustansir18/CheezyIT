@@ -131,7 +131,11 @@ export default function TicketDetailPage() {
 
     const handleTakeOwnership = () => {
         if (!currentUserProfile) return;
-        handleAssignmentChange(currentUserProfile.id);
+        updateTicket({
+            assignedTo: currentUserProfile.id,
+            assignedToDisplayName: currentUserProfile.displayName,
+        });
+        toast({ title: 'Assignment Updated', description: `Ticket assigned to you.` });
     };
 
     const handleReturnToQueue = () => {
