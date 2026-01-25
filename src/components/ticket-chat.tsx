@@ -68,8 +68,8 @@ export default function TicketChat({
             return ticketOwnerProfile?.displayName || 'User';
         }
         // User is viewing, show agent name
-        return assigneeProfile?.displayName || ticket.assignedToDisplayName || 'IT Support';
-    }, [isOwner, assigneeProfile, ticket.assignedToDisplayName, ticketOwnerProfile]);
+        return ticket.assignedToDisplayName || assigneeProfile?.displayName || 'IT Support';
+    }, [isOwner, assigneeProfile, ticket, ticketOwnerProfile]);
 
     const chatPartnerInitial = useMemo(() => chatPartnerName?.charAt(0).toUpperCase() || 'U', [chatPartnerName]);
 
