@@ -1,6 +1,5 @@
 'use client';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { doc } from 'firebase/firestore';
@@ -73,7 +72,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     href='/dashboard'
                     className="flex items-center gap-2 font-headline"
                     >
-                    <Image src="/logo.png" alt="Cheezious Logo" width={32} height={32} />
                     <div className="flex flex-col leading-tight">
                         <span className="font-bold text-base">Cheezious</span>
                         <span className="text-xs">IT Support</span>
@@ -86,17 +84,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <UserNav />
                     </div>
                 </header>
-            )}
-            {isDashboardHomePage && (
-                 <div className="relative h-[150px] md:h-[200px] w-full overflow-hidden">
-                    <Image
-                        src="/background.png"
-                        alt="Dashboard Banner"
-                        fill
-                        className="object-cover"
-                        priority
-                    />
-                </div>
             )}
             <main className={cn(
                 "flex flex-1 flex-col",

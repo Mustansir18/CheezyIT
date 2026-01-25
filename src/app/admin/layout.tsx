@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -89,7 +88,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           href="/admin"
           className="flex items-center gap-2 font-headline"
         >
-          <Image src="/logo.png" alt="Cheezious Logo" width={32} height={32} />
           <div className="flex flex-col leading-tight">
               <span className="font-bold text-base">Cheezious</span>
               <span className="text-xs">IT Support</span>
@@ -100,17 +98,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <UserNav />
         </div>
       </header>
-      {isAdminHomePage && (
-        <div className="relative h-[150px] md:h-[200px] w-full overflow-hidden">
-            <Image
-                src="/background.png"
-                alt="Dashboard Banner"
-                fill
-                className="object-cover"
-                priority
-            />
-        </div>
-      )}
       <main className="flex flex-1 flex-col px-4 pb-4 pt-8 md:px-8 md:pb-8">
         {children}
       </main>
