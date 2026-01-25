@@ -64,12 +64,15 @@ export default function TicketChat({
     }, [isOwner, assigneeProfile, ticketOwnerProfile]);
 
     const chatPartnerName = useMemo(() => {
-        if (!isOwner) { // Support is viewing, show user name
-            return ticketOwnerProfile?.displayName || 'User';
+        // If the current user is the owner of the ticket, the chat partner is the assignee.
+        if (isOwner) {
+             // We prioritize the live profile data, but fall back to the denormalized name on the ticket.
+            return assigneeProfile?.displayName || ticket.assignedToDisplayName || 'IT Support';
         }
-        // User is viewing, show agent name
-        return ticket.assignedToDisplayName || assigneeProfile?.displayName || 'IT Support';
-    }, [isOwner, assigneeProfile, ticket, ticketOwnerProfile]);
+        // If the current user is support/admin, the chat partner is the ticket owner.
+        return ticketOwnerProfile?.displayName || 'User';
+    }, [isOwner, assigneeProfile, ticket.assignedToDisplayName, ticketOwnerProfile]);
+
 
     const chatPartnerInitial = useMemo(() => chatPartnerName?.charAt(0).toUpperCase() || 'U', [chatPartnerName]);
 
