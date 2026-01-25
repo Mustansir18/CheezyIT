@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2 } from 'lucide-react';
 import { useSound } from '@/hooks/use-sound';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
+import { doc, addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
 
