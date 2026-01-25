@@ -103,7 +103,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
         const snapshot = await getDocs(ticketsCollectionRef);
         const nextTicketNumber = (snapshot.size + 1).toString().padStart(3, '0');
 
-        await addDoc(ticketsCollectionRef, {
+        const ticketData: any = {
             ticketId: `TKT-${nextTicketNumber}`,
             userId: user.uid,
             createdAt: serverTimestamp(),
@@ -111,11 +111,16 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             status: 'Open',
             title: data.title,
             description: data.description,
-            issueType: data.issueType === 'Other' ? data.customIssueType! : data.issueType,
-            customIssueType: data.issueType === 'Other' ? data.customIssueType : undefined,
+            issueType: data.issueType,
             anydesk: data.anydesk || null,
             region: data.region,
-        });
+        };
+
+        if (data.issueType === 'Other') {
+            ticketData.customIssueType = data.customIssueType;
+        }
+
+        await addDoc(ticketsCollectionRef, ticketData);
 
         playSound();
         toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });

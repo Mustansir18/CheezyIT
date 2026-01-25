@@ -182,7 +182,7 @@ export default function TicketDetailView({
                         </div>
                         <div className="space-y-1">
                             <p className="text-muted-foreground">Issue Type</p>
-                            <p>{ticket.issueType === 'Other' ? ticket.customIssueType : ticket.issueType}</p>
+                            <p>{ticket.issueType === 'Other' && ticket.customIssueType ? ticket.customIssueType : ticket.issueType}</p>
                         </div>
                          <div className="space-y-1">
                             <p className="text-muted-foreground">Region</p>
