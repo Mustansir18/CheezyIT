@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -103,9 +103,12 @@ export default function LoginPage() {
         <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
           <CardHeader className="text-center items-center p-6">
-            <div className="flex flex-col items-center leading-tight py-4">
-                <span className="font-bold text-3xl font-headline text-primary">Cheezious</span>
-                <span className="text-lg font-headline text-white">IT Support</span>
+            <div className="flex items-center justify-center gap-3 py-4">
+                <Shield className="h-12 w-12 text-primary" />
+                <div className="flex flex-col items-start leading-tight">
+                    <span className="font-bold text-3xl font-headline text-primary">Cheezious</span>
+                    <span className="text-lg font-headline text-white">IT Support</span>
+                </div>
             </div>
             <CardDescription className="text-zinc-400 pt-2">
               Sign in to continue
