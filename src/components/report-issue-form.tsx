@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { doc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from '@/components/ui/dialog';
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2 } from 'lucide-react';
 import { useSound } from '@/hooks/use-sound';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
 
@@ -116,7 +117,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
             region: data.region,
         };
 
-        if (data.issueType === 'Other') {
+        if (data.issueType === 'Other' && data.customIssueType) {
             ticketData.customIssueType = data.customIssueType;
         }
 
@@ -244,7 +245,15 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
                 <FormItem>
                   <FormLabel>AnyDesk Address (Optional)</FormLabel>
                   <FormControl>
-                    <Input inputMode="numeric" pattern="[0-9]*" placeholder="123456789" {...field} />
+                    <Input
+                      inputMode="numeric"
+                      placeholder="123456789"
+                      {...field}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/\D/g, '');
+                        field.onChange(numericValue);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -116,9 +116,12 @@ export default function UpdateProfileForm({
                 <Input
                   type="tel"
                   inputMode="numeric"
-                  pattern="[0-9]*"
                   placeholder="03000000000"
                   {...field}
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/\D/g, '');
+                    field.onChange(numericValue);
+                  }}
                 />
               </FormControl>
               <FormDescription>Must be an 11-digit phone number.</FormDescription>
