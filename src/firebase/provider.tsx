@@ -57,16 +57,59 @@ function initializeFirebaseServices(options: FirebaseOptions) {
   return { app: firebaseApp, auth, firestore, storage };
 }
 
+const MissingFirebaseConfig = () => (
+    <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        backgroundColor: '#fef2f2',
+        color: '#991b1b',
+        padding: '2rem',
+        fontFamily: 'sans-serif'
+    }}>
+        <div style={{
+            textAlign: 'center',
+            maxWidth: '600px',
+            padding: '2rem',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            backgroundColor: 'white'
+        }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Firebase Configuration Missing</h1>
+            <p style={{ marginTop: '1rem' }}>
+                Your app is not configured to connect to Firebase. The necessary environment variables are missing.
+            </p>
+            <div style={{ textAlign: 'left', marginTop: '1.5rem', padding: '1rem', backgroundColor: '#fef2f2', borderRadius: '4px' }}>
+                <h2 style={{ fontWeight: 'bold' }}>How to Fix:</h2>
+                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
+                    <li style={{ marginTop: '0.5rem' }}>
+                        <strong>For Local Development:</strong> Create a <code>.env.local</code> file in your project's root directory and add all the <code>NEXT_PUBLIC_FIREBASE_*</code> variables from your Firebase project settings.
+                    </li>
+                    <li style={{ marginTop: '0.5rem' }}>
+                        <strong>For Production:</strong> Set the same <code>NEXT_PUBLIC_FIREBASE_*</code> environment variables in your hosting provider's settings dashboard.
+                    </li>
+                </ul>
+            </div>
+             <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
+                The application cannot start until it can connect to Firebase.
+            </p>
+        </div>
+    </div>
+);
+
+
 export function FirebaseProvider({ children }: { children: React.ReactNode }) {
+  // Check if essential Firebase config values are present.
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    return <MissingFirebaseConfig />;
+  }
+
   const services = useMemo(() => initializeFirebaseServices(firebaseConfig), []);
 
   if (!services.app || !services.auth || !services.firestore) {
-    return (
-      <div>
-        There is no Firebase configuration. Please create a{" "}
-        <code>.env.local</code> file and set the Firebase options.
-      </div>
-    );
+    // This is a fallback for other initialization errors.
+    return <MissingFirebaseConfig />;
   }
 
   return (
