@@ -276,6 +276,8 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   const watchedRole = form.watch('role');
 
   useEffect(() => {
+    // Only set default regions when creating a new user, not when editing.
+    if (!user) {
       if (watchedRole === 'User') {
         setValue('regions', ['LHR']);
       } else if (watchedRole === 'it-support' || watchedRole === 'Head') {
@@ -283,7 +285,8 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       } else if (watchedRole === 'Admin') {
         setValue('regions', []);
       }
-  }, [watchedRole, setValue]);
+    }
+  }, [watchedRole, setValue, user]);
 
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
@@ -349,7 +352,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                             options={regions}
                             selected={field.value || []}
                             onChange={field.onChange}
-                            disabled={watchedRole === 'User' || watchedRole === 'it-support' || watchedRole === 'Head'}
+                            disabled={watchedRole === 'it-support' || watchedRole === 'Head'}
                             placeholder="Select regions..."
                         />
                       </FormControl>
