@@ -104,13 +104,13 @@ export default function LoginPage() {
         <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
           <CardHeader className="text-center items-center p-6">
-            <Image src="/logo.png" alt="Cheezious IT Support Logo" width={70} height={70} />
-            <div className="pt-4 text-center">
-              <CardTitle className="text-2xl font-headline font-bold text-primary whitespace-nowrap">Cheezious IT Support</CardTitle>
-              <CardDescription className="text-zinc-400 pt-2">
-                Sign in to continue
-              </CardDescription>
+            <div className="flex flex-col items-center leading-tight py-4">
+                <span className="font-bold text-3xl font-headline text-primary">Cheezious</span>
+                <span className="text-lg font-headline text-white">IT Support</span>
             </div>
+            <CardDescription className="text-zinc-400 pt-2">
+              Sign in to continue
+            </CardDescription>
           </CardHeader>
           <CardContent className="px-6 pb-4">
             <form onSubmit={handleAuthAction} className="space-y-4">
