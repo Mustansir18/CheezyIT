@@ -100,15 +100,15 @@ export default function LoginPage() {
       <div className="absolute -z-10 bottom-0 translate-y-1/2 left-1/4 -translate-x-1/2 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl opacity-50"></div>
       <div className="absolute -z-10 bottom-0 translate-y-1/2 right-1/4 translate-x-1/2 w-80 h-80 bg-sky-500/30 rounded-full blur-3xl opacity-50"></div>
       
-      <div className="relative w-full max-w-sm z-10">
+      <div className="relative w-full max-w-xs z-10">
         <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
           <CardHeader className="text-center items-center p-6">
-            <div className="flex flex-col items-center justify-center gap-4 py-4">
-                <Image src="/logo.png" alt="Cheezious Logo" width={150} height={150} className="rounded-full" />
+            <div className="flex flex-col items-center justify-center gap-2">
+                <Image src="/logo.png" alt="Cheezious Logo" width={80} height={80} className="rounded-full" />
                 <div className="flex flex-col items-center">
-                    <span className="font-bold text-5xl font-headline text-primary">Cheezious</span>
-                    <span className="text-lg font-headline text-white">IT Support</span>
+                    <span className="font-bold text-4xl font-headline text-primary">Cheezious</span>
+                    <span className="text-base font-headline text-white">IT Support</span>
                 </div>
             </div>
             <CardDescription className="text-zinc-400 pt-2">
