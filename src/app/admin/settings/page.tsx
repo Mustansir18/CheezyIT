@@ -53,6 +53,7 @@ export default function AdminSettingsPage() {
         const userData = {
             displayName: data.displayName,
             email: data.email,
+            phoneNumber: data.phoneNumber || null,
             role: data.role,
             regions: data.regions || [],
         };

@@ -23,6 +23,7 @@ export type User = {
   id: string;
   displayName: string;
   email: string;
+  phoneNumber?: string;
   role: 'User' | 'it-support' | 'Admin' | 'Head';
   regions: string[];
   blockedUntil?: Date | null;
@@ -33,6 +34,12 @@ const userSchema = z.object({
   id: z.string().optional(),
   displayName: z.string().min(1, 'Display name is required.'),
   email: z.string().email('Invalid email address.'),
+  phoneNumber: z.string()
+    .min(11, { message: 'Phone number must be exactly 11 digits.' })
+    .max(11, { message: 'Phone number must be exactly 11 digits.' })
+    .regex(/^\d{11}$/, { message: 'Phone number must only contain digits.' })
+    .optional()
+    .or(z.literal('')),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
   role: z.enum(['User', 'it-support', 'Admin', 'Head']),
   regions: z.array(z.string()),
@@ -234,6 +241,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
     defaultValues: {
       displayName: '',
       email: '',
+      phoneNumber: '',
       role: 'User',
       regions: [],
       password: '',
@@ -248,6 +256,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
           id: user.id,
           displayName: user.displayName || '',
           email: user.email || '',
+          phoneNumber: user.phoneNumber || '',
           role: user.role,
           regions: user.regions || [],
           password: '',
@@ -257,6 +266,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
           id: undefined,
           displayName: '',
           email: '',
+          phoneNumber: '',
           role: 'User',
           regions: ['LHR'],
           password: '',
@@ -303,6 +313,9 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
             )}/>
             <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>
+            )}/>
+            <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+                <FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="03001234567" {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
             {!user && (
                  <FormField control={form.control} name="password" render={({ field }) => (
