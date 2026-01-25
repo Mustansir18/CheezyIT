@@ -3,25 +3,25 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceToNowStrict } from 'date-fns';
-import { Filter, FileDown, Loader2 } from 'lucide-react';
+import { Filter, Calendar as CalendarIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ticket, getStats, TICKET_STATUS_LIST, initialMockTickets } from '@/lib/data';
-import { useToast } from '@/hooks/use-toast';
+import { Ticket, getStats, TICKET_STATUS_LIST } from '@/lib/data';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from './ui/calendar';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useSound } from '@/hooks/use-sound';
-import { isAdmin } from '@/lib/admins';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
+import type { User as AppUser } from '@/components/user-management';
+
 
 const statusColors: Record<Ticket['status'], string> = {
     'Open': 'bg-blue-500',
@@ -31,72 +31,34 @@ const statusColors: Record<Ticket['status'], string> = {
 };
 
 export default function AdminTicketList() {
-  const { toast } = useToast();
-  const [allTickets, setAllTickets] = useState<(Ticket & {id: string})[]>([]);
+  const { user: currentUser, loading: userLoading } = useUser();
+  const firestore = useFirestore();
+
   const [ticketIdFilter, setTicketIdFilter] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
     to: new Date(),
   });
-
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
   
   const playSound = useSound('/sounds/new-announcement.mp3');
   const ticketCountRef = useRef(0);
   const isInitialMount = useRef(true);
 
-  const loadData = useCallback(() => {
-    const userJson = localStorage.getItem('mockUser');
-    const usersJson = localStorage.getItem('mockUsers');
+  const userProfileRef = useMemoFirebase(() => (currentUser ? doc(firestore, 'users', currentUser.uid) : null), [firestore, currentUser]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<AppUser>(userProfileRef);
 
-    if (userJson && usersJson) {
-      const allUsers = JSON.parse(usersJson);
-      const loggedInUserEmail = JSON.parse(userJson).email;
-      const fullUser = allUsers.find((u: any) => u.email === loggedInUserEmail);
-      setCurrentUser(fullUser || JSON.parse(userJson));
-    } else if (userJson) {
-      setCurrentUser(JSON.parse(userJson));
-    }
+  const ticketsQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'tickets'), orderBy('createdAt', 'desc')) : null), [firestore]);
+  const { data: allTickets, isLoading: ticketsLoading } = useCollection<Ticket>(ticketsQuery);
 
-    const ticketsJson = localStorage.getItem('mockTickets');
-    if (ticketsJson) {
-        setAllTickets(JSON.parse(ticketsJson).map((t: any) => ({
-            ...t,
-            createdAt: new Date(t.createdAt),
-            updatedAt: new Date(t.updatedAt),
-        })));
-    } else {
-        localStorage.setItem('mockTickets', JSON.stringify(initialMockTickets));
-        setAllTickets(initialMockTickets);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-    setLoading(false);
-    const handleStorage = (e: StorageEvent | CustomEvent) => {
-        if (e instanceof StorageEvent && (e.key === 'mockTickets' || e.key === 'mockUser' || e.key === 'mockUsers')) {
-            loadData();
-        } else if (!(e instanceof StorageEvent)) {
-            loadData();
-        }
-    };
-    window.addEventListener('storage', handleStorage as EventListener);
-    window.addEventListener('local-storage-change', handleStorage as EventListener);
-    return () => {
-      window.removeEventListener('storage', handleStorage as EventListener);
-      window.removeEventListener('local-storage-change', handleStorage as EventListener);
-    }
-  }, [loadData]);
+  const loading = userLoading || profileLoading || ticketsLoading;
   
   useEffect(() => {
-    if (isInitialMount.current || loading) {
-        ticketCountRef.current = allTickets.length;
+    if (isInitialMount.current || loading || !allTickets) {
+        if(allTickets) ticketCountRef.current = allTickets.length;
         isInitialMount.current = false;
         return;
     }
@@ -108,27 +70,33 @@ export default function AdminTicketList() {
     ticketCountRef.current = allTickets.length;
   }, [allTickets, playSound, loading]);
 
-  const uniqueUsers = useMemo(() => ['all', ...Array.from(new Set(allTickets.map(t => t.userId)))], [allTickets]);
+  const uniqueUserIds = useMemo(() => ['all', ...Array.from(new Set(allTickets?.map(t => t.userId) || []))], [allTickets]);
+
+  const { data: users } = useCollection<AppUser>(useMemoFirebase(() => (firestore ? collection(firestore, 'users') : null), [firestore]));
+  const userMap = useMemo(() => users?.reduce((acc: Record<string, string>, user) => {
+    acc[user.id] = user.displayName;
+    return acc;
+  }, {}) || {}, [users]);
 
   const filteredTickets = useMemo(() => {
-    if (!currentUser) return [];
+    if (!userProfile || !allTickets) return [];
 
     let tickets = [...allTickets];
 
-    const userIsAdmin = currentUser.role === 'Admin';
-    if (!userIsAdmin && (currentUser.role === 'it-support' || currentUser.role === 'Head')) {
-      if (currentUser.regions && !currentUser.regions.includes('all')) {
-        tickets = tickets.filter(ticket => ticket.region && currentUser.regions.includes(ticket.region));
+    const userIsAdmin = userProfile.role === 'Admin';
+    if (!userIsAdmin && (userProfile.role === 'it-support' || userProfile.role === 'Head')) {
+      if (userProfile.regions && !userProfile.regions.includes('all')) {
+        tickets = tickets.filter(ticket => ticket.region && userProfile.regions.includes(ticket.region));
       }
     }
     
-    if (currentUser.role === 'it-support') {
+    if (userProfile.role === 'it-support') {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
 
     return tickets.filter(ticket => {
         if (date?.from) {
-            const ticketDate = new Date(ticket.createdAt);
+            const ticketDate = ticket.createdAt?.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
             const from = startOfDay(date.from);
             const to = date.to ? endOfDay(date.to) : endOfDay(date.from);
             if (ticketDate < from || ticketDate > to) return false;
@@ -147,7 +115,7 @@ export default function AdminTicketList() {
         
         return true;
     });
-  }, [allTickets, currentUser, date, ticketIdFilter, statusFilter, userFilter]);
+  }, [allTickets, userProfile, date, ticketIdFilter, statusFilter, userFilter]);
 
   const stats = useMemo(() => getStats(filteredTickets), [filteredTickets]);
 
@@ -175,9 +143,9 @@ export default function AdminTicketList() {
                 <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={(range) => { setDate(range); setActiveDatePreset(null); }} numberOfMonths={2}/>
             </PopoverContent>
             </Popover>
-            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'today' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfDay(new Date()), to: endOfDay(new Date())}); setActiveDatePreset('today'); }}>Today</Button>
-            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'this_month' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())}); setActiveDatePreset('this_month'); }}>This Month</Button>
-            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'last_month' ? "bg-yellow-300 hover:bg-yellow-400 text-yellow-900" : "bg-sky-100 hover:bg-sky-200 text-sky-800")} onClick={() => { setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))}); setActiveDatePreset('last_month'); }}>Last Month</Button>
+            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'today' ? "bg-primary/20 text-primary" : "")} onClick={() => { setDate({from: startOfDay(new Date()), to: endOfDay(new Date())}); setActiveDatePreset('today'); }}>Today</Button>
+            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'this_month' ? "bg-primary/20 text-primary" : "")} onClick={() => { setDate({from: startOfMonth(new Date()), to: endOfMonth(new Date())}); setActiveDatePreset('this_month'); }}>This Month</Button>
+            <Button variant="outline" size="sm" className={cn("border-transparent", activeDatePreset === 'last_month' ? "bg-primary/20 text-primary" : "")} onClick={() => { setDate({from: startOfMonth(subMonths(new Date(),1)), to: endOfMonth(subMonths(new Date(), 1))}); setActiveDatePreset('last_month'); }}>Last Month</Button>
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
@@ -209,10 +177,10 @@ export default function AdminTicketList() {
                     className="h-9 max-w-sm"
                 />
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />User: {userFilter}</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9"><Filter className="mr-2 h-3 w-3" />User: {userFilter === 'all' ? 'All' : userMap[userFilter] || userFilter}</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                         <DropdownMenuRadioGroup value={userFilter} onValueChange={setUserFilter}>
-                            {uniqueUsers.map(user => <DropdownMenuRadioItem key={user} value={user}>{user}</DropdownMenuRadioItem>)}
+                            {uniqueUserIds.map(userId => <DropdownMenuRadioItem key={userId} value={userId}>{userId === 'all' ? 'All' : userMap[userId] || userId}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -246,7 +214,7 @@ export default function AdminTicketList() {
                             <TableCell>{ticket.title}</TableCell>
                             <TableCell><Badge variant="outline">{ticket.region}</Badge></TableCell>
                             <TableCell><Badge className={`${statusColors[ticket.status]} text-white hover:${statusColors[ticket.status]}`}>{ticket.status}</Badge></TableCell>
-                            <TableCell>{formatDistanceToNowStrict(new Date(ticket.updatedAt), { addSuffix: true })}</TableCell>
+                            <TableCell>{formatDistanceToNowStrict(ticket.updatedAt?.toDate ? ticket.updatedAt.toDate() : new Date(ticket.updatedAt), { addSuffix: true })}</TableCell>
                         </TableRow>
                     )) : (
                         <TableRow>

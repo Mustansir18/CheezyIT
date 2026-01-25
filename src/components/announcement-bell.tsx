@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useSound } from '@/hooks/use-sound';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -13,72 +14,45 @@ import type { Announcement } from '@/lib/data';
 import type { User } from '@/components/user-management';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, updateDoc, arrayUnion, deleteDoc, writeBatch } from 'firebase/firestore';
+import { isAdmin } from '@/lib/admins';
 
 
 export default function AnnouncementBell() {
     const [isOpen, setIsOpen] = useState(false);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const { user: currentUser, loading: userLoading } = useUser();
+    const firestore = useFirestore();
     
     const playSound = useSound('/sounds/new-announcement.mp3');
     const unreadCountRef = useRef(0);
     const isInitialMount = useRef(true);
-    
-    const loadData = useCallback(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if (userJson) setCurrentUser(JSON.parse(userJson));
 
-        const announcementsJson = localStorage.getItem('mockAnnouncements');
-        if (announcementsJson) {
-            const parsed = JSON.parse(announcementsJson).map((a: any) => ({
-                ...a,
-                createdAt: new Date(a.createdAt),
-                startDate: a.startDate ? new Date(a.startDate) : undefined,
-                endDate: a.endDate ? new Date(a.endDate) : undefined,
-                readBy: a.readBy || [],
-            }));
-            setAllAnnouncements(parsed);
-        }
-    }, []);
+    const userProfileRef = useMemoFirebase(() => (currentUser ? doc(firestore, 'users', currentUser.uid) : null), [firestore, currentUser]);
+    const { data: currentUserProfile, isLoading: profileLoading } = useDoc<User>(userProfileRef);
 
-    useEffect(() => {
-        loadData();
-
-        const handleStorageChange = (e: StorageEvent | CustomEvent) => {
-            if (e instanceof StorageEvent) {
-                if (['mockAnnouncements', 'mockUser'].includes(e.key || '')) {
-                    loadData();
-                }
-            } else {
-                loadData();
-            }
-        };
-        
-        window.addEventListener('storage', handleStorageChange as EventListener);
-        window.addEventListener('local-storage-change', handleStorageChange as EventListener);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange as EventListener);
-            window.removeEventListener('local-storage-change', handleStorageChange as EventListener);
-        };
-    }, [loadData]);
+    const announcementsQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'announcements') : null), [firestore]);
+    const { data: allAnnouncements, isLoading: announcementsLoading } = useCollection<Announcement>(announcementsQuery);
     
     const isPrivilegedUser = useMemo(() => {
-        if (!currentUser) return false;
-        return ['Admin', 'Head'].includes(currentUser.role);
-    }, [currentUser]);
+        if (!currentUserProfile) return false;
+        if(isAdmin(currentUserProfile.email)) return true;
+        return ['Admin', 'Head'].includes(currentUserProfile.role);
+    }, [currentUserProfile]);
 
     const relevantAnnouncements = useMemo(() => {
-        if (!currentUser) return [];
+        if (!currentUserProfile || !allAnnouncements) return [];
         const now = new Date();
 
         return allAnnouncements
             .filter(ann => {
+                const startDate = ann.startDate ? (ann.startDate as any).toDate() : null;
+                const endDate = ann.endDate ? (ann.endDate as any).toDate() : null;
                 // Check if announcement is within the active date range
                 const isWithinDate = 
-                    (!ann.startDate || ann.startDate <= now) &&
-                    (!ann.endDate || ann.endDate >= now);
+                    (!startDate || startDate <= now) &&
+                    (!endDate || endDate >= now);
 
                 if (!isWithinDate) return false;
                 
@@ -87,23 +61,27 @@ export default function AnnouncementBell() {
                 if (isBroadcast) return true;
                 
                 // If targets are set, check if the user matches ANY of them (OR logic)
-                if (currentUser.id && ann.targetUsers.includes(currentUser.id)) return true;
+                if (currentUserProfile.id && ann.targetUsers.includes(currentUserProfile.id)) return true;
 
                 // Check for role match
-                if (ann.targetRoles.includes(currentUser.role)) return true;
+                if (ann.targetRoles.includes(currentUserProfile.role)) return true;
 
                 return false;
             })
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    }, [allAnnouncements, currentUser]);
+            .sort((a, b) => {
+                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime();
+            });
+    }, [allAnnouncements, currentUserProfile]);
     
     const unreadCount = useMemo(() => {
-        if (!currentUser) return 0;
-        return relevantAnnouncements.filter(ann => !ann.readBy.includes(currentUser.id)).length;
-    }, [relevantAnnouncements, currentUser]);
+        if (!currentUserProfile) return 0;
+        return relevantAnnouncements.filter(ann => !ann.readBy.includes(currentUserProfile.id)).length;
+    }, [relevantAnnouncements, currentUserProfile]);
 
     useEffect(() => {
-        if (isInitialMount.current) {
+        if (isInitialMount.current || userLoading || profileLoading || announcementsLoading) {
             unreadCountRef.current = unreadCount;
             isInitialMount.current = false;
             return;
@@ -113,44 +91,59 @@ export default function AnnouncementBell() {
             playSound();
         }
         unreadCountRef.current = unreadCount;
-    }, [unreadCount, playSound]);
+    }, [unreadCount, playSound, userLoading, profileLoading, announcementsLoading]);
 
-    const handleMarkAsRead = useCallback((announcementId: string) => {
-        if (!currentUser) return;
+    const handleMarkAsRead = useCallback(async (announcementId: string) => {
+        if (!currentUserProfile || !firestore) return;
 
-        const announcement = allAnnouncements.find(a => a.id === announcementId);
-        if (announcement && announcement.readBy.includes(currentUser.id)) return;
+        const announcement = allAnnouncements?.find(a => a.id === announcementId);
+        if (announcement && announcement.readBy.includes(currentUserProfile.id)) return;
 
-        const updatedAnnouncements = allAnnouncements.map(ann => {
-            if (ann.id === announcementId && !ann.readBy.includes(currentUser.id)) {
-                return { ...ann, readBy: [...ann.readBy, currentUser.id] };
-            }
-            return ann;
+        const annRef = doc(firestore, 'announcements', announcementId);
+        try {
+            await updateDoc(annRef, {
+                readBy: arrayUnion(currentUserProfile.id)
+            });
+        } catch(e) {
+            console.error("Failed to mark as read", e);
+        }
+    }, [allAnnouncements, currentUserProfile, firestore]);
+
+     const handleMarkAllAsRead = useCallback(async () => {
+        if (!currentUserProfile || !firestore || unreadCount === 0) return;
+
+        const unreadAnnouncements = relevantAnnouncements.filter(ann => !ann.readBy.includes(currentUserProfile.id));
+        if (unreadAnnouncements.length === 0) return;
+
+        const batch = writeBatch(firestore);
+        unreadAnnouncements.forEach(ann => {
+            const annRef = doc(firestore, 'announcements', ann.id);
+            batch.update(annRef, { readBy: arrayUnion(currentUserProfile.id) });
         });
-        localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
-        window.dispatchEvent(new Event('local-storage-change'));
-    }, [allAnnouncements, currentUser]);
 
-     const handleMarkAllAsRead = useCallback(() => {
-        if (!currentUser || unreadCount === 0) return;
+        try {
+            await batch.commit();
+        } catch (e) {
+            console.error("Failed to mark all as read", e);
+        }
+    }, [firestore, currentUserProfile, relevantAnnouncements, unreadCount]);
 
-        const relevantIds = relevantAnnouncements.map(a => a.id);
-        const updatedAnnouncements = allAnnouncements.map(ann => {
-            if (relevantIds.includes(ann.id) && !ann.readBy.includes(currentUser.id)) {
-                 return { ...ann, readBy: [...ann.readBy, currentUser.id] };
-            }
-            return ann;
-        });
-        localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
-        window.dispatchEvent(new Event('local-storage-change'));
-    }, [allAnnouncements, currentUser, relevantAnnouncements, unreadCount]);
-
-    const handleDelete = (announcementId: string) => {
-        const updatedAnnouncements = allAnnouncements.filter(a => a.id !== announcementId);
-        localStorage.setItem('mockAnnouncements', JSON.stringify(updatedAnnouncements));
-        window.dispatchEvent(new Event('local-storage-change'));
+    const handleDelete = async (announcementId: string) => {
+        if (!firestore) return;
+        const annRef = doc(firestore, 'announcements', announcementId);
+        try {
+            await deleteDoc(annRef);
+        } catch(e) {
+            console.error("Failed to delete announcement", e);
+        }
         setDeletingId(null);
     };
+
+    const loading = userLoading || profileLoading || announcementsLoading;
+
+    if (loading) {
+        return <Skeleton className="h-10 w-10 rounded-full" />;
+    }
 
     return (
         <>
@@ -185,7 +178,8 @@ export default function AnnouncementBell() {
                         <ScrollArea className="flex-1 -mx-6">
                             <div className="px-6 space-y-2 pt-4">
                                 {relevantAnnouncements.map(ann => {
-                                    const isUnread = currentUser && !ann.readBy.includes(currentUser.id);
+                                    const isUnread = currentUserProfile && !ann.readBy.includes(currentUserProfile.id);
+                                    const createdAtDate = ann.createdAt?.toDate ? ann.createdAt.toDate() : new Date(ann.createdAt);
                                     return (
                                         <div key={ann.id} className={cn("group relative rounded-md transition-colors", isUnread && "bg-primary/5")}>
                                             <div
@@ -198,7 +192,7 @@ export default function AnnouncementBell() {
                                                 <p className="font-semibold">{ann.title}</p>
                                                 <p className="text-sm text-muted-foreground">{ann.message}</p>
                                                 <p className="text-xs text-muted-foreground/80 mt-2">
-                                                    {formatDistanceToNow(ann.createdAt, { addSuffix: true })}
+                                                    {formatDistanceToNow(createdAtDate, { addSuffix: true })}
                                                 </p>
                                             </div>
                                             {isPrivilegedUser && (

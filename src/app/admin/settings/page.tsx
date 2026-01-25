@@ -110,8 +110,8 @@ export default function AdminSettingsPage() {
 
     const handleBlockUser = useCallback(async (userToBlock: User) => {
         if (!firestore || !user || !userProfile) return;
-        const blockedUntil = (userToBlock.blockedUntil as any)?.toDate ? (userToBlock.blockedUntil as any).toDate() : userToBlock.blockedUntil;
-        const isCurrentlyBlocked = blockedUntil && blockedUntil > new Date();
+        const blockedUntilDate = userToBlock.blockedUntil ? (userToBlock.blockedUntil as any).toDate() : null;
+        const isCurrentlyBlocked = blockedUntilDate && blockedUntilDate > new Date();
         const userDocRef = doc(firestore, 'users', userToBlock.id);
         
         try {
@@ -181,6 +181,7 @@ export default function AdminSettingsPage() {
                     onBlockUser={handleBlockUser}
                     onDeleteUser={handleDeleteUser}
                     regions={regions}
+                    isLoading={loading}
                 />
             </div>
         </div>

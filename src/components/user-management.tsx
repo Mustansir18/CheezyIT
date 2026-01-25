@@ -37,7 +37,11 @@ const userSchema = z.object({
   role: z.enum(['User', 'it-support', 'Admin', 'Head']),
   regions: z.array(z.string()),
 }).refine(data => {
-    if (data.role === 'Admin') return true;
+    if (data.role === 'Admin') {
+        // Admins can have no regions
+        return true;
+    }
+    // All other roles must have at least one region
     return data.regions && data.regions.length > 0;
 }, {
     message: 'At least one region is required for this role.',
@@ -51,20 +55,21 @@ export default function UserManagement({
     onSaveUser,
     onBlockUser,
     onDeleteUser,
-    regions
+    regions,
+    isLoading,
 }: { 
     userIsAdminOrRoot: boolean, 
     users: User[],
     onSaveUser: (data: z.infer<typeof userSchema>) => void,
     onBlockUser: (user: User) => void,
     onDeleteUser: (user: User) => void,
-    regions: string[]
+    regions: string[],
+    isLoading: boolean,
 }) {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [blockingUser, setBlockingUser] = useState<User | null>(null);
     const [deletingUser, setDeletingUser] = useState<User | null>(null);
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-    const isLoading = false;
 
     const regionOptions: MultiSelectOption[] = useMemo(() => {
         const list = regions
@@ -108,7 +113,7 @@ export default function UserManagement({
                     <div className="flex justify-between items-center">
                         <div>
                             <CardTitle>User Accounts</CardTitle>
-                            <CardDescription>Firebase is detached. This is a mock user list.</CardDescription>
+                            <CardDescription>Manage user roles and permissions.</CardDescription>
                         </div>
                          <Button onClick={handleOpenAddDialog}>
                             <UserPlus className="mr-2 h-4 w-4" />
@@ -136,8 +141,9 @@ export default function UserManagement({
                                 ))
                             ) : users && users.length > 0 ? (
                                 users.map((user) => {
-                                    const isUserAdmin = isRootAdmin(user.email);
-                                    const isBlocked = user.blockedUntil && user.blockedUntil > new Date();
+                                    const isUserRoot = isRootAdmin(user.email);
+                                    const blockedUntilDate = user.blockedUntil ? (user.blockedUntil as any).toDate() : null;
+                                    const isBlocked = blockedUntilDate && blockedUntilDate > new Date();
                                     return (
                                         <TableRow key={user.id} className={isBlocked ? 'bg-destructive/10' : ''}>
                                             <TableCell className="font-medium flex items-center gap-2">
@@ -145,11 +151,11 @@ export default function UserManagement({
                                                 {isBlocked && <Badge variant="destructive">Blocked</Badge>}
                                             </TableCell>
                                             <TableCell>{user.email}</TableCell>
-                                            <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
+                                            <TableCell><Badge variant={user.role === 'it-support' || user.role === 'Admin' || user.role === 'Head' ? 'secondary' : 'outline'}>{user.role}</Badge></TableCell>
                                             <TableCell>{(user.regions || []).join(', ')}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isUserAdmin && user.role === 'Admin'}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isUserRoot}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuItem onSelect={() => handleOpenEditDialog(user)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                                                         <DropdownMenuItem onSelect={() => setBlockingUser(user)}>
@@ -189,7 +195,7 @@ export default function UserManagement({
                         <AlertDialogHeader>
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                You are about to {blockingUser.blockedUntil && blockingUser.blockedUntil > new Date() ? 'unblock' : 'block'} the user "{blockingUser.displayName}".
+                                You are about to {blockingUser.blockedUntil && (blockingUser.blockedUntil as any).toDate() > new Date() ? 'unblock' : 'block'} the user "{blockingUser.displayName}".
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -206,12 +212,12 @@ export default function UserManagement({
                         <AlertDialogHeader>
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the user "{deletingUser.displayName}" and all their associated data.
+                                This action is for deleting the user's Firestore document only. The user will still be able to log in. Are you sure you want to delete the user record for "{deletingUser.displayName}"?
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setDeletingUser(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete Record</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -233,19 +239,17 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
       password: '',
     }
   });
-  const { reset } = form;
+  const { reset, setValue } = form;
 
-  // Reset form ONLY when dialog opens or the user prop changes.
   useEffect(() => {
     if (isOpen) {
       if (user) { // Editing existing user
-        const currentRole = (user.role === 'Branch' ? 'User' : user.role) as 'User' | 'it-support' | 'Admin' | 'Head';
         reset({
           id: user.id,
           displayName: user.displayName || '',
           email: user.email || '',
-          role: currentRole,
-          regions: user.regions && user.regions.length > 0 ? user.regions : (user.region ? [user.region] : []),
+          role: user.role,
+          regions: user.regions || [],
           password: '',
         });
       } else { // Adding new user
@@ -254,7 +258,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
           displayName: '',
           email: '',
           role: 'User',
-          regions: ['LHR'], // Default for 'User' role
+          regions: ['LHR'],
           password: '',
         });
       }
@@ -263,11 +267,21 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
   
   const watchedRole = form.watch('role');
 
+  useEffect(() => {
+      if (watchedRole === 'User') {
+        setValue('regions', ['LHR']);
+      } else if (watchedRole === 'it-support' || watchedRole === 'Head') {
+        setValue('regions', ['all']);
+      } else if (watchedRole === 'Admin') {
+        setValue('regions', []);
+      }
+  }, [watchedRole, setValue]);
+
   const onSubmit = (data: z.infer<typeof userSchema>) => {
     setIsSubmitting(true);
-    // Simulate network delay
+    onSave(data);
+    // A slight delay to allow firestore to update before closing the dialog
     setTimeout(() => {
-      onSave(data);
       setIsSubmitting(false);
       setIsOpen(false);
     }, 500);
@@ -297,19 +311,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
             )}
              <FormField control={form.control} name="role" render={({ field }) => (
                 <FormItem><FormLabel>Role</FormLabel>
-                    <Select 
-                      onValueChange={(val: 'User' | 'it-support' | 'Admin' | 'Head') => {
-                        field.onChange(val);
-                        if (val === 'User') {
-                            form.setValue('regions', ['LHR']);
-                        } else if (val === 'it-support' || val === 'Head') {
-                            form.setValue('regions', ['all']);
-                        } else if (val === 'Admin') {
-                            form.setValue('regions', []);
-                        }
-                      }} 
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
                         <SelectContent>
                             <SelectItem value="User">User</SelectItem>
@@ -333,8 +335,8 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                             options={regions}
                             selected={field.value || []}
                             onChange={field.onChange}
-                            disabled={true}
-                            placeholder="Region is auto-assigned by role"
+                            disabled={watchedRole === 'User' || watchedRole === 'it-support' || watchedRole === 'Head'}
+                            placeholder="Select regions..."
                         />
                       </FormControl>
                       <FormMessage />

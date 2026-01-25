@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { Bar, BarChart, XAxis, YAxis, LineChart, Line, CartesianGrid, Cell, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, LineChart, Line, CartesianGrid, Cell } from 'recharts';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
 import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react';
@@ -16,12 +16,13 @@ import { ChartContainer, ChartTooltipContent, ChartTooltip } from '@/components/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Ticket } from '@/lib/data';
-import { initialMockTickets } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { exportData } from '@/lib/export';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { User as AppUser } from '@/components/user-management';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
 
 
 function ExportButtons({ title, columns, data }: { title: string, columns: string[], data: any[][] }) {
@@ -67,8 +68,8 @@ function ExportButtons({ title, columns, data }: { title: string, columns: strin
 const getResolutionTime = (createdAt: any, completedAt: any): {time: string, minutes: number} => {
     if (!completedAt || !createdAt) return { time: 'N/A', minutes: 0 };
     try {
-        const createdDate = new Date(createdAt);
-        const completedDate = new Date(completedAt);
+        const createdDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+        const completedDate = completedAt.toDate ? completedAt.toDate() : new Date(completedAt);
         if (isNaN(createdDate.getTime()) || isNaN(completedDate.getTime())) {
             return { time: 'Invalid Date', minutes: 0 };
         }
@@ -98,67 +99,23 @@ const calculateAverageResolutionTime = (tickets: (Ticket & {id: string})[]) => {
 
 
 export default function AdminAnalytics() {
-  const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const { user: currentUser, loading: userLoading } = useUser();
+  const firestore = useFirestore();
   
-  const [allTickets, setAllTickets] = useState<(Ticket & {id: string})[]>([]);
-  const [allUsers, setAllUsers] = useState<AppUser[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeDatePreset, setActiveDatePreset] = useState<string | null>(null);
   
   const isMobile = useIsMobile();
 
-  const loadData = useCallback(() => {
-    const userJson = localStorage.getItem('mockUser');
-    const usersJson = localStorage.getItem('mockUsers');
-    const ticketsJson = localStorage.getItem('mockTickets');
+  const userProfileRef = useMemoFirebase(() => (currentUser ? doc(firestore, 'users', currentUser.uid) : null), [firestore, currentUser]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<AppUser>(userProfileRef);
 
-    if (userJson && usersJson) {
-      const allUsersData = JSON.parse(usersJson);
-      const loggedInUserEmail = JSON.parse(userJson).email;
-      const fullUser = allUsersData.find((u: any) => u.email === loggedInUserEmail);
-      setCurrentUser(fullUser || JSON.parse(userJson));
-      setAllUsers(allUsersData.map((u: any) => ({
-        ...u,
-        blockedUntil: u.blockedUntil ? new Date(u.blockedUntil) : null
-      })));
-    } else if (userJson) {
-        setCurrentUser(JSON.parse(userJson));
-    }
+  const ticketsQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'tickets'), orderBy('createdAt', 'desc')) : null), [firestore]);
+  const { data: allTickets, isLoading: ticketsLoading } = useCollection<Ticket>(ticketsQuery);
 
-    if (ticketsJson) {
-        setAllTickets(JSON.parse(ticketsJson).map((t: any) => ({
-            ...t,
-            createdAt: new Date(t.createdAt),
-            updatedAt: new Date(t.updatedAt),
-            completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
-        })));
-    } else {
-        localStorage.setItem('mockTickets', JSON.stringify(initialMockTickets));
-        setAllTickets(initialMockTickets);
-    }
-  }, []);
+  const usersQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'users') : null), [firestore]);
+  const { data: allUsers, isLoading: usersLoading } = useCollection<AppUser>(usersQuery);
 
-  useEffect(() => {
-    loadData();
-    setLoading(false);
-    
-    const handleStorage = (e: Event) => {
-        if (e instanceof StorageEvent && ['mockTickets', 'mockUsers', 'mockUser'].includes(e.key || '')) {
-            loadData();
-        } else if (!(e instanceof StorageEvent)) {
-            loadData();
-        }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('local-storage-change', handleStorage);
-
-    return () => {
-        window.removeEventListener('storage', handleStorage);
-        window.removeEventListener('local-storage-change', handleStorage);
-    }
-  }, [loadData]);
+  const loading = userLoading || profileLoading || ticketsLoading || usersLoading;
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -166,20 +123,15 @@ export default function AdminAnalytics() {
   });
 
   const usersMap = useMemo(() => {
+    if (!allUsers) return {};
     return allUsers.reduce((acc, user) => {
-        acc[user.email] = user.displayName;
+        acc[user.id] = user.displayName;
         return acc;
     }, {} as Record<string, string>);
   }, [allUsers]);
 
-  const userRolesMapByEmail = useMemo(() => {
-    return allUsers.reduce((acc, user) => {
-        acc[user.email] = user.role;
-        return acc;
-    }, {} as Record<string, AppUser['role']>);
-  }, [allUsers]);
-
   const userRolesMapById = useMemo(() => {
+    if (!allUsers) return {};
     return allUsers.reduce((acc, user) => {
         acc[user.id] = user.role;
         return acc;
@@ -187,16 +139,16 @@ export default function AdminAnalytics() {
   }, [allUsers]);
 
   const filteredTickets = useMemo(() => {
-    if (!currentUser) return [];
+    if (!userProfile || !allTickets) return [];
 
     let tickets = allTickets;
 
-    const isAdminOrHead = currentUser.role === 'Admin' || currentUser.role === 'Head';
+    const isAdminOrHead = userProfile.role === 'Admin' || userProfile.role === 'Head';
 
-    if (isAdminOrHead && currentUser.regions?.includes('all')) {
+    if (isAdminOrHead && userProfile.regions?.includes('all')) {
         // an admin/head with 'all' regions can see everything
-    } else if (['Admin', 'Head', 'it-support'].includes(currentUser.role)) {
-        const userRegions = currentUser.regions || [];
+    } else if (['Admin', 'Head', 'it-support'].includes(userProfile.role)) {
+        const userRegions = userProfile.regions || [];
         if (!userRegions.includes('all')) {
             tickets = tickets.filter(ticket => ticket.region && userRegions.includes(ticket.region));
         }
@@ -205,17 +157,17 @@ export default function AdminAnalytics() {
     return tickets.filter(ticket => {
         if (!date?.from) return true;
         if (!ticket.createdAt) return false;
-        const ticketDate = new Date(ticket.createdAt);
+        const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
         if (!date.to) return ticketDate >= date.from;
         const toDate = new Date(date.to);
         toDate.setHours(23, 59, 59, 999);
         return ticketDate >= date.from && ticketDate <= toDate;
     });
-  }, [allTickets, date, currentUser]);
+  }, [allTickets, date, userProfile]);
 
   const userCreatedTickets = useMemo(() => {
-    return filteredTickets.filter(ticket => ['User', 'Branch'].includes(userRolesMapByEmail[ticket.userId]));
-  }, [filteredTickets, userRolesMapByEmail]);
+    return filteredTickets.filter(ticket => ticket.userId && userRolesMapById[ticket.userId] === 'User');
+  }, [filteredTickets, userRolesMapById]);
 
   const resolvedSupportTickets = useMemo(() => {
     return filteredTickets.filter(ticket => ticket.status === 'Resolved' && ticket.resolvedBy && ['Admin', 'it-support', 'Head'].includes(userRolesMapById[ticket.resolvedBy]));
@@ -267,7 +219,7 @@ export default function AdminAnalytics() {
 
     filteredTickets.forEach(ticket => {
         if (ticket.createdAt) {
-            const ticketDate = new Date(ticket.createdAt);
+            const ticketDate = ticket.createdAt.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
             const hour = ticketDate.getHours();
             if (hourlyCounts[hour]) {
                 hourlyCounts[hour].tickets++;
