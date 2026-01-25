@@ -10,7 +10,7 @@ import { UserNav } from '@/components/user-nav';
 import AnnouncementBell from '@/components/announcement-bell';
 import { Button } from '@/components/ui/button';
 import { isAdmin } from '@/lib/admins';
-import { Loader2, Shield } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 type UserProfile = {
   role: string;
@@ -89,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           href="/admin"
           className="flex items-center gap-2 font-headline"
         >
-          <Shield className="h-8 w-8 text-primary" />
+          <Image src="/logo.png" alt="Cheezious Logo" width={32} height={32} />
           <div className="flex flex-col leading-tight">
               <span className="font-bold text-base">Cheezious</span>
               <span className="text-xs">IT Support</span>
