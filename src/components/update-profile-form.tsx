@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,9 +20,7 @@ const profileSchema = z.object({
   phoneNumber: z.string()
     .min(11, { message: 'Phone number must be exactly 11 digits.' })
     .max(11, { message: 'Phone number must be exactly 11 digits.' })
-    .regex(/^\d{11}$/, { message: 'Phone number must only contain digits.' })
-    .optional()
-    .or(z.literal('')),
+    .regex(/^\d{11}$/, { message: 'Phone number must only contain digits.' }),
 });
 
 type FormData = z.infer<typeof profileSchema>;
@@ -73,7 +70,7 @@ export default function UpdateProfileForm({
         
         await updateDoc(userDocRef, {
             displayName: data.displayName,
-            phoneNumber: data.phoneNumber || null,
+            phoneNumber: data.phoneNumber,
         });
 
         if (auth.currentUser.displayName !== data.displayName) {
@@ -122,7 +119,7 @@ export default function UpdateProfileForm({
                   {...field}
                 />
               </FormControl>
-              <FormDescription>Must be 11 digits. Leave blank to remove.</FormDescription>
+              <FormDescription>Must be an 11-digit phone number.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

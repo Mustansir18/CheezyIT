@@ -37,9 +37,7 @@ const userSchema = z.object({
   phoneNumber: z.string()
     .min(11, { message: 'Phone number must be exactly 11 digits.' })
     .max(11, { message: 'Phone number must be exactly 11 digits.' })
-    .regex(/^\d{11}$/, { message: 'Phone number must only contain digits.' })
-    .optional()
-    .or(z.literal('')),
+    .regex(/^\d{11}$/, { message: 'Phone number must only contain digits.' }),
   password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
   role: z.enum(['User', 'it-support', 'Admin', 'Head']),
   regions: z.array(z.string()),
@@ -315,7 +313,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                 <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>
             )}/>
             <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="03001234567" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="03001234567" {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
             {!user && (
                  <FormField control={form.control} name="password" render={({ field }) => (
