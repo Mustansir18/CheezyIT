@@ -103,15 +103,15 @@ export default function LoginPage() {
       <div className="relative w-full max-w-xs z-10">
         <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
-          <CardHeader className="text-center items-center p-6">
-            <div className="flex flex-col items-center justify-center gap-2">
-                <Image src="/logo.png" alt="Cheezious Logo" width={80} height={80} className="rounded-full" />
-                <div className="flex flex-col items-center">
-                    <span className="font-bold text-4xl font-headline text-primary">Cheezious</span>
-                    <span className="text-base font-headline text-white">IT Support</span>
+          <CardHeader className="items-center p-6">
+            <div className="flex flex-row items-center justify-center gap-3">
+                <Image src="/logo.png" alt="Cheezious Logo" width={50} height={50} className="rounded-full" />
+                <div className="flex flex-col">
+                    <span className="font-bold text-3xl font-headline text-primary">Cheezious</span>
+                    <span className="text-sm font-headline text-white">IT Support</span>
                 </div>
             </div>
-            <CardDescription className="text-zinc-400 pt-2">
+            <CardDescription className="text-zinc-400 pt-2 text-center">
               Sign in to continue
             </CardDescription>
           </CardHeader>
