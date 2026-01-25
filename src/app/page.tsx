@@ -105,7 +105,7 @@ export default function LoginPage() {
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
           <CardHeader className="text-center items-center p-6">
             <div className="flex flex-col items-center justify-center gap-4 py-4">
-                <Image src="https://picsum.photos/seed/cheezious-logo/150/150" data-ai-hint="company logo" alt="Cheezious Logo" width={150} height={150} className="rounded-full" />
+                <Image src="/logo.png" alt="Cheezious Logo" width={150} height={150} className="rounded-full" />
                 <div className="flex flex-col items-center">
                     <span className="font-bold text-5xl font-headline text-primary">Cheezious</span>
                     <span className="text-lg font-headline text-white">IT Support</span>

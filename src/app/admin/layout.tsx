@@ -89,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           href="/admin"
           className="flex items-center gap-2 font-headline"
         >
-          <Image src="https://picsum.photos/seed/cheezious-icon/32/32" data-ai-hint="logo icon" alt="Logo" width={32} height={32} className="rounded-sm" />
+          <Image src="/logo.png" alt="Logo" width={32} height={32} className="rounded-sm" />
           <div className="flex flex-col leading-tight">
               <span className="font-bold text-base">Cheezious</span>
               <span className="text-xs">IT Support</span>
