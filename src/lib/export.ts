@@ -32,21 +32,14 @@ const getBase64ImageFromURL = (url: string): Promise<string> => {
 
 
 const addHeader = async (doc: jsPDF, title: string) => {
-    try {
-        // Using an absolute path for the logo
-        const logoUrl = `${window.location.origin}/logo.png`;
-        const logoBase64 = await getBase64ImageFromURL(logoUrl);
-        doc.addImage(logoBase64, 'PNG', 15, 8, 20, 20);
-    } catch (error) {
-        console.error("Could not load logo for PDF header", error);
-    }
+    // The logo is removed because it was causing 404 errors in production.
     
     doc.setFontSize(20);
-    doc.text('Cheezious IT Support', 40, 20);
+    doc.text('Cheezious IT Support', 15, 20);
     doc.setFontSize(14);
-    doc.text(title, 15, 35);
+    doc.text(title, 15, 28);
     doc.setLineWidth(0.5);
-    doc.line(15, 37, 195, 37);
+    doc.line(15, 30, 195, 30);
 };
 
 const exportToPdf = async (title: string, head: string[][], body: any[][]) => {
@@ -56,7 +49,7 @@ const exportToPdf = async (title: string, head: string[][], body: any[][]) => {
     autoTable(doc, {
         head: head,
         body: body,
-        startY: 45,
+        startY: 38,
         theme: 'grid',
         headStyles: { fillColor: [249, 168, 38] }, // This is an orange color
         styles: {

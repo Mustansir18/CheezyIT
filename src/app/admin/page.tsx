@@ -1,8 +1,7 @@
 'use client';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Ticket, BarChart, Settings, Megaphone, History } from 'lucide-react';
+import { Ticket, BarChart, Settings, Megaphone, History, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useMemo } from 'react';
@@ -76,7 +75,7 @@ export default function AdminDashboardPage() {
   if (userLoading || profileLoading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
-            <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
         </div>
       );
   }

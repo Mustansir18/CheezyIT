@@ -1,8 +1,7 @@
 'use client';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Ticket, BarChart, Settings, Megaphone } from 'lucide-react';
+import { Ticket, BarChart, Settings, Megaphone, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
 import { useMemo } from 'react';
@@ -63,7 +62,7 @@ export default function RootDashboardPage() {
   if (loading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
-            <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
         </div>
       );
   }

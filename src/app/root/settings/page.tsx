@@ -3,8 +3,7 @@ import UserManagement from '@/components/user-management';
 import SystemSettings from '@/components/system-settings';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isAdmin } from '@/lib/admins';
-import { ArrowLeft } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -78,7 +77,7 @@ export default function RootSettingsPage() {
   if (loading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }

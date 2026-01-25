@@ -3,8 +3,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceToNowStrict } from 'date-fns';
-import { Filter, Calendar as CalendarIcon } from 'lucide-react';
-import Image from 'next/image';
+import { Filter, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
@@ -123,7 +122,7 @@ export default function AdminTicketList() {
   if (loading) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
-        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </Card>
     );
   }

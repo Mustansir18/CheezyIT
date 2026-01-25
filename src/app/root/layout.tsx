@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { Loader2 } from 'lucide-react';
 
 export default function RootRedirectLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function RootRedirectLayout({ children }: { children: React.React
 
   return (
     <div className="flex h-screen w-full items-center justify-center">
-      <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+      <Loader2 className="h-16 w-16 animate-spin text-primary" />
     </div>
   );
 }

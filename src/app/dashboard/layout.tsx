@@ -12,6 +12,7 @@ import ReportIssueForm from '@/components/report-issue-form';
 import { cn } from '@/lib/utils';
 import WhatsAppFAB from '@/components/whatsapp-fab';
 import { isAdmin } from '@/lib/admins';
+import { Loader2, Shield } from 'lucide-react';
 
 type UserProfile = {
   role: string;
@@ -57,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (loading || !user || (isPrivilegedUser && !isTicketPage)) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
-          <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
         </div>
       );
     }
@@ -72,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     href='/dashboard'
                     className="flex items-center gap-2 font-headline"
                     >
-                    <Image src="/logo.png" alt="Cheezious IT Support Logo" width={40} height={40} />
+                    <Shield className="h-8 w-8 text-primary" />
                     <div className="flex flex-col leading-tight">
                         <span className="font-bold text-base">Cheezious</span>
                         <span className="text-xs">IT Support</span>

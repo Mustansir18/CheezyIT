@@ -1,8 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TicketChat from '@/components/ticket-chat';
 import TicketDetailView from '@/components/ticket-detail-view';
@@ -147,7 +146,7 @@ export default function TicketDetailPage() {
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
-                <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
             </div>
         );
     }

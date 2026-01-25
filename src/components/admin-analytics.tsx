@@ -5,7 +5,6 @@ import { Bar, BarChart, XAxis, YAxis, LineChart, Line, CartesianGrid, Cell } fro
 import { DateRange } from 'react-day-picker';
 import { addDays, format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, formatDistanceStrict, intervalToDuration, formatDuration } from 'date-fns';
 import { Calendar as CalendarIcon, FileDown, Loader2 } from 'lucide-react';
-import Image from 'next/image';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -240,7 +239,7 @@ export default function AdminAnalytics() {
   if (loading) {
     return (
       <Card className="h-[480px] flex items-center justify-center">
-        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </Card>
     );
   }

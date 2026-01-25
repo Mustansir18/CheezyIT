@@ -2,8 +2,7 @@
 import AdminAnalytics from '@/components/admin-analytics';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -43,7 +42,7 @@ export default function AdminReportsPage() {
   if (loading || !isAuthorized) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }

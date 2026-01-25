@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import Image from 'next/image';
+import { Loader2 } from 'lucide-react';
 
 import { type Ticket, getStats } from '@/lib/data';
 import DashboardClient from '@/components/dashboard-client';
@@ -40,7 +40,7 @@ export default function DashboardPage() {
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }

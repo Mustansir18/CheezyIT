@@ -4,8 +4,7 @@ import UpdateProfileForm from '@/components/update-profile-form';
 import ChangePasswordForm from '@/components/change-password-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { ArrowLeft } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -27,7 +26,7 @@ export default function RootProfilePage() {
     if (userLoading || profileLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
-                <Image src="/logo.png" alt="Loading..." width={60} height={60} className="animate-spin" />
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
             </div>
         );
     }
