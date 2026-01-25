@@ -78,7 +78,7 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
     return tickets
       .filter(ticket => {
         if (date?.from) {
-            const ticketDate = new Date(ticket.createdAt);
+            const ticketDate = ticket.createdAt?.toDate ? ticket.createdAt.toDate() : new Date(ticket.createdAt);
             const from = startOfDay(date.from);
             const to = date.to ? endOfDay(date.to) : endOfDay(date.from);
             if (ticketDate < from || ticketDate > to) return false;
@@ -171,7 +171,7 @@ export default function DashboardClient({ tickets, stats }: { tickets: any[], st
                       <CardContent>
                         <div className="flex items-center text-sm text-muted-foreground">
                             <Clock className="mr-2 h-4 w-4" />
-                            <span>Last updated {formatDistanceToNowStrict(new Date(ticket.updatedAt), { addSuffix: true })}</span>
+                            <span>Last updated {formatDistanceToNowStrict(ticket.updatedAt?.toDate ? ticket.updatedAt.toDate() : new Date(ticket.updatedAt), { addSuffix: true })}</span>
                         </div>
                       </CardContent>
                     </Card>
