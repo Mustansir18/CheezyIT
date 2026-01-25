@@ -170,7 +170,12 @@ export default function AdminAnalytics() {
   }, [filteredTickets, userRolesMapById]);
 
   const resolvedSupportTickets = useMemo(() => {
-    return filteredTickets.filter(ticket => ticket.status === 'Resolved' && ticket.resolvedBy && ['Admin', 'it-support', 'Head'].includes(userRolesMapById[ticket.resolvedBy]));
+    return filteredTickets.filter(ticket => {
+        if (ticket.status !== 'Resolved' || !ticket.resolvedBy) return false;
+        const resolverRole = userRolesMapById[ticket.resolvedBy];
+        // Any role that is not 'User' is considered a support agent for this report
+        return resolverRole && resolverRole !== 'User';
+    });
   }, [filteredTickets, userRolesMapById]);
 
   const averageResolutionTime = useMemo(() => calculateAverageResolutionTime(resolvedSupportTickets), [resolvedSupportTickets]);
