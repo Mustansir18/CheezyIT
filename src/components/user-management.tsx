@@ -313,7 +313,7 @@ function UserFormDialog({ isOpen, setIsOpen, user, onSave, regions }: { isOpen: 
                 <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>
             )}/>
             <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="03001234567" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" inputMode="numeric" pattern="[0-9]*" placeholder="03001234567" {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
             {!user && (
                  <FormField control={form.control} name="password" render={({ field }) => (

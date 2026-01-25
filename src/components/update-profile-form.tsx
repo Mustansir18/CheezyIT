@@ -115,6 +115,8 @@ export default function UpdateProfileForm({
               <FormControl>
                 <Input
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="03000000000"
                   {...field}
                 />
