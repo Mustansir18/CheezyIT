@@ -13,6 +13,7 @@ import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/fireb
 import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { logActivity } from '@/lib/activity-logger';
+import Image from 'next/image';
 
 
 export default function LoginPage() {
@@ -103,7 +104,8 @@ export default function LoginPage() {
         <div className="absolute -inset-px rounded-xl bg-gradient-to-r from-orange-500 via-purple-500 to-sky-500 opacity-70 blur-md"></div>
         <Card className="relative bg-zinc-900 text-white rounded-xl border border-zinc-800">
           <CardHeader className="text-center items-center p-6">
-            <div className="flex items-center justify-center gap-4 py-4">
+            <div className="flex flex-col items-center justify-center gap-4 py-4">
+                <Image src="https://picsum.photos/seed/cheezious-logo/150/150" data-ai-hint="company logo" alt="Cheezious Logo" width={150} height={150} className="rounded-full" />
                 <div className="flex flex-col items-center">
                     <span className="font-bold text-5xl font-headline text-primary">Cheezious</span>
                     <span className="text-lg font-headline text-white">IT Support</span>
