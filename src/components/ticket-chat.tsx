@@ -30,7 +30,8 @@ export default function TicketChat({
     ticket, 
     messages,
     currentUser,
-    ticketOwnerProfile, 
+    ticketOwnerProfile,
+    assigneeProfile,
     canManageTicket, 
     isOwner, 
     backLink, 
@@ -57,6 +58,21 @@ export default function TicketChat({
     const messagesCountRef = useRef(messages?.length || 0);
     const statusRef = useRef(ticket.status);
     const isInitialMount = useRef(true);
+    
+    const chatPartnerProfile = useMemo(() => {
+        return isOwner ? assigneeProfile : ticketOwnerProfile;
+    }, [isOwner, assigneeProfile, ticketOwnerProfile]);
+
+    const chatPartnerName = useMemo(() => {
+        if (!isOwner) { // Support is viewing, show user name
+            return ticketOwnerProfile?.displayName || 'User';
+        }
+        // User is viewing, show agent name
+        return assigneeProfile?.displayName || ticket.assignedToDisplayName || 'IT Support';
+    }, [isOwner, assigneeProfile, ticket.assignedToDisplayName, ticketOwnerProfile]);
+
+    const chatPartnerInitial = useMemo(() => chatPartnerName?.charAt(0).toUpperCase() || 'U', [chatPartnerName]);
+
 
     useLayoutEffect(() => {
         if (messagesContainerRef.current) {
@@ -122,8 +138,10 @@ export default function TicketChat({
     const handleStartCall = async () => {
        if (isCalling) return;
 
+       const personToCallName = chatPartnerName;
+
        setIsCalling(true);
-       toast({ title: 'Calling...', description: `Attempting to call ${ticketOwnerProfile?.displayName || 'User'}` });
+       toast({ title: 'Calling...', description: `Attempting to call ${personToCallName}` });
 
        playRing();
        ringIntervalRef.current = setInterval(playRing, 4000); // Ring every 4 seconds
@@ -138,7 +156,7 @@ export default function TicketChat({
          toast({
            variant: 'destructive',
            title: 'Call Unanswered',
-           description: 'The user did not answer the call.',
+           description: `${personToCallName} did not answer the call.`,
          });
        }, 10000); // Stop ringing after 10 seconds
     };
@@ -161,12 +179,12 @@ export default function TicketChat({
                     )}
                     <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-[#6a7175] text-white font-semibold">
-                            {ticketOwnerProfile?.displayName?.charAt(0).toUpperCase() || 'U'}
+                            {chatPartnerInitial}
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                             <span className="text-white font-medium text-[16px]">{ticketOwnerProfile?.displayName || 'User'}</span>
+                             <span className="text-white font-medium text-[16px]">{chatPartnerName}</span>
                              <span className="text-[12px] text-accent/80 font-semibold">{ticket.ticketId}</span>
                         </div>
                         <span className="text-[13px] text-[#8696a0] truncate max-w-[150px] sm:max-w-[200px]">{ticket.title}</span>
@@ -175,7 +193,7 @@ export default function TicketChat({
                 <div className="flex items-center gap-0">
                     {canManageTicket && (
                         <>
-                            <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!ticketOwnerProfile?.phoneNumber || isCalling}>
+                            <Button variant="ghost" size="icon" className="text-[#aebac1] rounded-full h-10 w-10 hover:bg-white/5" onClick={handleStartCall} disabled={!chatPartnerProfile?.phoneNumber || isCalling}>
                                 <Phone className={cn("h-5 w-5", isCalling && 'animate-bounce')} />
                             </Button>
                             

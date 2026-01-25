@@ -171,6 +171,7 @@ export default function TicketDetailPage() {
                     messages={messages || []}
                     currentUser={currentUserProfile}
                     ticketOwnerProfile={ticketOwnerProfile}
+                    assigneeProfile={assigneeProfile}
                     canManageTicket={canManageTicket} 
                     isOwner={isOwner}
                     backLink={backLink}
