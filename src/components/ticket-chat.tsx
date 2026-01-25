@@ -26,31 +26,26 @@ const WA_COLORS = {
     blue: '#53bdeb'
 };
 
-const mockMessages: ChatMessage[] = [
-    {
-        id: '1',
-        userId: 'demo-user-id',
-        displayName: 'Demo User',
-        text: 'My laptop is not connecting to the office Wi-Fi. I have tried restarting it but it did not work. Please help.',
-        createdAt: new Date(Date.now() - 5 * 60 * 1000),
-        isRead: true,
-        type: 'user',
-    },
-    {
-        id: '2',
-        userId: 'support-user-id',
-        displayName: 'Support Person',
-        text: 'Hi there, I will look into this for you. Can you please provide your AnyDesk ID?',
-        createdAt: new Date(Date.now() - 3 * 60 * 1000),
-        isRead: true,
-        type: 'user',
-    },
-];
-
-export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket, isOwner, backLink, assignableUsers, onStatusChange, onAssignmentChange, onDeleteClick, onReopenTicket, onTakeOwnership, onReturnToQueue, onBackToDetail }: any) {
+export default function TicketChat({ 
+    ticket, 
+    messages,
+    currentUser,
+    ticketOwnerProfile, 
+    canManageTicket, 
+    isOwner, 
+    backLink, 
+    assignableUsers, 
+    onStatusChange, 
+    onAssignmentChange, 
+    onDeleteClick, 
+    onSendMessage,
+    onReopenTicket, 
+    onTakeOwnership, 
+    onReturnToQueue, 
+    onBackToDetail 
+}: any) {
     const { toast } = useToast();
     const [message, setMessage] = useState('');
-    const [messages, setMessages] = useState<any[]>(mockMessages);
     const [isCalling, setIsCalling] = useState(false);
     const ringIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const playRing = useSound('/sounds/ringtone.mp3');
@@ -62,11 +57,6 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
     const messagesCountRef = useRef(messages?.length || 0);
     const statusRef = useRef(ticket.status);
     const isInitialMount = useRef(true);
-
-    const currentUser = useMemo(() => {
-        const userJson = localStorage.getItem('mockUser');
-        return userJson ? JSON.parse(userJson) : null;
-    }, []);
 
     useLayoutEffect(() => {
         if (messagesContainerRef.current) {
@@ -93,7 +83,7 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
         // New message sound
         if (messages && messages.length > messagesCountRef.current) {
             const lastMessage = messages[messages.length - 1];
-            if (lastMessage && lastMessage.userId !== currentUser?.email) {
+            if (lastMessage && lastMessage.userId !== currentUser?.id) {
                 playSound();
             }
         }
@@ -104,14 +94,15 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
             playSound();
             statusRef.current = ticket.status;
         }
-    }, [messages, ticket.status, currentUser?.email, playSound]);
+    }, [messages, ticket.status, currentUser?.id, playSound]);
 
     const messagesWithDateSeparators = useMemo(() => {
         const items: any[] = [];
         let lastDate: string | null = null;
-        messages?.forEach(msg => {
-            if (msg.createdAt) {
-                const messageDate = format(new Date(msg.createdAt), 'dd/MM/yyyy');
+        messages?.forEach((msg: ChatMessage & {id: string}) => {
+            const msgCreatedAt = msg.createdAt?.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt);
+            if (msgCreatedAt && !isNaN(msgCreatedAt.getTime())) {
+                const messageDate = format(msgCreatedAt, 'dd/MM/yyyy');
                 if (messageDate !== lastDate) {
                     items.push({ type: 'date-separator', date: messageDate, id: `date-${messageDate}` });
                     lastDate = messageDate;
@@ -122,22 +113,10 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
         return items;
     }, [messages]);
 
-    const handleSendMessage = async () => {
+    const handleSendMessage = () => {
         if (!message.trim() || !currentUser) return;
-        const msgText = message;
+        onSendMessage(message);
         setMessage('');
-
-        const newMessage = {
-            id: Date.now().toString(),
-            userId: currentUser.email, // using email as id for mock
-            displayName: currentUser.displayName || 'User',
-            text: msgText,
-            createdAt: new Date(),
-            isRead: false,
-            type: 'user',
-        };
-        setMessages(m => [...m, newMessage]);
-        toast({ title: 'Message Sent (Mock)', description: 'Your message has been sent.' });
     };
 
     const handleStartCall = async () => {
@@ -267,8 +246,9 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
                         }
 
                         const msg = item as any;
-                        const isSender = msg.userId === currentUser?.email;
+                        const isSender = msg.userId === currentUser?.id;
                         const prevItem = messagesWithDateSeparators[idx - 1];
+                        const msgCreatedAt = msg.createdAt?.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt);
 
                         const isFirstInBlock = !prevItem || (prevItem as any).type === 'date-separator' || (prevItem as any).userId !== msg.userId;
                         
@@ -329,7 +309,7 @@ export default function TicketChat({ ticket, ticketOwnerProfile, canManageTicket
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 mb-[-2px] self-end">
                                         <span className="text-[10px] text-[#8696a0] whitespace-nowrap uppercase">
-                                            {msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : ''}
+                                            {msgCreatedAt && !isNaN(msgCreatedAt.getTime()) ? format(msgCreatedAt, 'h:mm a') : ''}
                                         </span>
                                         {isSender && (
                                             <CheckCheck className={cn("h-4 w-4", msg.isRead ? "text-[#53bdeb]" : "text-[#8696a0]")} />

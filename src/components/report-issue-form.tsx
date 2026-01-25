@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect }from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,7 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useSound } from '@/hooks/use-sound';
-import type { Ticket } from '@/lib/data';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
 
 const issueTypes = ['Network', 'Hardware', 'Software', 'Account Access', 'Other'] as const;
 
@@ -52,21 +53,12 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const [user, setUser] = useState<any | null>(null);
   const playSound = useSound('/sounds/new-announcement.mp3');
 
-  useEffect(() => {
-    const userJson = localStorage.getItem('mockUser');
-    const usersJson = localStorage.getItem('mockUsers');
-    if (userJson && usersJson) {
-      const currentUserEmail = JSON.parse(userJson).email;
-      const allUsers = JSON.parse(usersJson);
-      const fullUser = allUsers.find((u: any) => u.email === currentUserEmail);
-      setUser(fullUser);
-    } else if (userJson) {
-      setUser(JSON.parse(userJson));
-    }
-  }, []);
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile } = useDoc(userProfileRef);
 
   const form = useForm<FormData>({
     resolver: zodResolver(ticketSchema),
@@ -81,7 +73,7 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
   });
 
   const issueType = form.watch('issueType');
-  const userRegions = user?.regions?.filter((r: string) => r !== 'all') || [];
+  const userRegions = userProfile?.regions?.filter((r: string) => r !== 'all') || [];
 
   useEffect(() => {
     if (issueType !== 'Other') {
@@ -99,41 +91,41 @@ export default function ReportIssueForm({ children }: { children: React.ReactNod
     form.reset();
   }
   
-  const onSubmit = (data: FormData) => {
-    if (!user) {
+  const onSubmit = async (data: FormData) => {
+    if (!user || !firestore) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
         return;
     }
     setIsSubmitting(true);
     
-    const currentTickets = JSON.parse(localStorage.getItem('mockTickets') || '[]');
-    const nextTicketNumber = (currentTickets.length + 1).toString().padStart(3, '0');
+    try {
+        const ticketsCollectionRef = collection(firestore, 'tickets');
+        const snapshot = await getDocs(ticketsCollectionRef);
+        const nextTicketNumber = (snapshot.size + 1).toString().padStart(3, '0');
 
-    const newTicket: Ticket & { id: string } = {
-        id: `TKT-${Date.now()}`,
-        ticketId: `TKT-${nextTicketNumber}`,
-        userId: user.email,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        status: 'Open',
-        title: data.title,
-        description: data.description,
-        issueType: data.issueType === 'Other' ? data.customIssueType! : data.issueType,
-        customIssueType: data.issueType === 'Other' ? data.customIssueType : undefined,
-        anydesk: data.anydesk,
-        region: data.region,
-    };
+        await addDoc(ticketsCollectionRef, {
+            ticketId: `TKT-${nextTicketNumber}`,
+            userId: user.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            status: 'Open',
+            title: data.title,
+            description: data.description,
+            issueType: data.issueType === 'Other' ? data.customIssueType! : data.issueType,
+            customIssueType: data.issueType === 'Other' ? data.customIssueType : undefined,
+            anydesk: data.anydesk || null,
+            region: data.region,
+        });
 
-    const updatedTickets = [...currentTickets, newTicket];
-    localStorage.setItem('mockTickets', JSON.stringify(updatedTickets));
-    window.dispatchEvent(new Event('local-storage-change'));
-
-    playSound();
-
-    toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
-    resetFormState();
-    closeButtonRef.current?.click();
-    setIsSubmitting(false);
+        playSound();
+        toast({ title: 'Success!', description: 'Your ticket has been created successfully.' });
+        resetFormState();
+        closeButtonRef.current?.click();
+    } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Error', description: `Failed to create ticket: ${err.message}` });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (

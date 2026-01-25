@@ -6,123 +6,139 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import TicketChat from '@/components/ticket-chat';
 import TicketDetailView from '@/components/ticket-detail-view';
-import type { Ticket, TicketStatus } from '@/lib/data';
-import { initialMockTickets } from '@/lib/data';
+import type { Ticket, TicketStatus, ChatMessage } from '@/lib/data';
 import Link from 'next/link';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import type { User } from '@/components/user-management';
-
+import type { User as AppUser } from '@/components/user-management';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, deleteDoc, collection, query, where, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { isAdmin } from '@/lib/admins';
 
 export default function TicketDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
     const ticketId = params.id as string;
+    
+    const { user: currentUser, loading: userLoading } = useUser();
+    const firestore = useFirestore();
 
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [users, setUsers] = useState<User[]>([]);
-    const [allTickets, setAllTickets] = useState<(Ticket & {id: string})[]>([]);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [view, setView] = useState<'detail' | 'chat'>('detail');
-    const [loading, setLoading] = useState(true);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-    const loadData = useCallback(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if (userJson) setCurrentUser(JSON.parse(userJson));
+    // Ticket data
+    const ticketRef = useMemoFirebase(() => (firestore && ticketId ? doc(firestore, 'tickets', ticketId) : null), [firestore, ticketId]);
+    const { data: ticket, isLoading: ticketLoading } = useDoc<Ticket>(ticketRef);
 
-        const usersJson = localStorage.getItem('mockUsers');
-        if (usersJson) setUsers(JSON.parse(usersJson));
-        
-        const ticketsJson = localStorage.getItem('mockTickets');
-        if (ticketsJson) {
-            setAllTickets(JSON.parse(ticketsJson).map((t: any) => ({
-                ...t,
-                createdAt: new Date(t.createdAt),
-                updatedAt: new Date(t.updatedAt),
-            })));
-        } else {
-            localStorage.setItem('mockTickets', JSON.stringify(initialMockTickets));
-            setAllTickets(initialMockTickets);
-        }
-    }, []);
+    // Current user profile
+    const userProfileRef = useMemoFirebase(() => (currentUser ? doc(firestore, 'users', currentUser.uid) : null), [firestore, currentUser]);
+    const { data: currentUserProfile, isLoading: profileLoading } = useDoc<AppUser>(userProfileRef);
 
-    useEffect(() => {
-        loadData();
-        setLoading(false);
-        const handleStorage = (e: StorageEvent) => {
-            if (['mockUser', 'mockUsers', 'mockTickets'].includes(e.key || '')) {
-                loadData();
-            }
-        };
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
-    }, [loadData]);
+    // Ticket owner profile
+    const ticketOwnerRef = useMemoFirebase(() => (firestore && ticket?.userId ? doc(firestore, 'users', ticket.userId) : null), [firestore, ticket]);
+    const { data: ticketOwnerProfile, isLoading: ownerLoading } = useDoc<AppUser>(ticketOwnerRef);
+    
+    // Ticket assignee profile
+    const assigneeRef = useMemoFirebase(() => (firestore && ticket?.assignedTo ? doc(firestore, 'users', ticket.assignedTo) : null), [firestore, ticket]);
+    const { data: assigneeProfile, isLoading: assigneeLoading } = useDoc<AppUser>(assigneeRef);
+    
+    // All support/admin users for assignment
+    const assignableUsersQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'users'), where('role', 'in', ['Admin', 'it-support', 'Head'])) : null), [firestore]);
+    const { data: assignableUsers, isLoading: assignableUsersLoading } = useCollection<AppUser>(assignableUsersQuery);
 
+    // Ticket messages
+    const messagesQuery = useMemoFirebase(() => (ticketRef ? query(collection(ticketRef, 'messages'), orderBy('createdAt', 'asc')) : null), [ticketRef]);
+    const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
 
-    const ticket = useMemo(() => allTickets.find(t => t.id === ticketId), [allTickets, ticketId]);
-    const ticketOwnerProfile = useMemo(() => users.find(u => u.email === ticket?.userId), [users, ticket]);
-    const assigneeProfile = useMemo(() => users.find(u => u.id === ticket?.assignedTo), [users, ticket]);
-    const isOwner = useMemo(() => currentUser?.email === ticket?.userId, [currentUser, ticket]);
-    const canManageTicket = useMemo(() => currentUser?.role === 'Admin' || currentUser?.role === 'it-support' || currentUser?.role === 'Head', [currentUser]);
+    const isOwner = useMemo(() => currentUser?.uid === ticket?.userId, [currentUser, ticket]);
+    
+    const canManageTicket = useMemo(() => {
+        if (!currentUserProfile) return false;
+        if (isAdmin(currentUserProfile.email)) return true;
+        return ['Admin', 'it-support', 'Head'].includes(currentUserProfile.role);
+    }, [currentUserProfile]);
 
     const backLink = useMemo(() => {
-        if (!currentUser) return '/';
-        if (['Admin', 'Head'].includes(currentUser.role)) return '/admin';
-        if (currentUser.role === 'it-support') return '/admin/tickets';
+        if (!currentUserProfile) return '/';
+        if (['Admin', 'Head'].includes(currentUserProfile.role)) return '/admin/tickets';
+        if (currentUserProfile.role === 'it-support') return '/admin/tickets';
         return '/dashboard';
-    }, [currentUser]);
-
-    const assignableUsers = useMemo(() => users.filter(u => u.role === 'Admin' || u.role === 'it-support' || u.role === 'Head'), [users]);
+    }, [currentUserProfile]);
 
 
-    const updateTicket = (ticketId: string, updates: Partial<Ticket>) => {
-        const updatedTickets = allTickets.map(t => 
-            t.id === ticketId ? { ...t, ...updates, updatedAt: new Date() } : t
-        );
-        setAllTickets(updatedTickets);
-        localStorage.setItem('mockTickets', JSON.stringify(updatedTickets));
-    };
+    const updateTicket = useCallback(async (updates: Partial<Ticket>) => {
+        if (!ticketRef) return;
+        try {
+            await updateDoc(ticketRef, { ...updates, updatedAt: serverTimestamp() });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error Updating Ticket', description: err.message });
+        }
+    }, [ticketRef, toast]);
 
     const handleStatusChange = (newStatus: TicketStatus) => {
-        if (!ticket) return;
         const updates: Partial<Ticket> = { status: newStatus };
-        if (newStatus === 'Resolved' || newStatus === 'Closed') {
-            updates.resolvedBy = currentUser?.id;
-            updates.resolvedByDisplayName = currentUser?.displayName;
+        if ((newStatus === 'Resolved' || newStatus === 'Closed') && currentUserProfile) {
+            updates.resolvedBy = currentUserProfile.id;
+            updates.resolvedByDisplayName = currentUserProfile.displayName;
+            updates.completedAt = serverTimestamp();
         }
-        updateTicket(ticket.id, updates);
+        updateTicket(updates);
         toast({ title: 'Status Updated', description: `Ticket status changed to ${newStatus}` });
     };
 
     const handleAssignmentChange = (userId: string) => {
-        if (!ticket) return;
-        const assignedUser = users.find(u => u.id === userId);
-        updateTicket(ticket.id, {
-            assignedTo: userId || undefined,
-            assignedToDisplayName: assignedUser?.displayName || undefined,
+        const assignedUser = assignableUsers?.find(u => u.id === userId);
+        updateTicket({
+            assignedTo: userId || '', // Use empty string to unassign
+            assignedToDisplayName: assignedUser?.displayName || '',
         });
         toast({ title: 'Assignment Updated', description: `Ticket assigned to ${assignedUser?.displayName || 'Unassigned'}` });
     };
 
-    const handleDeleteTicket = () => {
-        const updatedTickets = allTickets.filter(t => t.id !== ticketId);
-        setAllTickets(updatedTickets);
-        localStorage.setItem('mockTickets', JSON.stringify(updatedTickets));
-        setIsDeleteDialogOpen(false);
-        toast({ title: 'Ticket Deleted', description: 'The ticket has been successfully deleted.' });
-        router.push(backLink);
+    const handleDeleteTicket = async () => {
+        if (!ticketRef) return;
+        try {
+            await deleteDoc(ticketRef);
+            setIsDeleteDialogOpen(false);
+            toast({ title: 'Ticket Deleted', description: 'The ticket has been successfully deleted.' });
+            router.push(backLink);
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error Deleting Ticket', description: err.message });
+        }
+    };
+    
+    const handleSendMessage = async (text: string) => {
+        if (!text.trim() || !currentUserProfile || !ticketRef) return;
+        
+        const messagesCollectionRef = collection(ticketRef, 'messages');
+        try {
+            await addDoc(messagesCollectionRef, {
+                userId: currentUserProfile.id,
+                displayName: currentUserProfile.displayName,
+                text: text,
+                createdAt: serverTimestamp(),
+                isRead: false,
+                type: 'user',
+            });
+            // Also update the ticket's updatedAt timestamp
+            await updateDoc(ticketRef, { updatedAt: serverTimestamp() });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error Sending Message', description: err.message });
+        }
     };
 
     const handleTakeOwnership = () => {
-        if (!currentUser) return;
-        handleAssignmentChange(currentUser.id);
+        if (!currentUserProfile) return;
+        handleAssignmentChange(currentUserProfile.id);
     };
 
     const handleReturnToQueue = () => {
         handleAssignmentChange('');
     };
+    
+    const loading = userLoading || ticketLoading || profileLoading || ownerLoading || assigneeLoading || assignableUsersLoading || messagesLoading;
     
     if (loading) {
         return (
@@ -152,14 +168,17 @@ export default function TicketDetailPage() {
             <div className="flex flex-1 flex-col min-h-0">
                 <TicketChat 
                     ticket={ticket}
+                    messages={messages || []}
+                    currentUser={currentUserProfile}
                     ticketOwnerProfile={ticketOwnerProfile}
                     canManageTicket={canManageTicket} 
                     isOwner={isOwner}
                     backLink={backLink}
-                    assignableUsers={assignableUsers}
+                    assignableUsers={assignableUsers || []}
                     onStatusChange={handleStatusChange}
                     onAssignmentChange={handleAssignmentChange}
                     onDeleteClick={() => setIsDeleteDialogOpen(true)}
+                    onSendMessage={handleSendMessage}
                     onReopenTicket={() => handleStatusChange('In-Progress')}
                     onTakeOwnership={handleTakeOwnership}
                     onReturnToQueue={handleReturnToQueue}
@@ -178,7 +197,7 @@ export default function TicketDetailPage() {
                 canManageTicket={canManageTicket}
                 isOwner={isOwner}
                 backLink={backLink}
-                assignableUsers={assignableUsers}
+                assignableUsers={assignableUsers || []}
                 onStatusChange={handleStatusChange}
                 onAssignmentChange={handleAssignmentChange}
                 onDeleteClick={() => setIsDeleteDialogOpen(true)}
