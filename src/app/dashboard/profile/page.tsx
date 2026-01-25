@@ -5,25 +5,22 @@ import ChangePasswordForm from '@/components/change-password-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
-import { useState, useEffect } from 'react';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
-const useUser = () => {
-    const [user, setUser] = useState<{ email: string; displayName: string } | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const userJson = localStorage.getItem('mockUser');
-        if (userJson) {
-            setUser(JSON.parse(userJson));
-        }
-        setLoading(false);
-    }, []);
-
-    return { user, loading };
+type UserProfile = {
+  phoneNumber?: string;
+  displayName: string;
 };
 
 export default function ProfilePage() {
-    const { user, loading } = useUser();
+    const { user, loading: userLoading } = useUser();
+    const firestore = useFirestore();
+    
+    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+    const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+    const loading = userLoading || profileLoading;
 
     if (loading) {
         return (
@@ -58,8 +55,8 @@ export default function ProfilePage() {
 
                     <div>
                         <UpdateProfileForm 
-                            currentDisplayName={user.displayName} 
-                            currentPhoneNumber={"03001234567"} 
+                            currentDisplayName={userProfile?.displayName} 
+                            currentPhoneNumber={userProfile?.phoneNumber} 
                             backLink="/dashboard"
                             backLinkText="Back to Dashboard"
                         />

@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/firebase';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +28,7 @@ type FormData = z.infer<typeof changePasswordSchema>;
 export default function ChangePasswordForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const auth = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(changePasswordSchema),
@@ -38,11 +41,30 @@ export default function ChangePasswordForm() {
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
-    setTimeout(() => {
-        toast({ title: 'Success! (Mock)', description: 'Your password has been changed.' });
-        form.reset();
+    
+    if (!auth?.currentUser?.email) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to change your password.' });
         setIsSubmitting(false);
-    }, 1000);
+        return;
+    }
+
+    const user = auth.currentUser;
+    const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
+
+    try {
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, data.newPassword);
+        toast({ title: 'Success!', description: 'Your password has been successfully changed.' });
+        form.reset();
+    } catch (error: any) {
+        let errorMessage = "An error occurred while changing your password.";
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            errorMessage = 'The current password you entered is incorrect.';
+        }
+        toast({ variant: 'destructive', title: 'Error', description: errorMessage });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (

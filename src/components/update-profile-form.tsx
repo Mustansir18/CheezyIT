@@ -7,6 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { useAuth, useUser, useFirestore } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -38,6 +41,9 @@ export default function UpdateProfileForm({
 }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   const form = useForm<FormData>({
     resolver: zodResolver(profileSchema),
@@ -56,13 +62,32 @@ export default function UpdateProfileForm({
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
-    setTimeout(() => {
-        const user = JSON.parse(localStorage.getItem('mockUser') || '{}');
-        user.displayName = data.displayName;
-        localStorage.setItem('mockUser', JSON.stringify(user));
-        toast({ title: 'Success! (Mock)', description: 'Your profile has been updated.' });
+    if (!user || !auth?.currentUser || !firestore) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update profile. Not authenticated.' });
         setIsSubmitting(false);
-    }, 1000);
+        return;
+    }
+
+    try {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        
+        await updateDoc(userDocRef, {
+            displayName: data.displayName,
+            phoneNumber: data.phoneNumber || null,
+        });
+
+        if (auth.currentUser.displayName !== data.displayName) {
+            await updateProfile(auth.currentUser, {
+                displayName: data.displayName,
+            });
+        }
+        
+        toast({ title: 'Success!', description: 'Your profile has been updated.' });
+    } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update profile.' });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
