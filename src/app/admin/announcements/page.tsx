@@ -17,6 +17,8 @@ import { doc, collection, addDoc, serverTimestamp, deleteDoc } from 'firebase/fi
 import { isAdmin } from '@/lib/admins';
 import { logActivity } from '@/lib/activity-logger';
 
+const regions = ['ISL', 'LHR', 'South', 'SUG'];
+
 export default function AdminAnnouncementsPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
@@ -114,7 +116,7 @@ export default function AdminAnnouncementsPage() {
         </TabsList>
       </div>
       <TabsContent value="send" className="mt-4">
-        <AnnouncementForm users={users || []} onAddAnnouncement={handleAddAnnouncement} currentUser={user} />
+        <AnnouncementForm users={users || []} onAddAnnouncement={handleAddAnnouncement} currentUser={user} regions={regions} />
       </TabsContent>
       <TabsContent value="history" className="mt-4">
         <AnnouncementHistory 

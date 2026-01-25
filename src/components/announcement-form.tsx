@@ -25,6 +25,7 @@ const announcementSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
   message: z.string().min(10, 'Message must be at least 10 characters.'),
   targetRoles: z.array(z.string()),
+  targetRegions: z.array(z.string()),
   targetUsers: z.array(z.string()),
   startDate: z.date().optional(),
   endDate: z.date().optional(),
@@ -36,6 +37,7 @@ interface AnnouncementFormProps {
   users: User[];
   onAddAnnouncement: (announcement: Omit<Announcement, 'id' | 'createdAt' | 'sentBy' | 'readBy'>) => void;
   currentUser: { email: string; role: string } | null;
+  regions: string[];
 }
 
 const ROLES: MultiSelectOption[] = [
@@ -46,7 +48,7 @@ const ROLES: MultiSelectOption[] = [
 ];
 
 
-export default function AnnouncementForm({ users, onAddAnnouncement, currentUser }: AnnouncementFormProps) {
+export default function AnnouncementForm({ users, onAddAnnouncement, currentUser, regions }: AnnouncementFormProps) {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
   const playSound = useSound('/sounds/new-announcement.mp3');
@@ -55,12 +57,18 @@ export default function AnnouncementForm({ users, onAddAnnouncement, currentUser
     users.map(u => ({ value: u.id, label: `${u.displayName} (${u.email})` })),
   [users]);
 
+  const regionOptions: MultiSelectOption[] = useMemo(() => {
+    const list = regions.map(r => ({ value: r, label: r }));
+    return [{ value: 'all', label: 'All Regions' }, ...list];
+  }, [regions]);
+
   const form = useForm<FormData>({
     resolver: zodResolver(announcementSchema),
     defaultValues: {
       title: '',
       message: '',
       targetRoles: [],
+      targetRegions: [],
       targetUsers: [],
       startDate: undefined,
       endDate: undefined,
@@ -82,6 +90,7 @@ export default function AnnouncementForm({ users, onAddAnnouncement, currentUser
 
     let recipientsSummary = [];
     if (data.targetRoles.length) recipientsSummary.push(`Roles: ${data.targetRoles.join(', ')}`);
+    if (data.targetRegions.length) recipientsSummary.push(`Regions: ${data.targetRegions.join(', ')}`);
     if (data.targetUsers.length) recipientsSummary.push(`Users: ${data.targetUsers.length}`);
 
     const description = recipientsSummary.length > 0
@@ -152,6 +161,24 @@ export default function AnnouncementForm({ users, onAddAnnouncement, currentUser
                                     selected={field.value}
                                     onChange={field.onChange}
                                     placeholder="Select roles..."
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="targetRegions"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Regions</FormLabel>
+                            <FormControl>
+                                <MultiSelect 
+                                    options={regionOptions}
+                                    selected={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Select regions..."
                                 />
                             </FormControl>
                             <FormMessage />

@@ -66,6 +66,7 @@
             "title": { "type": "string"},
             "message": { "type": "string"},
             "targetRoles": { "type": "array", "items": { "type": "string" }},
+            "targetRegions": { "type": "array", "items": { "type": "string" }, "description": "The regions the announcement is targeted to."},
             "targetUsers": { "type": "array", "items": { "type": "string" }},
             "startDate": { "type": "string", "format": "date-time" },
             "endDate": { "type": "string", "format": "date-time" },

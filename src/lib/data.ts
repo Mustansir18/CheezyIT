@@ -42,6 +42,7 @@ export type Announcement = {
   message: string;
   targetRoles: string[];
   targetUsers: string[];
+  targetRegions: string[];
   startDate?: any;
   endDate?: any;
   createdAt: any; // Firestore Timestamp or Date
